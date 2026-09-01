@@ -1,0 +1,38 @@
+# Field-by-field rules: which Hyperline field maps to which Chift field.
+# Simple fields: chift_field: source_field
+# Constants:    chift_field: { constant: true }
+# Hooks:         chift_field: { hook: function_name }  → see hooks.py
+
+contact:
+  source_ref.id: id
+  source_ref.model: { constant: customer }
+  company_name: { hook: company_name }
+  email: billing_email
+  currency: currency
+  language: language
+  company_number: registration_number
+  external_reference: external_id
+  is_customer: { constant: true }
+  is_prospect: { constant: false }
+  is_supplier: { constant: false }
+  is_company: { hook: is_company }
+  first_name: { hook: person_first_name }
+  addresses: { hook: map_addresses }
+  vat: { hook: first_tax_id }
+
+invoice:
+  source_ref.id: id
+  source_ref.model: { constant: invoice }
+  currency: currency
+  status: status
+  invoice_number: number
+  invoice_date: emission_date
+  due_date: due_date
+  comment: custom_note
+  external_reference: reference
+  invoice_type: { constant: customer_invoice }
+  payment_status: { hook: payment_status }
+  contact_id: { hook: contact_id }
+  total: { hook: amount_total }
+  total_excl_tax: { hook: amount_excl_tax }
+  total_tax: { hook: amount_tax }

@@ -1,0 +1,27 @@
+[project]
+name = "connector-poc"
+version = "0.1.0"
+description = "Chift connector generator POC — local unified invoicing API"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi[standard]>=0.115.6",
+    "pydantic>=2.10.0",
+    "httpx>=0.28.0",
+    "python-dotenv>=1.0.1",
+    "pyyaml>=6.0.2",
+]
+
+[project.scripts]
+connector-poc = "chift_api.app:run"
+connector-poc-seed = "seed:main"
+connector-poc-verify = "verify:main"
+connector-gen = "connectors.generator:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["seed", "verify"]
+packages = ["chift_api", "connectors", "connectors.hyperline"]
