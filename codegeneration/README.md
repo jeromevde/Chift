@@ -475,7 +475,7 @@ it is real, uncompensated work for the team producing the spec.
 
 ## Validation experiments
 
-### A spec bug found before the data existed — since fixed upstream
+### A spec bug found before the data existed — still present upstream
 
 `check.py` validates each response model against a payload built from the spec's own `example`
 values. A missing or invalid response model now makes generation fail. Against the spec as
@@ -492,12 +492,14 @@ description said "UTC date time string" and the API returned `2026-09-30T23:59:5
 already `date-time`. Seeding a subscription confirmed the consequence: **one customer with a
 subscription broke `list_customers` for every caller**, not just that customer.
 
-**Hyperline has since corrected it.** The currently vendored document says `date-time`, the
-generated field is `AwareDatetime`, and `python -m codegeneration.run` now reports no
-contradictions — which is the regression test working as intended.
+**Hyperline has not fixed it.** The vendored document still says `format: date` in four places
+(`Customer` and `CustomerV1`, both period fields). Generation reports clean only because
+`normalize.provider_quirks()` rewrites the field to `date-time` first — remove that override and
+the four failures above return immediately. The override is load-bearing, not a historical
+guard.
 
-The current normalizer retains the date correction as a provider-specific regression guard,
-although the vendored specification no longer needs it. A production version should express
+That override is provider knowledge sitting in generic code, which is the wrong layer. A
+production version should express
 such provider overrides separately from generic normalization. Spectral's
 `oas3-valid-schema-example` also catches this class of bug — see
 [Does this already exist?](#does-this-already-exist).
@@ -641,10 +643,10 @@ ways in one document.** As vendored on 2026-09-06,
 `Customer.subscriptions[].current_period_ends_at` was `format: date` while its description said
 "UTC date time string" and the API returned `2026-09-30T23:59:59.999Z` —
 `Subscription.current_period_ends_at` was correctly `date-time`. One customer with a
-subscription broke `list_customers` for *every* caller. **Hyperline has since fixed it**; the
-current vendored spec says `date-time` and the pipeline reports clean. It was caught by
-`check.py` before the sandbox held a single subscription — and, as it turns out, Spectral's
-`oas3-valid-schema-example` catches it too.
+subscription broke `list_customers` for *every* caller. **The spec still declares `date`
+today**; the pipeline only reports clean because an override rewrites it before generation. It
+was caught by `check.py` before the sandbox held a single subscription — and, as it turns out,
+Spectral's `oas3-valid-schema-example` catches it too.
 
 ### 5. Pagination, status and money — product logic, not codegen
 

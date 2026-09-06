@@ -4,71 +4,90 @@ Usage (from repo root):
   python -m codegeneration
   python -m codegeneration.run hyperline
 """
-
 from __future__ import annotations
 
-import subprocess
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 import yaml
+from datamodel_code_generator import (
+    DataModelType,
+    InputFileType,
+    PythonVersion,
+    generate,
+)
+from datamodel_code_generator.format import Formatter
+from datamodel_code_generator.parser import LiteralType
 
 from codegeneration import check, emit, normalize, prune
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Flags for datamodel-code-generator. Soft parse of Hyperline → models; the connector
-# then enforces the fields Chift needs (_required / status maps). Don't drop flags casually.
-DMCG = [
-    # Input / output shape
-    "--input-file-type",
-    "openapi",
-    "--output-model-type",
-    "pydantic_v2.BaseModel",
-    "--target-python-version",
-    "3.11",
-    # Prefer modern typing: list[str] and str | None instead of List/Optional.
-    "--use-standard-collections",
-    "--use-union-operator",
-    # Use schema `title` for class names (normalize sets those); avoids Customer1 noise.
-    "--use-title-as-name",
-    # Flatten RootModel wrappers so fields are on the model, not .root.
-    "--collapse-root-models",
-    # Enums as Literal[...] so `customer.type == "corporate"` works (Enum members don't).
-    "--enum-field-as-literal",
-    "all",
-    # Soft intake: Hyperline's `required` often means "key may be present", not "value
-    # always populated". Missing fields become None here; the connector fails loudly for
-    # fields Chift cannot invent (see connectors/hyperline/connector.py::_required).
-    "--force-optional",
-    # Stable diffs: no timestamp; Ruff fixes imports and formats generated output.
-    "--disable-timestamp",
-    "--formatters",
-    "ruff-check",
-    "ruff-format",
-]
+CONNECTORS_DIR = ROOT / "connectors"
 
-# Provider APIs the connector *consumes*. Chift is not here: we implement Chift's
-# contract, we don't call it — `chift/models.py` is the target shape, not a client.
-CONNECTORS = {
-    "hyperline": (
-        "connectors/hyperline/openapi.hyperline.yaml",
-        "generated/hyperline",
-        "HyperlineClient",
-        {
-            "/v2/customers": ("get",),
-            "/v2/customers/{id}": ("get",),
-            "/v2/invoices": ("get",),
-            "/v2/invoices/{id}": ("get",),
-            # Sandbox fixture creation and cleanup.
-            "/v1/customers": ("post",),
-            "/v1/customers/{id}": ("delete",),
-            "/v1/customers/{id}/archive": ("put",),
-            "/v1/invoices": ("post",),
-            "/v1/invoices/{id}": ("delete",),
-        },
-    ),
-}
+
+class Connector(NamedTuple):
+    name: str
+    spec: Path
+    out_pkg: Path
+    client_class: str
+    endpoints: dict[str, tuple[str, ...]]
+
+
+def discover() -> dict[str, Connector]:
+    """Every connectors/<name>/codegen.yaml. The generator knows no provider by name.
+
+    Chift is deliberately absent: we implement Chift's contract, we don't call it —
+    `chift/models.py` is the target shape, not a client.
+    """
+    found = {}
+    for config_path in sorted(CONNECTORS_DIR.glob("*/codegen.yaml")):
+        name = config_path.parent.name
+        config = yaml.safe_load(config_path.read_text())
+        try:
+            found[name] = Connector(
+                name=name,
+                spec=config_path.parent / config["spec"],
+                out_pkg=ROOT / "generated" / name,
+                client_class=config["client_class"],
+                endpoints={p: tuple(m) for p, m in config["endpoints"].items()},
+            )
+        except KeyError as exc:
+            raise SystemExit(f"{config_path.relative_to(ROOT)}: missing key {exc}") from exc
+    return found
+
+
+def _write_models(normalized: Path, output: Path) -> None:
+    """Generate Pydantic models via the datamodel-code-generator Python API.
+
+    Soft parse of Hyperline → models; the connector then enforces the fields Chift
+    needs (_required / status maps). Don't drop options casually.
+    """
+    generate(
+        normalized,
+        input_file_type=InputFileType.OpenAPI,
+        output=output,
+        # Input / output shape
+        output_model_type=DataModelType.PydanticV2BaseModel,
+        target_python_version=PythonVersion.PY_311,
+        # Prefer modern typing: list[str] and str | None instead of List/Optional.
+        use_standard_collections=True,
+        use_union_operator=True,
+        # Use schema `title` for class names (normalize sets those); avoids Customer1 noise.
+        use_title_as_name=True,
+        # Flatten RootModel wrappers so fields are on the model, not .root.
+        collapse_root_models=True,
+        # Enums as Literal[...] so `customer.type == "corporate"` works (Enum members don't).
+        enum_field_as_literal=LiteralType.All,
+        # Soft intake: Hyperline's `required` often means "key may be present", not "value
+        # always populated". Missing fields become None here; the connector fails loudly for
+        # fields Chift cannot invent (see connectors/hyperline/connector.py::_required).
+        force_optional_for_required_fields=True,
+        # Stable diffs: no timestamp; Ruff fixes imports and formats generated output.
+        disable_timestamp=True,
+        formatters=[Formatter.RUFF_CHECK, Formatter.RUFF_FORMAT],
+    )
 
 
 def run(
@@ -97,17 +116,8 @@ def run(
 
     normalized = out_pkg / "openapi.normalized.yaml"
     normalized.write_text(yaml.safe_dump(spec, sort_keys=False))
-    subprocess.run(
-        [
-            "datamodel-codegen",
-            "--input",
-            str(normalized),
-            "--output",
-            str(out_pkg / "models.py"),
-            *DMCG,
-        ],
-        check=True,
-    )
+    models_py = out_pkg / "models.py"
+    _write_models(normalized, models_py)
     (out_pkg / "client.py").write_text(emit.emit(spec, client_cls))
 
     sys.path.insert(0, str(ROOT))
@@ -119,16 +129,20 @@ def run(
 
 
 def main(argv: list[str] | None = None) -> None:
+    connectors = discover()
+    if not connectors:
+        raise SystemExit(f"no connectors/*/codegen.yaml under {CONNECTORS_DIR}")
+
     names = argv if argv is not None else sys.argv[1:]
-    for name in names or CONNECTORS:
-        if name not in CONNECTORS:
+    for name in names or connectors:
+        if name not in connectors:
             raise SystemExit(
-                f"unknown connector {name!r}; choose from {sorted(CONNECTORS)}"
+                f"unknown connector {name!r}; choose from {sorted(connectors)}"
             )
-        spec, out, client_cls, endpoints = CONNECTORS[name]
+        connector = connectors[name]
         print(f"{name}:")
-        run(ROOT / spec, ROOT / out, client_cls, endpoints)
-        print(f"  wrote {out}/models.py + client.py")
+        run(connector.spec, connector.out_pkg, connector.client_class, connector.endpoints)
+        print(f"  wrote {connector.out_pkg.relative_to(ROOT)}/models.py + client.py")
 
 
 if __name__ == "__main__":

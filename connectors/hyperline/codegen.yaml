@@ -1,0 +1,26 @@
+# What to generate from Hyperline's OpenAPI, and nothing more.
+#
+# `python -m codegeneration.run` discovers this file; the generator itself knows
+# nothing about Hyperline. Adding a provider means adding a directory, not editing
+# codegeneration/.
+#
+# Output lands in generated/<connector-directory-name>/.
+
+spec: openapi.hyperline.yaml
+client_class: HyperlineClient
+
+# Only the exact operations the connector calls. Everything else stays out of the
+# generated models: Hyperline's full document is 193 paths.
+endpoints:
+  # The four Chift reads.
+  /v2/customers: [get]
+  /v2/customers/{id}: [get]
+  /v2/invoices: [get]
+  /v2/invoices/{id}: [get]
+
+  # Sandbox fixture creation and cleanup only — not part of the Chift surface.
+  /v1/customers: [post]
+  /v1/customers/{id}: [delete]
+  /v1/customers/{id}/archive: [put]
+  /v1/invoices: [post]
+  /v1/invoices/{id}: [delete]

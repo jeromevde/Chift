@@ -1,5 +1,9 @@
 # Add a connector
 
+<!-- skill version: bump when the procedure or review rules change -->
+**version:** 1  
+**applies to:** `connectors/<provider>/connector.py`
+
 How to onboard a new provider to Chift's unified invoicing API, end to end.
 
 The work splits into two halves that must not be mixed:
@@ -85,24 +89,26 @@ operations Chift actually calls, and the schemas they transitively reference.
 
 ## Step 2 — Register and generate
 
-Add an entry to `CONNECTORS` in `codegeneration/run.py`:
+Create `connectors/<name>/codegen.yaml`. The generator discovers it — you never edit
+`codegeneration/`:
 
-```python
-"<name>": (
-    "connectors/<name>/openapi.<name>.yaml",   # vendored spec
-    "generated/<name>",                        # output package
-    "<Name>Client",                            # generated client class
-    {
-        "/v2/customers": ("get",),
-        "/v2/customers/{id}": ("get",),
-        "/v2/invoices": ("get",),
-        "/v2/invoices/{id}": ("get",),
-        # Sandbox fixture creation and cleanup only.
-        "/v1/customers": ("post",),
-        "/v1/customers/{id}": ("delete",),
-    },
-),
+```yaml
+spec: openapi.<name>.yaml          # relative to this directory
+client_class: <Name>Client         # output lands in generated/<name>/
+
+endpoints:                         # only the operations the connector calls
+  /v2/customers: [get]
+  /v2/customers/{id}: [get]
+  /v2/invoices: [get]
+  /v2/invoices/{id}: [get]
+
+  # Sandbox fixture creation and cleanup only.
+  /v1/customers: [post]
+  /v1/customers/{id}: [delete]
 ```
+
+Unknown paths or methods fail the run with the offending entries listed, so a typo or a spec
+change surfaces immediately rather than producing a client that is quietly missing a method.
 
 Then:
 
@@ -186,10 +192,60 @@ against a live sandbox.
   provider usually has one `name` field and a `type` discriminator.
 - **Only map what Chift exposes.** Ignore the rest of the payload.
 
-### Then verify it, and do not skip this
+### Review it against this checklist
 
-An LLM mapper is a draft until it has run against real data. Read every mapping decision, then
-run the live tests. Amount and date conversions are the ones that look right and are wrong.
+An LLM mapper is a draft until it has run against real data. These are not hypothetical
+concerns — every item below is a defect that was actually written into
+`connectors/hyperline/connector.py` and caught in review.
+
+**1. Does a field mean the same thing on every endpoint you call?**
+
+The draft wrote `invoice_date=_day(data.issued_at)`. Correct for `GET /v2/invoices` — but
+`POST /v1/invoices` returns the v1 schema, where the same concept is named `emitted_at`. Every
+invoice creation raised `AttributeError`. Both schemas are in the document; nothing in the types
+connects them. → `_issue_date()` now reads whichever exists.
+
+*Check:* if you use more than one API version, diff the response models field by field.
+
+**2. Does any lookup have a default?**
+
+The draft wrote `INVOICE_STATUS.get(status, InvoiceStatus.posted)`. An unknown provider status
+would silently become `posted` — a wrong invoice state, delivered confidently, forever.
+→ `_require_map()` raises `ChiftAPIError(502)` instead.
+
+*Check:* grep the mapper for `.get(` with a second argument, and for `or <default>`. Each one is
+a silent wrong answer waiting for a value you have not seen.
+
+**3. Is every amount scaled?**
+
+`total_amount: 24000` is €240.00. The only statement of that fact is the prose in the field's
+`description`; the type is `number` either way, so nothing will ever catch a missed division.
+
+*Check:* list every numeric money field and confirm each passes through the conversion.
+
+**4. Is every date trimmed to the right precision?**
+
+Chift dates are `YYYY-MM-DD`; providers usually send datetimes.
+
+*Check:* a datetime leaking into a date field either raises, or silently carries a timezone that
+shifts the day.
+
+**5. Does it fail loudly on anything it does not understand?**
+
+Unknown status, unknown type, missing required source field — all should raise
+`ChiftAPIError(502)`, never a guess. 502 because the provider changed, not because the caller
+did anything wrong.
+
+Then run the live tests. Amount and date conversions are the ones that look right and are wrong.
+
+### Why this step keeps a human
+
+The two defects above are the argument for reviewing rather than trusting. A script that called
+an LLM and wrote the file unattended would have produced exactly the same two bugs, with less
+scrutiny — one of which corrupts invoice data silently rather than failing.
+
+The reusable artefact is this procedure plus the checklist above. Wrapping the prompt in a
+runner is the easy part, and the part that does not make the output correct.
 
 ---
 
@@ -227,10 +283,11 @@ Live tests need the provider key in `.env`, create fixtures, and must clean them
 
 - [ ] Spec vendored at `connectors/<name>/openapi.<name>.yaml`, with its source URL recorded
 - [ ] Spectral run against it, provider bugs noted
-- [ ] `CONNECTORS` entry listing only the needed path/method pairs
+- [ ] `connectors/<name>/codegen.yaml` listing only the needed path/method pairs
 - [ ] `python -m codegeneration.run <name>` exits 0
 - [ ] `connectors/<name>/config.py` reads credentials from `.env`; `.env.example` updated
 - [ ] Mapper with explicit tables and no silent defaults
+- [ ] Mapper docstring cites this skill version + `generated/<provider>` commit (or regenerate and update)
 - [ ] The four reads return `chift.models` types
 - [ ] Provider errors surface as `ChiftAPIError`, not `httpx.HTTPStatusError`
 - [ ] Live round-trip passes and cleans up after itself

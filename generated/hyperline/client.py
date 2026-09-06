@@ -49,37 +49,26 @@ class _Http:
 
 
 class HyperlineClient(_Http):
+
     def list_customers(self, **query: object) -> models.CursorPaginatedCustomer:
         """List customers"""
-        return self._call(
-            "GET", "/v2/customers", query, None, models.CursorPaginatedCustomer
-        )
+        return self._call("GET", "/v2/customers", query, None, models.CursorPaginatedCustomer)
 
     def get_customer(self, id: str, **query: object) -> models.CustomerDetails:
         """Get customer"""
-        return self._call(
-            "GET", f"/v2/customers/{id}", query, None, models.CustomerDetails
-        )
+        return self._call("GET", f"/v2/customers/{id}", query, None, models.CustomerDetails)
 
     def list_invoices(self, **query: object) -> models.CursorPaginatedInvoice:
         """List invoices"""
-        return self._call(
-            "GET", "/v2/invoices", query, None, models.CursorPaginatedInvoice
-        )
+        return self._call("GET", "/v2/invoices", query, None, models.CursorPaginatedInvoice)
 
     def get_invoice(self, id: str, **query: object) -> models.InvoiceDetails:
         """Get invoice"""
-        return self._call(
-            "GET", f"/v2/invoices/{id}", query, None, models.InvoiceDetails
-        )
+        return self._call("GET", f"/v2/invoices/{id}", query, None, models.InvoiceDetails)
 
-    def create_customer(
-        self, body: models.CreateCustomer, **query: object
-    ) -> models.CustomerDetailsV1:
+    def create_customer(self, body: models.CreateCustomer, **query: object) -> models.CustomerDetailsV1:
         """Create customer"""
-        return self._call(
-            "POST", "/v1/customers", query, body, models.CustomerDetailsV1
-        )
+        return self._call("POST", "/v1/customers", query, body, models.CustomerDetailsV1)
 
     def delete_customer(self, id: str, **query: object) -> None:
         """Delete customer"""
@@ -87,13 +76,9 @@ class HyperlineClient(_Http):
 
     def archive_customer(self, id: str, **query: object) -> models.CustomerV1:
         """Archive customer"""
-        return self._call(
-            "PUT", f"/v1/customers/{id}/archive", query, None, models.CustomerV1
-        )
+        return self._call("PUT", f"/v1/customers/{id}/archive", query, None, models.CustomerV1)
 
-    def create_invoice(
-        self, body: models.CreateInvoice, **query: object
-    ) -> models.InvoiceDetailsV1:
+    def create_invoice(self, body: models.CreateInvoice, **query: object) -> models.InvoiceDetailsV1:
         """Create invoice"""
         return self._call("POST", "/v1/invoices", query, body, models.InvoiceDetailsV1)
 

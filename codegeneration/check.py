@@ -14,6 +14,9 @@ from pydantic import ValidationError
 
 MAX_DEPTH = 12
 
+# Errors reported per model before truncating.
+MAX_REPORTED = 3
+
 # Placeholders for `format`ted strings the spec gives no example for.
 FORMATS = {
     "uri": "https://example.com",
@@ -91,8 +94,22 @@ def check(spec: dict, models) -> list[str]:
                 try:
                     model.model_validate(example(schema, spec))
                 except ValidationError as exc:
-                    detail = str(exc).splitlines()
-                    problems.append(
-                        f"{verb.upper()} {path} -> {name}: {detail[1].strip() if len(detail) > 1 else exc}"
-                    )
+                    problems.append(f"{verb.upper()} {path} -> {name}:")
+                    problems += [f"    {line}" for line in _explain(exc)]
     return problems
+
+
+def _explain(exc: ValidationError) -> list[str]:
+    """One actionable line per error: where, what was expected, what the spec gave.
+
+    Enough to write the fix without opening the spec — which matters for a human and
+    matters more when an agent is reading the failure.
+    """
+    lines = []
+    for err in exc.errors()[:MAX_REPORTED]:
+        where = ".".join(str(part) for part in err["loc"]) or "(root)"
+        given = err.get("input")
+        lines.append(f"{where}: {err['msg']}; spec example gave {given!r}")
+    if len(exc.errors()) > MAX_REPORTED:
+        lines.append(f"... and {len(exc.errors()) - MAX_REPORTED} more")
+    return lines

@@ -3,10 +3,14 @@ Chift invoicing connector against Hyperline.
 
 Generated client fetches Hyperline; this maps into chift.models.
 
-Written by an LLM following skills/add_connector.md, from Hyperline's
-generated models and Chift's contract, then reviewed and verified against the
-sandbox (tests/). The semantic decisions — cents, dates, status collapse,
-contact roles, pagination — are deliberately explicit so they can be reviewed.
+Provenance:
+  Skill: skills/add_connector.md v1
+  Models: generated/hyperline @ 9e803bb
+
+Written by an LLM from that skill + Hyperline models + Chift's contract, then
+reviewed and verified against the sandbox (tests/). Semantic decisions — cents,
+dates, status collapse, contact roles, pagination — stay explicit for review.
+After regenerating models, update the Models line to the new commit.
 """
 
 from __future__ import annotations
