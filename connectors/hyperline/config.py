@@ -1,4 +1,4 @@
-# Loads Hyperline API keys and sandbox/prod URL from .env.
+"""Load Hyperline credentials from .env."""
 import os
 from dataclasses import dataclass
 from functools import lru_cache
@@ -32,7 +32,7 @@ class Settings:
         if not api_key:
             raise ValueError(
                 f"Missing HYPERLINE_API_KEY_{suffix}. "
-                f"Set HYPERLINE_ENV=test|prod and the matching key in .env"
+                "Set HYPERLINE_ENV=test|prod and the matching key in .env"
             )
 
         return cls(

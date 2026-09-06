@@ -1,4 +1,4 @@
-# Defines what valid Chift contact/invoice JSON looks like (matches their API docs).
+"""Canonical Chift response shapes. Connectors map into these."""
 from enum import Enum
 from typing import Generic, TypeVar
 
@@ -38,8 +38,14 @@ class InvoicingInvoiceType(str, Enum):
 class PaymentStatus(str, Enum):
     paid = "paid"
     unpaid = "unpaid"
-    partially_paid = "partially_paid"
     all = "all"
+
+
+class InvoiceStatus(str, Enum):
+    draft = "draft"
+    posted = "posted"
+    paid = "paid"
+    cancelled = "cancelled"
 
 
 class Ref(BaseModel):
@@ -95,26 +101,33 @@ class ChiftPage(BaseModel, Generic[T]):
     size: int = Field(ge=1)
 
 
+class InvoiceLineItemOut(BaseModel):
+    description: str | None = None
+    unit_price: float
+    quantity: float
+    discount_amount: float = 0.0
+    tax_amount: float
+    untaxed_amount: float
+    total: float
+    tax_rate: float | None = None
+    product_id: str | None = None
+
+
 class InvoiceItemOut(BaseModel):
     id: str
     source_ref: Ref
-    currency: str | None = None
+    currency: str
     invoice_type: InvoicingInvoiceType | None = None
-    status: str | None = None
-    payment_status: PaymentStatus | None = None
+    status: InvoiceStatus
+    invoice_date: str
+    tax_amount: float
+    untaxed_amount: float
+    total: float
+    lines: list[InvoiceLineItemOut] = Field(default_factory=list)
+    partner_id: str | None = None
     invoice_number: str | None = None
-    invoice_date: str | None = None
     due_date: str | None = None
-    contact_id: str | None = None
-    total: float | None = None
-    total_excl_tax: float | None = None
-    total_tax: float | None = None
-    comment: str | None = None
-    external_reference: str | None = None
-
-
-class ChiftError(BaseModel):
-    message: str
-    status: str | None = "error"
-    detail: str | None = ""
-    error_code: str | None = None
+    reference: str | None = None
+    customer_memo: str | None = None
+    last_updated_on: str | None = None
+    outstanding_amount: float | None = None
