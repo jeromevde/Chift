@@ -2,21 +2,26 @@
 Chift invoicing connector against Hyperline.
 
 Generated client fetches Hyperline; this maps into chift.models.
+
+Written by an LLM following skills/add_connector.md, from Hyperline's
+generated models and Chift's contract, then reviewed and verified against the
+sandbox (tests/). The semantic decisions — cents, dates, status collapse,
+contact roles, pagination — are deliberately explicit so they can be reviewed.
 """
 from __future__ import annotations
 
 import functools
 from datetime import date, datetime
-from typing import Any
+from typing import Any, TypeVar
 
 import httpx
 from pydantic import ValidationError
 
 from chift.models import (
-    ChiftAPIError,
-    ChiftError,
     AddressItemOutInvoicing,
     AddressTypeInvoicing,
+    ChiftAPIError,
+    ChiftError,
     ChiftPage,
     ContactItemOut,
     InvoiceItemOut,
@@ -25,9 +30,11 @@ from chift.models import (
     InvoicingInvoiceType,
     Ref,
 )
+from connectors.hyperline.config import get_settings
 from generated.hyperline import models as hl
 from generated.hyperline.client import HyperlineClient
-from connectors.hyperline.config import get_settings
+
+T = TypeVar("T")
 
 # Explicit maps only — unknown provider values raise (see `_require_map`).
 INVOICE_STATUS = {
@@ -67,8 +74,22 @@ def _require_map(table: dict, key: str | None, *, kind: str):
     return table[key]
 
 
-def _cents(n: float | int | None) -> float | None:
-    return None if n is None else float(n) / 100
+def _required(value: T | None, field: str) -> T:
+    """Return required provider data, or report a broken provider response."""
+    if value is None:
+        raise ChiftAPIError(
+            502,
+            ChiftError(
+                message="Provider response did not match Hyperline's published schema",
+                detail=f"missing required field: {field}",
+                error_code="ProviderSchemaMismatch",
+            ),
+        )
+    return value
+
+
+def _cents(n: float) -> float:
+    return float(n) / 100
 
 
 def _day(s: Any) -> date | None:
@@ -97,11 +118,13 @@ def _addr(kind: AddressTypeInvoicing, raw: Any) -> AddressItemOutInvoicing | Non
 def _line(item: hl.InvoiceLineItem) -> InvoiceLineItemOut:
     return InvoiceLineItemOut(
         description=item.name,
-        unit_price=_cents(item.unit_amount) or 0.0,
-        quantity=item.units_count if item.units_count is not None else 1.0,
-        tax_amount=_cents(item.tax_amount) or 0.0,
-        untaxed_amount=_cents(item.amount_excluding_tax) or 0.0,
-        total=_cents(item.amount) or 0.0,
+        unit_price=_cents(_required(item.unit_amount, "invoice.line_items[].unit_amount")),
+        quantity=_required(item.units_count, "invoice.line_items[].units_count"),
+        tax_amount=_cents(_required(item.tax_amount, "invoice.line_items[].tax_amount")),
+        untaxed_amount=_cents(
+            _required(item.amount_excluding_tax, "invoice.line_items[].amount_excluding_tax")
+        ),
+        total=_cents(_required(item.amount, "invoice.line_items[].amount")),
         tax_rate=item.tax_rate,
         product_id=item.product_id,
     )
@@ -110,10 +133,11 @@ def _line(item: hl.InvoiceLineItem) -> InvoiceLineItemOut:
 def to_contact(data: hl.Customer | hl.CustomerDetails | hl.CustomerDetailsV1) -> ContactItemOut:
     company = data.type == "corporate"
     taxes = data.tax_ids or []
+    contact_id = _required(data.id, "customer.id")
     # Pass-through: Chift `id` == Hyperline id (no id store in this POC).
     return ContactItemOut(
-        id=data.id or "",
-        source_ref=Ref(id=data.id, model="customer"),
+        id=contact_id,
+        source_ref=Ref(id=contact_id, model="customer"),
         is_customer=True,
         is_prospect=False,
         is_supplier=False,
@@ -148,7 +172,8 @@ def _issue_date(data: Any) -> Any:
 
 def to_invoice(data: hl.Invoice | hl.InvoiceDetails | hl.InvoiceDetailsV1) -> InvoiceItemOut:
     customer = data.customer
-    lines = data.line_items or []
+    invoice_id = _required(data.id, "invoice.id")
+    lines = _required(data.line_items, "invoice.line_items")
     invoice_date = _day(_issue_date(data))
     if invoice_date is None:
         raise ChiftAPIError(
@@ -161,30 +186,37 @@ def to_invoice(data: hl.Invoice | hl.InvoiceDetails | hl.InvoiceDetailsV1) -> In
         )
     # Pass-through: Chift `id` / `partner_id` == Hyperline ids (no id store in this POC).
     return InvoiceItemOut(
-        id=data.id or "",
-        source_ref=Ref(id=data.id, model="invoice"),
-        currency=data.currency or "",
+        id=invoice_id,
+        source_ref=Ref(id=invoice_id, model="invoice"),
+        currency=_required(data.currency, "invoice.currency"),
         invoice_type=_require_map(INVOICE_TYPE, data.type, kind="invoice type"),
         status=_require_map(INVOICE_STATUS, data.status, kind="invoice status"),
         invoice_number=data.number,
         invoice_date=invoice_date,
         due_date=_day(data.due_at),
         partner_id=customer.id if customer and customer.id else None,
-        total=_cents(data.total_amount) or 0.0,
-        untaxed_amount=_cents(data.amount_excluding_tax) or 0.0,
-        tax_amount=_cents(data.tax_amount) or 0.0,
+        total=_cents(_required(data.total_amount, "invoice.total_amount")),
+        untaxed_amount=_cents(
+            _required(data.amount_excluding_tax, "invoice.amount_excluding_tax")
+        ),
+        tax_amount=_cents(_required(data.tax_amount, "invoice.tax_amount")),
         customer_memo=data.custom_note,
         reference=data.reference,
         lines=[_line(x) for x in lines],
     )
 
 
-def _page_via_cursor(fetch, *, page: int, size: int, map_item):
+def _page_via_cursor(fetch, *, page: int, size: int, map_item, **query):
     cursor = None
     total = None
     items = []
     for current in range(1, page + 1):
-        raw = fetch(limit=size, cursor=cursor, include_total=(current == 1 and total is None))
+        raw = fetch(
+            limit=size,
+            cursor=cursor,
+            include_total=(current == 1 and total is None),
+            **query,
+        )
         items = list(raw.data or [])
         if total is None and raw.total is not None:
             total = raw.total
@@ -327,4 +359,10 @@ class HyperlineInvoicingConnector:
 
     @_raise_chift
     def list_invoices(self, *, page: int = 1, size: int = 50) -> ChiftPage[InvoiceItemOut]:
-        return _page_via_cursor(self.client.list_invoices, page=page, size=size, map_item=to_invoice)
+        return _page_via_cursor(
+            self.client.list_invoices,
+            page=page,
+            size=size,
+            map_item=to_invoice,
+            status="all",
+        )

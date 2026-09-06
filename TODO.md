@@ -6,9 +6,9 @@
   retrieve-one calls currently expect Hyperline IDs. A returned `id` must work when passed to
   `get_contact()` or `get_invoice()`.
   → Pass-through: `id` == Hyperline id (documented in README as a POC simplification).
-- [x] Remove silent invoice fallbacks. Unknown Hyperline types and statuses must not silently
-  become `customer_invoice` or `posted`; map every supported value explicitly and fail on the
-  rest.
+- [x] Remove silent invoice fallbacks. Unknown Hyperline types and statuses, or missing required
+  identifiers and financial values, must produce a provider-schema error instead of invented
+  defaults.
 - [x] Align the handwritten Chift models with the vendored Chift schema. In particular,
   `invoice_type` is required, and date/date-time fields should use their documented types.
 - [ ] Decide which documented Chift filters belong in the POC. The current API implements

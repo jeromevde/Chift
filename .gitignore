@@ -13,3 +13,4 @@ dist/
 *.egg-info/
 .DS_Store
 generated/hyperline/.ruff_cache/
+experiments/**/sdks/

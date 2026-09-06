@@ -294,7 +294,7 @@ to name and emitted `-> None`. `hoist()` lifts inline request/response schemas i
 
 ---
 
-## Nine things OpenAPI can't tell a generator
+## Ten things OpenAPI can't tell a generator
 
 Verified against the vendored Hyperline document, not against the standard in the abstract.
 None of these are spec *bugs* — they're the gap between what OpenAPI can express (shapes,
@@ -397,6 +397,70 @@ verbatim.
 
 ---
 
+### 10. The spec changes under you, with no version to notice
+
+Caught live while writing this. We diffed our vendored copy against
+`https://api.hyperline.co/openapi` on 2026-09-06:
+
+```
+193 paths both sides · 3 of our 4 endpoints byte-identical
+
+param 'status'     : upstream added ['settleable']
+param 'status__in' : upstream added ['settleable']
+```
+
+Hyperline added a 21st invoice status after we vendored the document. Nothing announced it:
+
+```
+info.version : "0.0.0"      ← before
+info.version : "0.0.0"      ← after
+```
+
+A hardcoded placeholder, never bumped. No changelog key, no date field. The document carries no
+signal that anything moved — the only evidence is the `etag` header on the spec URL, which tells
+you *something* changed, not what.
+
+**This is the convention, not carelessness.** The industry splits API changes in two:
+
+| | Signalled how | Example here |
+|---|---|---|
+| **Breaking** | a new version | `/v1/invoices` and `/v2/invoices` run side by side, `emitted_at` renamed to `issued_at` ([§6](#6-two-live-incompatible-schemas-for-one-resource)) |
+| **Additive** | not at all | a new field, a new endpoint, a 21st enum value |
+
+Hyperline versions correctly by that rule. The trap is that **"additive is non-breaking" is only
+true for lenient consumers.** A JavaScript client reading `invoice.status` never notices a new
+value. A generated Pydantic client holding `Literal["draft", "paid", …]` rejects the *entire
+response*. Same change, opposite outcome — because the provider's definition of "breaking" is
+written from the perspective of someone parsing JSON loosely, and a typed generated client is
+not that consumer.
+
+So the provider is applying a reasonable rule that quietly assumes something false about us.
+No amount of spec quality fixes this; it is a property of how APIs evolve.
+
+**Which is exactly why this repo makes the two choices it does.** They only work as a pair:
+
+- keeping the full enums ([above](#considered-and-rejected--truncating-large-enums)) means drift
+  is **detected** instead of silently mapped to something wrong;
+- `ChiftAPIError(502, "ProviderSchemaMismatch")` naming the offending field means the detection
+  is **actionable** — re-vendor the spec, regenerate, done.
+
+Truncating enums would have traded a loud, precise failure for a silent wrong answer, on a
+platform whose product *is* provider fidelity.
+
+For contrast, the version of this done well: Stripe pins a dated version per account
+(`Stripe-Version: 2024-06-20`), so an integration sees a frozen contract until it opts in. That
+is the exception. Most APIs look like Hyperline.
+
+**Not built, but the obvious next step:** the spec URL returns an `etag`. A scheduled job that
+fetches it, compares, and regenerates on change turns "we find out when a customer complains"
+into "we find out the day it ships." Cheap infrastructure, large payoff for a connector platform.
+
+For the record, `settleable` appears only on the `status` / `status__in` **query filters** for
+`GET /v2/invoices`, not in a response schema, so nothing in this POC breaks today. That is luck,
+not design — the same change one field over would have been a live 502.
+
+---
+
 Every real-world spec has this gap to some degree, because the information that closes it —
 `title`, `discriminator`, deprecation metadata, unit annotations — is *optional*, and writing
 it is real, uncompensated work for the team producing the spec.
@@ -444,21 +508,26 @@ drifted per process. Without this you can't review a regenerated diff, and CI ca
 
 ## Does this already exist?
 
-Mostly yes. Researched after building, which was the wrong order.
+There are community tools for individual stages, but none of the tested combinations replaced
+this pipeline while preserving its small client, exact endpoint selection, importable models,
+and live payload validation.
 
-**Already solved, and better:**
+**Useful building blocks, but not complete replacements:**
 
-- **`check.py` is redundant.** Spectral's built-in `oas3-valid-schema-example` rule, in the
-  default `spectral:oas` ruleset, finds the exact `format: date` bug above — on both fields,
-  no configuration — plus 12 other problems this POC doesn't check for. **Use Spectral.**
-- **`prune.py`** — Redocly `bundle` filtering, openapi-generator's `FILTER` normalizer rule,
-  `openapi-format`.
-- **`emit.py`** — dozens of generators.
+- **Spectral** catches many general OpenAPI problems, including the invalid date examples, but
+  it does not verify that the selected generated models import or validate Hyperline payloads.
+  `check.py` therefore remains a small output-specific check.
+- **Redocly**, openapi-generator's `FILTER` normalizer rule, and `openapi-format` can filter a
+  specification. None of the tested setups produced this exact path-and-method subset together
+  with the same clean, working Pydantic model graph.
+- Existing client generators replace parts of **`emit.py`**, but generated substantially larger
+  clients and still inherited the schema problems documented above.
 - **`hoist()`** — openapi-generator extracts inline schemas automatically; nahkies'
   openapi-code-generator does it for TypeScript; `spec2sdk` via `x-schema-name`.
 - **Rules 1 and 2** — partly covered by openapi-generator's 24 normalizer rules
   (`REF_AS_PARENT_IN_ALLOF`, `REFACTOR_ALLOF_WITH_PROPERTIES_ONLY`, `SIMPLIFY_ONEOF_ANYOF`,
-  `REMOVE_ANYOF_ONEOF_AND_KEEP_PROPERTIES_ONLY`). Try those before keeping ours.
+  `REMOVE_ANYOF_ONEOF_AND_KEEP_PROPERTIES_ONLY`), but those rules did not make this specification
+  generate and validate cleanly in the experiments.
 
 **The genuine gap — two rules:**
 
@@ -474,10 +543,10 @@ Stainless calls transforms and Speakeasy uses directly — **cannot express it**
 cannot compute a value from where the target sits in the document. `title = <parent> +
 <property>` is therefore not expressible in Overlay at all, by design.
 
-**So:** roughly 80% of `codegeneration/` should be deleted in favour of Spectral + Redocly or
-openapi-generator's `FILTER`. Keep `normalize.py`'s naming and enum policy — ~40 real lines
-with no off-the-shelf equivalent. If it ever needs to be more than that, buy Stainless or
-Speakeasy rather than grow it; the judgment layer *is* their business.
+**So:** keep the small Python pipeline. Community tools solve pieces of the problem, but the
+experiments did not find one that can replace a whole stage without making the generated result
+larger, invalid, or less precise. Reassess when a tool can pass the same deterministic generation
+and live-validation checks.
 
 ---
 

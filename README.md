@@ -1,9 +1,42 @@
 # Hyperline → Chift connector POC
 
-This POC generates a typed Python client from Hyperline's OpenAPI document and maps Hyperline
-customers and invoices to Chift's unified invoicing contract.
+## Problem
 
-It implements the four reads requested in the assignment:
+[Chift](https://chift.eu) exposes a **unified invoicing API**: one contact/invoice shape for every
+accounting or billing tool behind the scenes. Each real tool (Pennylane, Exact, Hyperline, …)
+speaks its own API. A *connector* sits in the middle: call the provider, then map the payload
+into Chift’s models so callers never see provider-specific fields.
+
+This repo is a **technical exercise / POC** (Python). The brief was roughly:
+
+1. Take a provider that publishes OpenAPI — here [Hyperline](https://www.hyperline.co/).
+2. **Automatically generate** as much connector code as possible from that documentation.
+3. **Map** provider data onto Chift’s unified invoicing contract for a few endpoints.
+4. Design it so the same approach could be reused for other connectors later.
+
+The four Chift reads to implement:
+
+| Chift endpoint | Role |
+|---|---|
+| [Retrieve one contact](https://docs.chift.eu/api-reference/endpoints/invoicing/retrieve-one-contact) | Single customer/contact |
+| [Retrieve all contacts](https://docs.chift.eu/api-reference/endpoints/invoicing/retrieve-all-contacts) | Paginated list |
+| [Retrieve one invoice](https://docs.chift.eu/api-reference/endpoints/invoicing/retrieve-one-invoice) | Single invoice |
+| [Retrieve all invoices](https://docs.chift.eu/api-reference/endpoints/invoicing/retrieve-all-invoices) | Paginated list |
+
+Against Hyperline that means `GET /v2/customers/{id}`, `GET /v2/customers`, `GET /v2/invoices/{id}`,
+and `GET /v2/invoices`.
+
+Commercial **OpenAPI → SDK** products ([Stainless](https://www.stainless.com/docs/sdks/python/),
+[Fern](https://buildwithfern.com/sdks), Speakeasy) target API *producers* shipping customer SDKs.
+They are adjacent to our codegen step, not a drop-in for “consume Hyperline → map to Chift.”
+A quick Fern probe lives in [`experiments/fern-hyperline/`](experiments/fern-hyperline/): `fern check`
+accepts our pruned/normalized Hyperline OpenAPI; `fern generate` needs a free Fern login.
+
+
+## What this POC does
+
+It generates a typed Python client from Hyperline’s OpenAPI, maps customers/invoices into Chift
+models, and exposes a small Chift-shaped FastAPI surface for live sandbox tests.
 
 | Chift endpoint | Hyperline endpoint |
 |---|---|
@@ -48,7 +81,7 @@ demonstrated by the checked-in connector; it is not yet part of the command-line
 | `chift/api.py` | Minimal Chift-compatible FastAPI surface |
 | `tests/` | Live Hyperline sandbox round trips through the Chift API surface |
 | `RESEARCH.md` | Hyperline → Chift mapping decisions and sandbox findings |
-| `skill/generate-connector/` | Agent skill: codegen + write a mapper for a new provider |
+| `skills/add_connector.md` | End-to-end procedure for onboarding a new provider |
 
 ## Run
 
@@ -76,6 +109,13 @@ Onboarding another provider follows the same boundary:
 3. Generate provider models and endpoint methods.
 4. Generate an explicit mapper from the provider models to Chift's canonical models.
 5. Review the semantic decisions and verify them against the provider sandbox.
+
+Those five steps are written down as an executable procedure in
+[skills/add_connector.md](skills/add_connector.md), referenced from
+[AGENTS.md](AGENTS.md) so any coding agent picks it up — not just one vendor's. It is the
+instruction set that produced `connectors/hyperline/connector.py`, and it carries the traps
+this POC hit the hard way: don't hand-edit generated code, keep provider workflows out of the
+client, don't trust Hyperline's declared error schemas, don't generate a Chift client.
 
 Generated provider code is disposable. The durable pieces are the normalization policy, the
 canonical Chift contract, and the reviewed mapping logic.
@@ -114,6 +154,9 @@ The connector makes the provider-specific decisions visible:
 - Hyperline amounts in the currency's smallest unit are divided by 100.
 - Hyperline's invoice statuses collapse into Chift's four statuses; **unknown** Hyperline
   status/type values raise `ChiftAPIError(502)` instead of guessing.
+- Invoice listing requests `status=all`; Hyperline otherwise omits some statuses by default.
+- Missing required provider IDs or financial values raise `ProviderSchemaMismatch` instead of
+  becoming empty strings, zero amounts, or a quantity of one.
 - Hyperline cursor pagination is translated into Chift's page/size response.
 - Provider errors are rendered as Chift error responses.
 - **IDs are passed through:** Chift `id` equals the Hyperline id (and `source_ref.id`).

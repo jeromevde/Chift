@@ -16,10 +16,30 @@ from codegeneration import check, emit, normalize, prune
 
 ROOT = Path(__file__).resolve().parents[1]
 
-DMCG = """--input-file-type openapi --output-model-type pydantic_v2.BaseModel
---use-title-as-name --force-optional --use-standard-collections --use-union-operator
---enum-field-as-literal all --collapse-root-models
---target-python-version 3.11 --formatters ruff-format --disable-timestamp""".split()
+# Flags for datamodel-code-generator. Soft parse of Hyperline → models; the connector
+# then enforces the fields Chift needs (_required / status maps). Don't drop flags casually.
+DMCG = [
+    # Input / output shape
+    "--input-file-type", "openapi",
+    "--output-model-type", "pydantic_v2.BaseModel",
+    "--target-python-version", "3.11",
+    # Prefer modern typing: list[str] and str | None instead of List/Optional.
+    "--use-standard-collections",
+    "--use-union-operator",
+    # Use schema `title` for class names (normalize sets those); avoids Customer1 noise.
+    "--use-title-as-name",
+    # Flatten RootModel wrappers so fields are on the model, not .root.
+    "--collapse-root-models",
+    # Enums as Literal[...] so `customer.type == "corporate"` works (Enum members don't).
+    "--enum-field-as-literal", "all",
+    # Soft intake: Hyperline's `required` often means "key may be present", not "value
+    # always populated". Missing fields become None here; the connector fails loudly for
+    # fields Chift cannot invent (see connectors/hyperline/connector.py::_required).
+    "--force-optional",
+    # Stable diffs: no generated timestamp header; ruff-format for readable output.
+    "--disable-timestamp",
+    "--formatters", "ruff-format",
+]
 
 # Provider APIs the connector *consumes*. Chift is not here: we implement Chift's
 # contract, we don't call it — `chift/models.py` is the target shape, not a client.
