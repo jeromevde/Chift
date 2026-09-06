@@ -15,12 +15,12 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
-    "datamodel-code-generator>=0.76",
-    "ruff>=0.6",
+    "datamodel-code-generator==0.76.1",
+    "ruff==0.16.6",
 ]
 
 [project.scripts]
-generate = "codegeneration.generate:main"
+run = "codegeneration.run:main"
 
 [build-system]
 requires = ["setuptools>=68"]

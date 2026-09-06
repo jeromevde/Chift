@@ -46,15 +46,23 @@ anonymous_union — a union whose branches have no names
     Without it: PaymentMethod1..19, plus PaymentMethod8(PaymentMethod1, PaymentMethod7).
 
 
-open_enum — a closed enum on a field the provider will widen
+NOT a rule: large enums are kept
 ────────────────────────────────────────────────────────────────────────────
-    country:                                country:
-      type: string              ────►         type: string
-      enum: [AD, AE, AF, ...255 values]
+    country:
+      type: string
+      enum: [AD, AE, AF, ...255 values]     ← kept, verbatim
 
-    Without it: `class Country(Enum)` with 255 members, and the day Hyperline
-    adds one, parsing 500s. Small enums (<= BIG_ENUM) stay — those are the ones
-    you actually map on, like status and type.
+    An earlier version dropped enums over 20 values, on the grounds that a
+    provider can widen them without a version bump: `currency` (155), `country`
+    (255), `timezone` (316, IANA — it changes several times a year). Deliberately
+    reverted. These are business vocabulary the spec does document, and dropping
+    them is silent information loss; the generated file is ~3x larger and that is
+    an acceptable price.
+
+    The consequence is real and must be handled downstream, not here: a value the
+    provider adds later fails validation rather than passing through as a string.
+    The connector turns that into ChiftAPIError(502) — a downstream failure, not a
+    bad request — instead of the caller seeing a raw pydantic error.
 
 
 name_from_path — an anonymous object needs a class name
@@ -73,10 +81,6 @@ import re
 import sys
 
 import yaml
-
-# Enums longer than this are treated as open-world and become their plain type.
-BIG_ENUM = 20
-
 
 def pascal(*parts: str) -> str:
     """('get_customer', 'Response') -> 'GetCustomerResponse'. Keeps existing caps."""
@@ -134,13 +138,6 @@ def anonymous_union(schema: dict, name: str) -> dict:
     return schema
 
 
-def open_enum(schema: dict, name: str) -> dict:
-    """Drop enums long enough that the provider will grow them without warning."""
-    if len(schema.get("enum") or []) <= BIG_ENUM:
-        return schema
-    return {k: v for k, v in schema.items() if k != "enum"}
-
-
 def name_from_path(schema: dict, name: str) -> dict:
     """Title an object after where it lives; strip titles from everything else."""
     if "properties" in schema:
@@ -148,7 +145,7 @@ def name_from_path(schema: dict, name: str) -> dict:
     return {k: v for k, v in schema.items() if k != "title"}
 
 
-RULES = (annotated_ref, anonymous_union, open_enum, name_from_path)
+RULES = (annotated_ref, anonymous_union, name_from_path)
 
 
 # ── applying them ────────────────────────────────────────────────────────────

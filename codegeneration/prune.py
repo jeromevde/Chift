@@ -1,7 +1,6 @@
 """Keep only the chosen operations and the schemas they transitively reference."""
-import sys
 
-import yaml
+HTTP_METHODS = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
 
 
 def refs(node, out):
@@ -20,8 +19,16 @@ def refs(node, out):
     return out
 
 
-def prune(spec, keep):
-    paths = {p: spec["paths"][p] for p in keep}
+def prune(spec: dict, endpoints: dict[str, tuple[str, ...]]) -> dict:
+    """Keep configured path/method pairs plus path metadata and referenced schemas."""
+    paths = {
+        path: {
+            key: value
+            for key, value in spec["paths"][path].items()
+            if key not in HTTP_METHODS or key in methods
+        }
+        for path, methods in endpoints.items()
+    }
     schemas, out = spec["components"]["schemas"], {}
     queue = refs(paths, [])
     while queue:
@@ -30,14 +37,11 @@ def prune(spec, keep):
             continue
         out[name] = schemas[name]
         queue.extend(refs(schemas[name], []))
-    return {**{k: spec[k] for k in ("openapi", "info", "servers") if k in spec},
-            "paths": paths,
-            "components": {"schemas": out,
-                           "securitySchemes": spec["components"].get("securitySchemes", {})}}
-
-
-if __name__ == "__main__":
-    spec = yaml.safe_load(open(sys.argv[1]))
-    pruned = prune(spec, sys.argv[3:])
-    yaml.safe_dump(pruned, open(sys.argv[2], "w"), sort_keys=False)
-    print(f"{len(pruned['paths'])} paths, {len(pruned['components']['schemas'])} schemas")
+    return {
+        **{key: spec[key] for key in ("openapi", "info", "servers") if key in spec},
+        "paths": paths,
+        "components": {
+            "schemas": out,
+            "securitySchemes": spec["components"].get("securitySchemes", {}),
+        },
+    }

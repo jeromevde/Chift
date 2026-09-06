@@ -1352,568 +1352,6 @@ paths:
                 required:
                 - message
   /v1/customers:
-    get:
-      operationId: listCustomersDeprecated
-      tags:
-      - Customers
-      security:
-      - bearer: []
-      summary: List customers
-      description: We recommend using the `GET /v2/customers` endpoint instead.
-      deprecated: true
-      parameters:
-      - schema:
-          type:
-          - number
-          - 'null'
-          minimum: 0
-          maximum: 100
-          default: 50
-        required: false
-        name: take
-        in: query
-      - schema:
-          type:
-          - number
-          - 'null'
-          minimum: 0
-          default: 0
-        required: false
-        name: skip
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: name
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: name__not
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: name__isNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: name__isNotNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: name__equals
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: name__contains
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: name__startsWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: name__endWith
-        in: query
-      - schema:
-          anyOf:
-          - type: string
-            enum:
-            - corporate
-            - person
-          - type: string
-            description: corporate,person
-        required: false
-        name: type
-        in: query
-      - schema:
-          anyOf:
-          - type: string
-            enum:
-            - corporate
-            - person
-          - type: string
-            description: corporate,person
-        required: false
-        name: type__in
-        in: query
-      - schema:
-          anyOf:
-          - type: string
-            enum:
-            - all
-            - active
-            - inactive
-            - imported
-            - archived
-          - type: string
-            description: all,active
-        required: false
-        name: status
-        in: query
-      - schema:
-          anyOf:
-          - type: string
-            enum:
-            - all
-            - active
-            - inactive
-            - imported
-            - archived
-          - type: string
-            description: all,active
-        required: false
-        name: status__in
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: currency
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: currency__not
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: currency__isNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: currency__isNotNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: currency__equals
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: currency__contains
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: currency__startsWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: currency__endWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: country
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: country__not
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: country__isNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: country__isNotNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: country__equals
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: country__contains
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: country__startsWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: country__endWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: external_id
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: external_id__not
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: external_id__isNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: external_id__isNotNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: external_id__equals
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: external_id__contains
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: external_id__startsWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: external_id__endWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: billing_email
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: billing_email__not
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: billing_email__isNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: billing_email__isNotNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: billing_email__equals
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: billing_email__contains
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: billing_email__startsWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: billing_email__endWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: search
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: tax_id
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: tax_id__not
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: tax_id__isNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: tax_id__isNotNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: tax_id__equals
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: tax_id__contains
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: tax_id__startsWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: tax_id__endWith
-        in: query
-      - schema:
-          anyOf:
-          - type: string
-            enum:
-            - active
-            - pending
-            - cancelled
-            - paused
-            - trialing
-            - errored
-            - draft
-            - none
-          - type: string
-            description: active,pending
-        required: false
-        name: subscription_status
-        in: query
-      - schema:
-          anyOf:
-          - type: string
-            enum:
-            - active
-            - pending
-            - cancelled
-            - paused
-            - trialing
-            - errored
-            - draft
-            - none
-          - type: string
-            description: active,pending
-        required: false
-        name: subscription_status__in
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoicing_entity_id
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoicing_entity_id__not
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoicing_entity_id__isNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoicing_entity_id__isNotNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoicing_entity_id__equals
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoicing_entity_id__contains
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoicing_entity_id__startsWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoicing_entity_id__endWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: segment_id
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: custom_properties
-        in: query
-      - schema:
-          anyOf:
-          - type: string
-            enum:
-            - card
-            - direct_debit
-            - direct_debit_ach
-            - direct_debit_bacs
-            - transfer
-            - external
-            - missing
-            - errored
-          - type: string
-            description: card,direct_debit
-        required: false
-        name: payment_method_type
-        in: query
-      - schema:
-          anyOf:
-          - type: string
-            enum:
-            - card
-            - direct_debit
-            - direct_debit_ach
-            - direct_debit_bacs
-            - transfer
-            - external
-            - missing
-            - errored
-          - type: string
-            description: card,direct_debit
-        required: false
-        name: payment_method_type__in
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: integration_entity_id
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: created_at
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: created_at__not
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: created_at__isNull
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: created_at__isNotNull
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: created_at__equals
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: created_at__lt
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: created_at__lte
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: created_at__gt
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: created_at__gte
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at__not
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at__isNull
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at__isNotNull
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at__equals
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at__lt
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at__lte
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at__gt
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at__gte
-        in: query
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaginatedCustomerV1'
     post:
       operationId: createCustomer
       tags:
@@ -1936,76 +1374,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/CustomerDetailsV1'
   /v1/customers/{id}:
-    get:
-      operationId: getCustomerDeprecated
-      tags:
-      - Customers
-      security:
-      - bearer: []
-      summary: Get customer
-      description: We recommend using the `GET /v2/customers/{id}` endpoint instead.
-      deprecated: true
-      parameters:
-      - schema:
-          type: string
-        required: true
-        name: id
-        in: path
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CustomerDetailsV1'
-        '404':
-          description: Customer not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                required:
-                - message
-    put:
-      operationId: updateCustomer
-      tags:
-      - Customers
-      security:
-      - bearer: []
-      summary: Update customer
-      description: Update the details of an existing customer.
-      parameters:
-      - schema:
-          type: string
-        required: true
-        name: id
-        in: path
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateCustomer'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CustomerDetailsV1'
-        '404':
-          description: Customer not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                required:
-                - message
     delete:
       operationId: deleteCustomer
       tags:
@@ -2069,670 +1437,6 @@ paths:
                 required:
                 - message
   /v1/invoices:
-    get:
-      operationId: listInvoicesDeprecated
-      tags:
-      - Invoices
-      security:
-      - bearer: []
-      summary: List invoices
-      description: We recommend using the `GET /v2/invoices` endpoint instead.
-      deprecated: true
-      parameters:
-      - schema:
-          type:
-          - number
-          - 'null'
-          minimum: 0
-          maximum: 100
-          default: 50
-        required: false
-        name: take
-        in: query
-      - schema:
-          type:
-          - number
-          - 'null'
-          minimum: 0
-          default: 0
-        required: false
-        name: skip
-        in: query
-      - schema:
-          type: string
-          enum:
-          - asc
-          - desc
-          default: desc
-          description: Sort direction.
-          example: desc
-        required: false
-        description: Sort direction.
-        name: order
-        in: query
-      - schema:
-          type: string
-          enum:
-          - created_at
-          - emitted_at
-          description: Field used to sort the results.
-        required: false
-        description: Field used to sort the results.
-        name: sort
-        in: query
-      - schema:
-          anyOf:
-          - type: string
-            enum:
-            - invoice
-            - refund
-            - document
-            - child_invoice_ref
-            - child_creditnote_ref
-          - type: string
-            description: invoice,refund
-        required: false
-        name: type
-        in: query
-      - schema:
-          anyOf:
-          - type: string
-            enum:
-            - invoice
-            - refund
-            - document
-            - child_invoice_ref
-            - child_creditnote_ref
-          - type: string
-            description: invoice,refund
-        required: false
-        name: type__in
-        in: query
-      - schema:
-          anyOf:
-          - type: string
-            enum:
-            - all
-            - open
-            - grace_period
-            - to_pay
-            - to_reconcile
-            - error
-            - paid
-            - finalized
-            - partially_paid
-            - outstanding
-            - refunded
-            - late
-            - draft
-            - pending_approval
-            - changes_requested
-            - voided
-            - closed
-            - uncollectible
-            - pending_consolidation
-            - consolidated
-          - type: string
-            description: all,open
-        required: false
-        name: status
-        in: query
-      - schema:
-          anyOf:
-          - type: string
-            enum:
-            - all
-            - open
-            - grace_period
-            - to_pay
-            - to_reconcile
-            - error
-            - paid
-            - finalized
-            - partially_paid
-            - outstanding
-            - refunded
-            - late
-            - draft
-            - pending_approval
-            - changes_requested
-            - voided
-            - closed
-            - uncollectible
-            - pending_consolidation
-            - consolidated
-          - type: string
-            description: all,open
-        required: false
-        name: status__in
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: customer_id
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: customer_id__not
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: customer_id__isNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: customer_id__isNotNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: customer_id__equals
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: customer_id__contains
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: customer_id__startsWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: customer_id__endWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: customer_external_id
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: subscription_id
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: subscription_id__not
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: subscription_id__isNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: subscription_id__isNotNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: subscription_id__equals
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: subscription_id__contains
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: subscription_id__startsWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: subscription_id__endWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoicing_entity_id
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoicing_entity_id__not
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoicing_entity_id__isNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoicing_entity_id__isNotNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoicing_entity_id__equals
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoicing_entity_id__contains
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoicing_entity_id__startsWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoicing_entity_id__endWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoice_number
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoice_number__not
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoice_number__isNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoice_number__isNotNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoice_number__equals
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoice_number__contains
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoice_number__startsWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: invoice_number__endWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: original_invoice_id
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: original_invoice_id__not
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: original_invoice_id__isNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: original_invoice_id__isNotNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: original_invoice_id__equals
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: original_invoice_id__contains
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: original_invoice_id__startsWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: original_invoice_id__endWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: original_invoice_number
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: original_invoice_number__not
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: original_invoice_number__isNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: original_invoice_number__isNotNull
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: original_invoice_number__equals
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: original_invoice_number__contains
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: original_invoice_number__startsWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: original_invoice_number__endWith
-        in: query
-      - schema:
-          type: string
-        required: false
-        name: line_item_id
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_start
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_start__not
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_start__isNull
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_start__isNotNull
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_start__equals
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_start__lt
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_start__lte
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_start__gt
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_start__gte
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_end
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_end__not
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_end__isNull
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_end__isNotNull
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_end__equals
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_end__lt
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_end__lte
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_end__gt
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: period_end__gte
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: emission_date
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: emission_date__not
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: emission_date__isNull
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: emission_date__isNotNull
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: emission_date__equals
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: emission_date__lt
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: emission_date__lte
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: emission_date__gt
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: emission_date__gte
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: due_date
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: due_date__not
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: due_date__isNull
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: due_date__isNotNull
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: due_date__equals
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: due_date__lt
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: due_date__lte
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: due_date__gt
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: due_date__gte
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at__not
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at__isNull
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at__isNotNull
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at__equals
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at__lt
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at__lte
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at__gt
-        in: query
-      - schema:
-          type: string
-          format: date-time
-        required: false
-        name: updated_at__gte
-        in: query
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaginatedInvoiceV1'
     post:
       operationId: createInvoice
       tags:
@@ -2755,80 +1459,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/InvoiceDetailsV1'
   /v1/invoices/{id}:
-    get:
-      operationId: getInvoiceDeprecated
-      tags:
-      - Invoices
-      security:
-      - bearer: []
-      summary: Get invoice
-      description: We recommend using the `GET /v2/invoices/{id}` endpoint instead.
-      deprecated: true
-      parameters:
-      - schema:
-          type: string
-        required: true
-        name: id
-        in: path
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InvoiceDetailsV1'
-        '404':
-          description: Invoice not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                required:
-                - message
-    patch:
-      operationId: updateInvoice
-      tags:
-      - Invoices
-      security:
-      - bearer: []
-      summary: Update invoice
-      description: 'Update an invoice. Draft and grace_period invoices allow full
-        edits; finalized invoices are restricted to metadata (paid: custom_note, purchase_order,
-        custom_properties, additional_display_fields, subscription_id; uncollectible:
-        properties, custom_note, custom_properties, additional_display_fields, subscription_id).'
-      parameters:
-      - schema:
-          type: string
-        required: true
-        name: id
-        in: path
-      requestBody:
-        description: Update invoice payload
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateInvoice'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InvoiceDetailsV1'
-        '404':
-          description: Invoice not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                required:
-                - message
     delete:
       operationId: deleteInvoice
       tags:
@@ -2967,6 +1597,37 @@ components:
                   description: ID of the entity in the provider.
                 provider_name:
                   type: string
+                  enum:
+                  - adyen
+                  - stripe
+                  - mollie
+                  - gocardless
+                  - airwallex
+                  - salesforce
+                  - hubspot
+                  - attio
+                  - xero
+                  - pennylane
+                  - zoho-books
+                  - exact-online
+                  - quickbooks
+                  - netsuite
+                  - rillet
+                  - datev
+                  - anrok
+                  - chargebee
+                  - slack
+                  - plain
+                  - zendesk
+                  - pylon
+                  - intercom
+                  - front
+                  - helpscout
+                  - claap
+                  - grain
+                  - gong
+                  - jiminny
+                  - posthog
                   description: Provider name.
                 provider_account_id:
                   type: string
@@ -2984,38 +1645,6 @@ components:
         required:
         - integrations
         title: InvoiceDetails
-    PaginatedCustomerV1:
-      type: object
-      properties:
-        meta:
-          type: object
-          properties:
-            total:
-              type: number
-              description: Total of existing items.
-              example: 1
-            taken:
-              type: number
-              description: Number of items returned.
-              example: 1
-            skipped:
-              type: number
-              description: Number of items skipped.
-              example: 0
-          required:
-          - total
-          - taken
-          - skipped
-          title: PaginatedCustomerV1Meta
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/CustomerV1'
-          description: List of CustomerV1.
-      required:
-      - meta
-      - data
-      title: PaginatedCustomerV1
     CreateCustomer:
       type: object
       properties:
@@ -3035,10 +1664,422 @@ components:
           example: corporate
         currency:
           type: string
+          enum:
+          - EUR
+          - AED
+          - AFN
+          - XCD
+          - ALL
+          - AMD
+          - AOA
+          - ARS
+          - USD
+          - AUD
+          - AWG
+          - AZN
+          - BAM
+          - BBD
+          - BDT
+          - BGN
+          - BHD
+          - BIF
+          - XOF
+          - BMD
+          - BND
+          - BOB
+          - BRL
+          - BSD
+          - BTN
+          - NOK
+          - BWP
+          - BYR
+          - BZD
+          - CAD
+          - CDF
+          - XAF
+          - CHF
+          - NZD
+          - CLP
+          - CNY
+          - COP
+          - CRC
+          - CUP
+          - CVE
+          - ANG
+          - CZK
+          - DJF
+          - DKK
+          - DOP
+          - DZD
+          - EGP
+          - MAD
+          - ERN
+          - ETB
+          - FJD
+          - FKP
+          - GBP
+          - GEL
+          - GHS
+          - GIP
+          - GMD
+          - GNF
+          - GTQ
+          - GYD
+          - HKD
+          - HNL
+          - HRK
+          - HTG
+          - HUF
+          - IDR
+          - ILS
+          - INR
+          - IQD
+          - IRR
+          - ISK
+          - JMD
+          - JOD
+          - JPY
+          - KES
+          - KGS
+          - KHR
+          - KMF
+          - KPW
+          - KRW
+          - KWD
+          - KYD
+          - KZT
+          - LAK
+          - LBP
+          - LKR
+          - LRD
+          - LSL
+          - LYD
+          - MDL
+          - MGA
+          - MKD
+          - MMK
+          - MNT
+          - MOP
+          - MRO
+          - MUR
+          - MVR
+          - MWK
+          - MXN
+          - MYR
+          - MZN
+          - NAD
+          - XPF
+          - NGN
+          - NIO
+          - NPR
+          - OMR
+          - PAB
+          - PEN
+          - PGK
+          - PHP
+          - PKR
+          - PLN
+          - PYG
+          - QAR
+          - RON
+          - RSD
+          - RUB
+          - RWF
+          - SAR
+          - SBD
+          - SCR
+          - SDG
+          - SEK
+          - SGD
+          - SHP
+          - SLL
+          - SOS
+          - SRD
+          - SSP
+          - STD
+          - SYP
+          - SZL
+          - THB
+          - TJS
+          - TMT
+          - TND
+          - TOP
+          - TRY
+          - TTD
+          - TWD
+          - TZS
+          - UAH
+          - UGX
+          - UYU
+          - UZS
+          - VEF
+          - VND
+          - VUV
+          - WST
+          - YER
+          - ZAR
+          - ZMW
+          - ZWL
           description: Currency code. See [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes).
           example: EUR
         country:
           type: string
+          enum:
+          - AD
+          - AE
+          - AF
+          - AG
+          - AI
+          - AL
+          - AM
+          - AO
+          - AQ
+          - AR
+          - AS
+          - AT
+          - AU
+          - AW
+          - AX
+          - AZ
+          - BA
+          - BB
+          - BD
+          - BE
+          - BG
+          - BH
+          - BI
+          - BJ
+          - BL
+          - BM
+          - BN
+          - BO
+          - BQ
+          - BR
+          - BS
+          - BT
+          - BF
+          - BV
+          - BW
+          - BY
+          - BZ
+          - CA
+          - CC
+          - CD
+          - CF
+          - CG
+          - CH
+          - CI
+          - CK
+          - CL
+          - CM
+          - CN
+          - CO
+          - CR
+          - CU
+          - CV
+          - CW
+          - CX
+          - CY
+          - CZ
+          - DE
+          - DJ
+          - DK
+          - DM
+          - DO
+          - DZ
+          - EC
+          - EE
+          - EG
+          - EH
+          - ER
+          - ES
+          - ES-CE
+          - ES-ML
+          - ET
+          - FI
+          - FJ
+          - FK
+          - FM
+          - FO
+          - FR
+          - GA
+          - GB
+          - GD
+          - GE
+          - GF
+          - GG
+          - GH
+          - GI
+          - GL
+          - GM
+          - GN
+          - GP
+          - GQ
+          - GR
+          - GS
+          - GT
+          - GU
+          - GW
+          - GY
+          - HK
+          - HM
+          - HN
+          - HR
+          - HT
+          - HU
+          - IC
+          - ID
+          - IE
+          - IL
+          - IM
+          - IN
+          - IO
+          - IQ
+          - IR
+          - IS
+          - IT
+          - JE
+          - JM
+          - JO
+          - JP
+          - KE
+          - KG
+          - KH
+          - KI
+          - KM
+          - KN
+          - KP
+          - KR
+          - KW
+          - KY
+          - KZ
+          - LA
+          - LB
+          - LC
+          - LI
+          - LK
+          - LR
+          - LS
+          - LT
+          - LU
+          - LV
+          - LY
+          - MA
+          - MC
+          - MD
+          - ME
+          - MF
+          - MG
+          - MH
+          - MK
+          - ML
+          - MM
+          - MN
+          - MO
+          - MP
+          - MQ
+          - MR
+          - MS
+          - MT
+          - MU
+          - MV
+          - MW
+          - MX
+          - MY
+          - MZ
+          - NA
+          - NC
+          - NE
+          - NF
+          - NG
+          - NI
+          - NL
+          - 'NO'
+          - NP
+          - NR
+          - NU
+          - NZ
+          - OM
+          - PA
+          - PE
+          - PF
+          - PG
+          - PH
+          - PK
+          - PL
+          - PM
+          - PN
+          - PR
+          - PS
+          - PT
+          - PT-20
+          - PT-30
+          - PW
+          - PY
+          - QA
+          - RE
+          - RO
+          - RS
+          - RU
+          - RW
+          - SA
+          - SB
+          - SC
+          - SD
+          - SE
+          - SG
+          - SH
+          - SI
+          - SJ
+          - SK
+          - SL
+          - SM
+          - SN
+          - SO
+          - SR
+          - SS
+          - ST
+          - SV
+          - SX
+          - SY
+          - SZ
+          - TC
+          - TD
+          - TF
+          - TG
+          - TH
+          - TJ
+          - TK
+          - TL
+          - TM
+          - TN
+          - TO
+          - TR
+          - TT
+          - TV
+          - TW
+          - TZ
+          - UA
+          - UG
+          - UM
+          - US
+          - UY
+          - UZ
+          - VA
+          - VC
+          - VE
+          - VG
+          - VI
+          - VN
+          - VU
+          - WF
+          - WS
+          - XK
+          - YE
+          - YT
+          - ZA
+          - ZM
+          - ZW
           description: Deprecated field, please use `billing_address.country`.
           example: FR
           deprecated: true
@@ -3144,6 +2185,323 @@ components:
           example: fr
         timezone:
           type: string
+          enum:
+          - Pacific/Midway
+          - Pacific/Pago_Pago
+          - Pacific/Niue
+          - Pacific/Rarotonga
+          - Pacific/Honolulu
+          - Pacific/Tahiti
+          - Pacific/Marquesas
+          - Pacific/Gambier
+          - America/Adak
+          - America/Anchorage
+          - Pacific/Pitcairn
+          - America/Hermosillo
+          - America/Phoenix
+          - America/Los_Angeles
+          - America/Tijuana
+          - America/Vancouver
+          - America/Whitehorse
+          - America/Belize
+          - America/Guatemala
+          - America/Managua
+          - America/Mexico_City
+          - America/Costa_Rica
+          - America/El_Salvador
+          - America/Regina
+          - America/Tegucigalpa
+          - Pacific/Easter
+          - Pacific/Galapagos
+          - America/Edmonton
+          - America/Ciudad_Juarez
+          - America/Denver
+          - America/Rio_Branco
+          - America/Chicago
+          - America/Matamoros
+          - America/Winnipeg
+          - America/Bogota
+          - America/Atikokan
+          - America/Cancun
+          - America/Cayman
+          - America/Jamaica
+          - America/Panama
+          - America/Guayaquil
+          - America/Lima
+          - America/Manaus
+          - America/St_Kitts
+          - America/Blanc-Sablon
+          - America/Montserrat
+          - America/Barbados
+          - America/Port_of_Spain
+          - America/Martinique
+          - America/St_Lucia
+          - America/St_Barthelemy
+          - America/St_Vincent
+          - America/Kralendijk
+          - America/Guadeloupe
+          - America/Marigot
+          - America/Aruba
+          - America/Lower_Princes
+          - America/Tortola
+          - America/Dominica
+          - America/St_Thomas
+          - America/Grenada
+          - America/Antigua
+          - America/Puerto_Rico
+          - America/Santo_Domingo
+          - America/Anguilla
+          - America/Curacao
+          - America/La_Paz
+          - America/Santiago
+          - America/Havana
+          - America/Nassau
+          - America/New_York
+          - America/Port-au-Prince
+          - America/Grand_Turk
+          - America/Toronto
+          - America/Guyana
+          - America/Caracas
+          - America/Argentina/Buenos_Aires
+          - America/Halifax
+          - Atlantic/Bermuda
+          - America/Thule
+          - America/Sao_Paulo
+          - Antarctica/Palmer
+          - America/Punta_Arenas
+          - Atlantic/Stanley
+          - America/Cayenne
+          - America/Asuncion
+          - America/Paramaribo
+          - America/Montevideo
+          - America/St_Johns
+          - America/Noronha
+          - Atlantic/South_Georgia
+          - America/Miquelon
+          - Atlantic/Cape_Verde
+          - America/Nuuk
+          - Atlantic/Azores
+          - Etc/UTC
+          - Africa/Abidjan
+          - Africa/Bamako
+          - Africa/Bissau
+          - Africa/Conakry
+          - Africa/Dakar
+          - America/Danmarkshavn
+          - Africa/Freetown
+          - Atlantic/St_Helena
+          - Africa/Accra
+          - Africa/Lome
+          - Africa/Monrovia
+          - Africa/Nouakchott
+          - Africa/Ouagadougou
+          - Atlantic/Reykjavik
+          - Africa/Sao_Tome
+          - Africa/Banjul
+          - Africa/Algiers
+          - Africa/Tunis
+          - Europe/Isle_of_Man
+          - Europe/Dublin
+          - Europe/London
+          - Europe/Jersey
+          - Europe/Guernsey
+          - Africa/Bangui
+          - Africa/Malabo
+          - Africa/Brazzaville
+          - Africa/Porto-Novo
+          - Africa/Douala
+          - Africa/Kinshasa
+          - Africa/Lagos
+          - Africa/Libreville
+          - Africa/Luanda
+          - Africa/Ndjamena
+          - Africa/Niamey
+          - Africa/Casablanca
+          - Africa/El_Aaiun
+          - Atlantic/Canary
+          - Europe/Lisbon
+          - Atlantic/Faroe
+          - Africa/Bujumbura
+          - Africa/Gaborone
+          - Africa/Harare
+          - Africa/Juba
+          - Africa/Khartoum
+          - Africa/Kigali
+          - Africa/Blantyre
+          - Africa/Lubumbashi
+          - Africa/Lusaka
+          - Africa/Maputo
+          - Africa/Windhoek
+          - Europe/Andorra
+          - Europe/Belgrade
+          - Europe/Berlin
+          - Europe/Bratislava
+          - Europe/Brussels
+          - Europe/Budapest
+          - Europe/Copenhagen
+          - Europe/Gibraltar
+          - Europe/Ljubljana
+          - Arctic/Longyearbyen
+          - Europe/Luxembourg
+          - Europe/Madrid
+          - Europe/Monaco
+          - Europe/Oslo
+          - Europe/Paris
+          - Europe/Podgorica
+          - Europe/Prague
+          - Europe/Rome
+          - Europe/Amsterdam
+          - Europe/San_Marino
+          - Europe/Malta
+          - Europe/Sarajevo
+          - Europe/Skopje
+          - Europe/Stockholm
+          - Europe/Tirane
+          - Europe/Vaduz
+          - Europe/Vatican
+          - Europe/Vienna
+          - Europe/Warsaw
+          - Europe/Zagreb
+          - Europe/Zurich
+          - Europe/Kaliningrad
+          - Africa/Tripoli
+          - Antarctica/Troll
+          - Africa/Johannesburg
+          - Africa/Mbabane
+          - Africa/Maseru
+          - Asia/Kuwait
+          - Asia/Bahrain
+          - Asia/Baghdad
+          - Asia/Qatar
+          - Asia/Riyadh
+          - Asia/Aden
+          - Asia/Amman
+          - Asia/Damascus
+          - Africa/Addis_Ababa
+          - Indian/Antananarivo
+          - Africa/Asmara
+          - Africa/Dar_es_Salaam
+          - Africa/Djibouti
+          - Africa/Kampala
+          - Indian/Mayotte
+          - Africa/Mogadishu
+          - Indian/Comoro
+          - Africa/Nairobi
+          - Europe/Athens
+          - Asia/Beirut
+          - Europe/Bucharest
+          - Africa/Cairo
+          - Europe/Chisinau
+          - Asia/Hebron
+          - Europe/Helsinki
+          - Europe/Kyiv
+          - Europe/Mariehamn
+          - Asia/Nicosia
+          - Europe/Riga
+          - Europe/Sofia
+          - Europe/Tallinn
+          - Europe/Vilnius
+          - Asia/Jerusalem
+          - Europe/Minsk
+          - Europe/Moscow
+          - Europe/Simferopol
+          - Antarctica/Syowa
+          - Europe/Istanbul
+          - Asia/Tehran
+          - Asia/Yerevan
+          - Asia/Baku
+          - Asia/Tbilisi
+          - Asia/Dubai
+          - Asia/Muscat
+          - Indian/Mauritius
+          - Indian/Reunion
+          - Europe/Samara
+          - Indian/Mahe
+          - Asia/Kabul
+          - Indian/Kerguelen
+          - Asia/Almaty
+          - Indian/Maldives
+          - Antarctica/Mawson
+          - Asia/Karachi
+          - Asia/Dushanbe
+          - Asia/Ashgabat
+          - Asia/Tashkent
+          - Asia/Yekaterinburg
+          - Asia/Colombo
+          - Asia/Kolkata
+          - Asia/Kathmandu
+          - Asia/Dhaka
+          - Asia/Thimphu
+          - Asia/Urumqi
+          - Indian/Chagos
+          - Asia/Bishkek
+          - Asia/Omsk
+          - Indian/Cocos
+          - Asia/Yangon
+          - Indian/Christmas
+          - Antarctica/Davis
+          - Asia/Hovd
+          - Asia/Bangkok
+          - Asia/Ho_Chi_Minh
+          - Asia/Phnom_Penh
+          - Asia/Vientiane
+          - Asia/Novosibirsk
+          - Asia/Jakarta
+          - Antarctica/Casey
+          - Australia/Perth
+          - Asia/Brunei
+          - Asia/Makassar
+          - Asia/Macau
+          - Asia/Shanghai
+          - Asia/Hong_Kong
+          - Asia/Irkutsk
+          - Asia/Kuala_Lumpur
+          - Asia/Manila
+          - Asia/Singapore
+          - Asia/Taipei
+          - Asia/Ulaanbaatar
+          - Australia/Eucla
+          - Asia/Jayapura
+          - Asia/Tokyo
+          - Asia/Pyongyang
+          - Asia/Seoul
+          - Pacific/Palau
+          - Asia/Dili
+          - Asia/Chita
+          - Australia/Adelaide
+          - Australia/Darwin
+          - Australia/Brisbane
+          - Australia/Sydney
+          - Pacific/Guam
+          - Pacific/Saipan
+          - Pacific/Chuuk
+          - Antarctica/DumontDUrville
+          - Pacific/Port_Moresby
+          - Asia/Vladivostok
+          - Australia/Lord_Howe
+          - Pacific/Bougainville
+          - Pacific/Kosrae
+          - Pacific/Noumea
+          - Pacific/Norfolk
+          - Asia/Sakhalin
+          - Pacific/Guadalcanal
+          - Pacific/Efate
+          - Pacific/Fiji
+          - Pacific/Tarawa
+          - Asia/Kamchatka
+          - Pacific/Majuro
+          - Pacific/Nauru
+          - Pacific/Auckland
+          - Antarctica/McMurdo
+          - Pacific/Funafuti
+          - Pacific/Wake
+          - Pacific/Wallis
+          - Pacific/Chatham
+          - Pacific/Kanton
+          - Pacific/Apia
+          - Pacific/Fakaofo
+          - Pacific/Tongatapu
+          - Pacific/Kiritimati
           description: Customer timezone.
           example: Europe/Paris
         available_payment_methods:
@@ -3382,310 +2740,6 @@ components:
         - organisation_id
         - organisation_invoicing
         title: CustomerDetailsV1
-    UpdateCustomer:
-      type: object
-      properties:
-        name:
-          type: string
-          description: Customer name.
-          example: Acme
-        type:
-          type:
-          - string
-          - 'null'
-          enum:
-          - corporate
-          - person
-          description: "\nCustomer type.\n\n- `corporate`: The customer is a business\
-            \ entity.\n- `person`: The customer is a natural person.\n- `automatically_created`:\
-            \ The customer was automatically imported (e.g. from a data loader). This\
-            \ value cannot be used when creating/editing.\n "
-          example: corporate
-        currency:
-          type: string
-          description: Customer currency. Can only be changed if the customer doesn't
-            have existing invoices, a wallet or a payment method saved.
-          example: EUR
-        country:
-          type: string
-          description: Deprecated field, please use `billing_address.country`.
-          example: FR
-          deprecated: true
-        vat_number:
-          type:
-          - string
-          - 'null'
-          description: Deprecated field, please use `tax_ids`.
-          deprecated: true
-        vat_rate_custom:
-          type:
-          - number
-          - 'null'
-          minimum: 0
-          maximum: 100
-          description: Deprecated field, please use `tax_rate_custom`.
-          deprecated: true
-        tax_ids:
-          type: array
-          items:
-            type: object
-            properties:
-              value:
-                type: string
-                description: Value of the customer tax ID.
-                example: FR123456789
-            required:
-            - value
-            title: UpdateCustomerTaxId
-          maxItems: 1
-          description: Customer tax IDs.
-        local_tax_number:
-          type:
-          - string
-          - 'null'
-          description: Customer local tax number.
-          example: 12/345/67890
-        tax_rate_custom:
-          type:
-          - number
-          - 'null'
-          minimum: 0
-          maximum: 100
-          description: Customer custom tax rate. If not defined, the rate will be
-            automatically determined based on the customer's country, your country,
-            and applicable legal requirements.
-        taxability:
-          type: string
-          enum:
-          - taxable
-          - exempt
-          description: "Customer taxability.\n\n- `taxable`: Taxes are automatically\
-            \ determined for the customer.\n- `exempt`: The customer is exempt from\
-            \ tax.\n "
-          example: taxable
-        registration_number:
-          type:
-          - string
-          - 'null'
-          description: Customer registration number.
-          example: '36252187900034'
-        is_government_affiliated:
-          type:
-          - boolean
-          - 'null'
-          description: Indicates if the customer is affiliated with a government entity.
-          example: false
-        external_id:
-          type:
-          - string
-          - 'null'
-          description: ID of the customer in your system. This helps matching your
-            customer with the one on Hyperline.
-        domain:
-          type: string
-          pattern: ^(?!:\/\/)(?=.{1,253}$)(?!-)([a-z0-9-]{1,63}\.)+[a-z]{2,63}$
-          description: Customer domain. If not defined, it is inferred from the billing
-            email.
-          example: acme.com
-        invoicing_entity_id:
-          type: string
-          description: ID of the invoicing entity this customer will be attached to.
-        billing_address:
-          $ref: '#/components/schemas/Address'
-        shipping_address:
-          description: Customer shipping address.
-          $ref: '#/components/schemas/Address'
-        billing_email:
-          type:
-          - string
-          - 'null'
-          format: email
-          description: Email to which all communications will be sent.
-          example: billing@acme.com
-        invoice_emails:
-          type: array
-          items:
-            type: string
-            format: email
-          description: Emails to which invoices will be sent (e.g. payer, finance
-            team, accounting firm). If not defined, invoices will be sent to the `billing_email`;
-            otherwise, they won't be sent to the `billing_email`.
-          example:
-          - accounting@acme.com
-        language:
-          type: string
-          enum:
-          - fr
-          - en
-          - de
-          - it
-          - nl
-          - es
-          - pt
-          - pl
-          description: Language used for invoices, emails, and hosted pages.
-          example: fr
-        timezone:
-          type: string
-          description: Customer timezone.
-          example: Europe/Paris
-        available_payment_methods:
-          type: array
-          items:
-            type: string
-            enum:
-            - card
-            - apple_pay
-            - google_pay
-            - direct_debit
-            - direct_debit_ach
-            - direct_debit_bacs
-            - stripe_link
-            - transfer
-            - transfer_automated
-          description: List of payment methods you allow your customer to pay with.
-            You customer will be able to select one of them in their portal page and
-            those will be the default options when creating a checkout session.
-          example:
-          - card
-          - direct_debit
-        payment_method_type:
-          type:
-          - string
-          - 'null'
-          enum:
-          - card
-          - apple_pay
-          - google_pay
-          - direct_debit
-          - direct_debit_ach
-          - direct_debit_bacs
-          - stripe_link
-          - transfer
-          - transfer_automated
-          - external
-          description: Default payment method type used to pay subscriptions and one-off
-            invoices.
-          example: card
-        payment_method_id:
-          type:
-          - string
-          - 'null'
-          description: ID of the default payment method of the customer. Only applies
-            to card and direct debit.
-          example: pm_UTclbc1US8GzCe
-        bank_account:
-          type:
-          - object
-          - 'null'
-          additionalProperties: true
-          description: Custom bank account for the customer. If not defined and customer
-            paying by bank transfer, the bank accounts configured in your account
-            settings will be used.
-        custom_payment_delay:
-          type:
-          - number
-          - 'null'
-          description: Custom payment terms in days. If not defined, the default one
-            defined on the related invoicing entity will be used.
-          example: 30
-        custom_payment_initiation_delay:
-          type:
-          - number
-          - 'null'
-          description: Custom initiation delay in days before triggering payment.
-            If not defined, the default one defined on the related invoicing entity
-            will be used.
-          example: 7
-        organisation_id:
-          type:
-          - string
-          - 'null'
-          description: Parent organization ID to which the client is attached.
-          example: null
-        organisation_invoicing:
-          type:
-          - string
-          - 'null'
-          enum:
-          - none
-          - every_invoice
-          - concat
-          description: "\nHow customer invoices are issued from the parent organisation.\n\
-            \n- `none`: Invoices will keep being issued from this customer.\n- `every_invoice`:\
-            \ Customer invoices will be issued from the organisation individually.\n\
-            - `concat`: Customer invoices will be grouped into a global parent invoice\
-            \ at a regular schedule (configured on the organisation).\n "
-          example: null
-        properties:
-          type:
-          - object
-          - 'null'
-          additionalProperties:
-            anyOf:
-            - type: string
-            - type: number
-            - type: boolean
-            - type: 'null'
-            - type: array
-              items:
-                anyOf:
-                - type: string
-                - type: number
-                - type: boolean
-                - type: 'null'
-                - type: 'null'
-            - type: 'null'
-          description: Key/value pairs to store any metadata useful in your context.
-        custom_properties:
-          type:
-          - object
-          - 'null'
-          additionalProperties:
-            anyOf:
-            - type: string
-            - type: number
-            - type: boolean
-            - type: string
-              format: date-time
-              description: UTC date time string in the [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601)
-                format.
-              example: '2024-12-20T16:04:11Z'
-            - type: array
-              items:
-                type: string
-            - type: 'null'
-          description: A list of key value with the slug of the custom property as
-            the key and the custom property value as value.
-        invoice_reminders_enabled:
-          anyOf:
-          - type: boolean
-          - type: string
-            enum:
-            - 'true'
-            - 'false'
-          description: Indicates if invoice reminders are enabled for the customer.
-        price_book_id:
-          type:
-          - string
-          - 'null'
-          description: Default price book ID assigned to the customer.
-          example: prib_613_WbVIZ1329e
-        owner_id:
-          type:
-          - string
-          - 'null'
-          description: ID of the Hyperline user responsible for this customer and
-            targeted by customer agent notifications.
-          example: usr_KMcxRWc1ZQwvJG
-        follower_ids:
-          type: array
-          items:
-            type: string
-          description: IDs of Hyperline users following this customer.
-          example:
-          - usr_KMcxRWc1ZQwvJG
-      title: UpdateCustomer
     CustomerV1:
       type: object
       properties:
@@ -3721,12 +2775,424 @@ components:
           type:
           - string
           - 'null'
+          enum:
+          - EUR
+          - AED
+          - AFN
+          - XCD
+          - ALL
+          - AMD
+          - AOA
+          - ARS
+          - USD
+          - AUD
+          - AWG
+          - AZN
+          - BAM
+          - BBD
+          - BDT
+          - BGN
+          - BHD
+          - BIF
+          - XOF
+          - BMD
+          - BND
+          - BOB
+          - BRL
+          - BSD
+          - BTN
+          - NOK
+          - BWP
+          - BYR
+          - BZD
+          - CAD
+          - CDF
+          - XAF
+          - CHF
+          - NZD
+          - CLP
+          - CNY
+          - COP
+          - CRC
+          - CUP
+          - CVE
+          - ANG
+          - CZK
+          - DJF
+          - DKK
+          - DOP
+          - DZD
+          - EGP
+          - MAD
+          - ERN
+          - ETB
+          - FJD
+          - FKP
+          - GBP
+          - GEL
+          - GHS
+          - GIP
+          - GMD
+          - GNF
+          - GTQ
+          - GYD
+          - HKD
+          - HNL
+          - HRK
+          - HTG
+          - HUF
+          - IDR
+          - ILS
+          - INR
+          - IQD
+          - IRR
+          - ISK
+          - JMD
+          - JOD
+          - JPY
+          - KES
+          - KGS
+          - KHR
+          - KMF
+          - KPW
+          - KRW
+          - KWD
+          - KYD
+          - KZT
+          - LAK
+          - LBP
+          - LKR
+          - LRD
+          - LSL
+          - LYD
+          - MDL
+          - MGA
+          - MKD
+          - MMK
+          - MNT
+          - MOP
+          - MRO
+          - MUR
+          - MVR
+          - MWK
+          - MXN
+          - MYR
+          - MZN
+          - NAD
+          - XPF
+          - NGN
+          - NIO
+          - NPR
+          - OMR
+          - PAB
+          - PEN
+          - PGK
+          - PHP
+          - PKR
+          - PLN
+          - PYG
+          - QAR
+          - RON
+          - RSD
+          - RUB
+          - RWF
+          - SAR
+          - SBD
+          - SCR
+          - SDG
+          - SEK
+          - SGD
+          - SHP
+          - SLL
+          - SOS
+          - SRD
+          - SSP
+          - STD
+          - SYP
+          - SZL
+          - THB
+          - TJS
+          - TMT
+          - TND
+          - TOP
+          - TRY
+          - TTD
+          - TWD
+          - TZS
+          - UAH
+          - UGX
+          - UYU
+          - UZS
+          - VEF
+          - VND
+          - VUV
+          - WST
+          - YER
+          - ZAR
+          - ZMW
+          - ZWL
           description: Currency code. See [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes).
           example: EUR
         country:
           type:
           - string
           - 'null'
+          enum:
+          - AD
+          - AE
+          - AF
+          - AG
+          - AI
+          - AL
+          - AM
+          - AO
+          - AQ
+          - AR
+          - AS
+          - AT
+          - AU
+          - AW
+          - AX
+          - AZ
+          - BA
+          - BB
+          - BD
+          - BE
+          - BG
+          - BH
+          - BI
+          - BJ
+          - BL
+          - BM
+          - BN
+          - BO
+          - BQ
+          - BR
+          - BS
+          - BT
+          - BF
+          - BV
+          - BW
+          - BY
+          - BZ
+          - CA
+          - CC
+          - CD
+          - CF
+          - CG
+          - CH
+          - CI
+          - CK
+          - CL
+          - CM
+          - CN
+          - CO
+          - CR
+          - CU
+          - CV
+          - CW
+          - CX
+          - CY
+          - CZ
+          - DE
+          - DJ
+          - DK
+          - DM
+          - DO
+          - DZ
+          - EC
+          - EE
+          - EG
+          - EH
+          - ER
+          - ES
+          - ES-CE
+          - ES-ML
+          - ET
+          - FI
+          - FJ
+          - FK
+          - FM
+          - FO
+          - FR
+          - GA
+          - GB
+          - GD
+          - GE
+          - GF
+          - GG
+          - GH
+          - GI
+          - GL
+          - GM
+          - GN
+          - GP
+          - GQ
+          - GR
+          - GS
+          - GT
+          - GU
+          - GW
+          - GY
+          - HK
+          - HM
+          - HN
+          - HR
+          - HT
+          - HU
+          - IC
+          - ID
+          - IE
+          - IL
+          - IM
+          - IN
+          - IO
+          - IQ
+          - IR
+          - IS
+          - IT
+          - JE
+          - JM
+          - JO
+          - JP
+          - KE
+          - KG
+          - KH
+          - KI
+          - KM
+          - KN
+          - KP
+          - KR
+          - KW
+          - KY
+          - KZ
+          - LA
+          - LB
+          - LC
+          - LI
+          - LK
+          - LR
+          - LS
+          - LT
+          - LU
+          - LV
+          - LY
+          - MA
+          - MC
+          - MD
+          - ME
+          - MF
+          - MG
+          - MH
+          - MK
+          - ML
+          - MM
+          - MN
+          - MO
+          - MP
+          - MQ
+          - MR
+          - MS
+          - MT
+          - MU
+          - MV
+          - MW
+          - MX
+          - MY
+          - MZ
+          - NA
+          - NC
+          - NE
+          - NF
+          - NG
+          - NI
+          - NL
+          - 'NO'
+          - NP
+          - NR
+          - NU
+          - NZ
+          - OM
+          - PA
+          - PE
+          - PF
+          - PG
+          - PH
+          - PK
+          - PL
+          - PM
+          - PN
+          - PR
+          - PS
+          - PT
+          - PT-20
+          - PT-30
+          - PW
+          - PY
+          - QA
+          - RE
+          - RO
+          - RS
+          - RU
+          - RW
+          - SA
+          - SB
+          - SC
+          - SD
+          - SE
+          - SG
+          - SH
+          - SI
+          - SJ
+          - SK
+          - SL
+          - SM
+          - SN
+          - SO
+          - SR
+          - SS
+          - ST
+          - SV
+          - SX
+          - SY
+          - SZ
+          - TC
+          - TD
+          - TF
+          - TG
+          - TH
+          - TJ
+          - TK
+          - TL
+          - TM
+          - TN
+          - TO
+          - TR
+          - TT
+          - TV
+          - TW
+          - TZ
+          - UA
+          - UG
+          - UM
+          - US
+          - UY
+          - UZ
+          - VA
+          - VC
+          - VE
+          - VG
+          - VI
+          - VN
+          - VU
+          - WF
+          - WS
+          - XK
+          - YE
+          - YT
+          - ZA
+          - ZM
+          - ZW
           description: Two-letter country code in ISO format. See [ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).
           example: FR
         domain:
@@ -3834,6 +3300,323 @@ components:
           type:
           - string
           - 'null'
+          enum:
+          - Pacific/Midway
+          - Pacific/Pago_Pago
+          - Pacific/Niue
+          - Pacific/Rarotonga
+          - Pacific/Honolulu
+          - Pacific/Tahiti
+          - Pacific/Marquesas
+          - Pacific/Gambier
+          - America/Adak
+          - America/Anchorage
+          - Pacific/Pitcairn
+          - America/Hermosillo
+          - America/Phoenix
+          - America/Los_Angeles
+          - America/Tijuana
+          - America/Vancouver
+          - America/Whitehorse
+          - America/Belize
+          - America/Guatemala
+          - America/Managua
+          - America/Mexico_City
+          - America/Costa_Rica
+          - America/El_Salvador
+          - America/Regina
+          - America/Tegucigalpa
+          - Pacific/Easter
+          - Pacific/Galapagos
+          - America/Edmonton
+          - America/Ciudad_Juarez
+          - America/Denver
+          - America/Rio_Branco
+          - America/Chicago
+          - America/Matamoros
+          - America/Winnipeg
+          - America/Bogota
+          - America/Atikokan
+          - America/Cancun
+          - America/Cayman
+          - America/Jamaica
+          - America/Panama
+          - America/Guayaquil
+          - America/Lima
+          - America/Manaus
+          - America/St_Kitts
+          - America/Blanc-Sablon
+          - America/Montserrat
+          - America/Barbados
+          - America/Port_of_Spain
+          - America/Martinique
+          - America/St_Lucia
+          - America/St_Barthelemy
+          - America/St_Vincent
+          - America/Kralendijk
+          - America/Guadeloupe
+          - America/Marigot
+          - America/Aruba
+          - America/Lower_Princes
+          - America/Tortola
+          - America/Dominica
+          - America/St_Thomas
+          - America/Grenada
+          - America/Antigua
+          - America/Puerto_Rico
+          - America/Santo_Domingo
+          - America/Anguilla
+          - America/Curacao
+          - America/La_Paz
+          - America/Santiago
+          - America/Havana
+          - America/Nassau
+          - America/New_York
+          - America/Port-au-Prince
+          - America/Grand_Turk
+          - America/Toronto
+          - America/Guyana
+          - America/Caracas
+          - America/Argentina/Buenos_Aires
+          - America/Halifax
+          - Atlantic/Bermuda
+          - America/Thule
+          - America/Sao_Paulo
+          - Antarctica/Palmer
+          - America/Punta_Arenas
+          - Atlantic/Stanley
+          - America/Cayenne
+          - America/Asuncion
+          - America/Paramaribo
+          - America/Montevideo
+          - America/St_Johns
+          - America/Noronha
+          - Atlantic/South_Georgia
+          - America/Miquelon
+          - Atlantic/Cape_Verde
+          - America/Nuuk
+          - Atlantic/Azores
+          - Etc/UTC
+          - Africa/Abidjan
+          - Africa/Bamako
+          - Africa/Bissau
+          - Africa/Conakry
+          - Africa/Dakar
+          - America/Danmarkshavn
+          - Africa/Freetown
+          - Atlantic/St_Helena
+          - Africa/Accra
+          - Africa/Lome
+          - Africa/Monrovia
+          - Africa/Nouakchott
+          - Africa/Ouagadougou
+          - Atlantic/Reykjavik
+          - Africa/Sao_Tome
+          - Africa/Banjul
+          - Africa/Algiers
+          - Africa/Tunis
+          - Europe/Isle_of_Man
+          - Europe/Dublin
+          - Europe/London
+          - Europe/Jersey
+          - Europe/Guernsey
+          - Africa/Bangui
+          - Africa/Malabo
+          - Africa/Brazzaville
+          - Africa/Porto-Novo
+          - Africa/Douala
+          - Africa/Kinshasa
+          - Africa/Lagos
+          - Africa/Libreville
+          - Africa/Luanda
+          - Africa/Ndjamena
+          - Africa/Niamey
+          - Africa/Casablanca
+          - Africa/El_Aaiun
+          - Atlantic/Canary
+          - Europe/Lisbon
+          - Atlantic/Faroe
+          - Africa/Bujumbura
+          - Africa/Gaborone
+          - Africa/Harare
+          - Africa/Juba
+          - Africa/Khartoum
+          - Africa/Kigali
+          - Africa/Blantyre
+          - Africa/Lubumbashi
+          - Africa/Lusaka
+          - Africa/Maputo
+          - Africa/Windhoek
+          - Europe/Andorra
+          - Europe/Belgrade
+          - Europe/Berlin
+          - Europe/Bratislava
+          - Europe/Brussels
+          - Europe/Budapest
+          - Europe/Copenhagen
+          - Europe/Gibraltar
+          - Europe/Ljubljana
+          - Arctic/Longyearbyen
+          - Europe/Luxembourg
+          - Europe/Madrid
+          - Europe/Monaco
+          - Europe/Oslo
+          - Europe/Paris
+          - Europe/Podgorica
+          - Europe/Prague
+          - Europe/Rome
+          - Europe/Amsterdam
+          - Europe/San_Marino
+          - Europe/Malta
+          - Europe/Sarajevo
+          - Europe/Skopje
+          - Europe/Stockholm
+          - Europe/Tirane
+          - Europe/Vaduz
+          - Europe/Vatican
+          - Europe/Vienna
+          - Europe/Warsaw
+          - Europe/Zagreb
+          - Europe/Zurich
+          - Europe/Kaliningrad
+          - Africa/Tripoli
+          - Antarctica/Troll
+          - Africa/Johannesburg
+          - Africa/Mbabane
+          - Africa/Maseru
+          - Asia/Kuwait
+          - Asia/Bahrain
+          - Asia/Baghdad
+          - Asia/Qatar
+          - Asia/Riyadh
+          - Asia/Aden
+          - Asia/Amman
+          - Asia/Damascus
+          - Africa/Addis_Ababa
+          - Indian/Antananarivo
+          - Africa/Asmara
+          - Africa/Dar_es_Salaam
+          - Africa/Djibouti
+          - Africa/Kampala
+          - Indian/Mayotte
+          - Africa/Mogadishu
+          - Indian/Comoro
+          - Africa/Nairobi
+          - Europe/Athens
+          - Asia/Beirut
+          - Europe/Bucharest
+          - Africa/Cairo
+          - Europe/Chisinau
+          - Asia/Hebron
+          - Europe/Helsinki
+          - Europe/Kyiv
+          - Europe/Mariehamn
+          - Asia/Nicosia
+          - Europe/Riga
+          - Europe/Sofia
+          - Europe/Tallinn
+          - Europe/Vilnius
+          - Asia/Jerusalem
+          - Europe/Minsk
+          - Europe/Moscow
+          - Europe/Simferopol
+          - Antarctica/Syowa
+          - Europe/Istanbul
+          - Asia/Tehran
+          - Asia/Yerevan
+          - Asia/Baku
+          - Asia/Tbilisi
+          - Asia/Dubai
+          - Asia/Muscat
+          - Indian/Mauritius
+          - Indian/Reunion
+          - Europe/Samara
+          - Indian/Mahe
+          - Asia/Kabul
+          - Indian/Kerguelen
+          - Asia/Almaty
+          - Indian/Maldives
+          - Antarctica/Mawson
+          - Asia/Karachi
+          - Asia/Dushanbe
+          - Asia/Ashgabat
+          - Asia/Tashkent
+          - Asia/Yekaterinburg
+          - Asia/Colombo
+          - Asia/Kolkata
+          - Asia/Kathmandu
+          - Asia/Dhaka
+          - Asia/Thimphu
+          - Asia/Urumqi
+          - Indian/Chagos
+          - Asia/Bishkek
+          - Asia/Omsk
+          - Indian/Cocos
+          - Asia/Yangon
+          - Indian/Christmas
+          - Antarctica/Davis
+          - Asia/Hovd
+          - Asia/Bangkok
+          - Asia/Ho_Chi_Minh
+          - Asia/Phnom_Penh
+          - Asia/Vientiane
+          - Asia/Novosibirsk
+          - Asia/Jakarta
+          - Antarctica/Casey
+          - Australia/Perth
+          - Asia/Brunei
+          - Asia/Makassar
+          - Asia/Macau
+          - Asia/Shanghai
+          - Asia/Hong_Kong
+          - Asia/Irkutsk
+          - Asia/Kuala_Lumpur
+          - Asia/Manila
+          - Asia/Singapore
+          - Asia/Taipei
+          - Asia/Ulaanbaatar
+          - Australia/Eucla
+          - Asia/Jayapura
+          - Asia/Tokyo
+          - Asia/Pyongyang
+          - Asia/Seoul
+          - Pacific/Palau
+          - Asia/Dili
+          - Asia/Chita
+          - Australia/Adelaide
+          - Australia/Darwin
+          - Australia/Brisbane
+          - Australia/Sydney
+          - Pacific/Guam
+          - Pacific/Saipan
+          - Pacific/Chuuk
+          - Antarctica/DumontDUrville
+          - Pacific/Port_Moresby
+          - Asia/Vladivostok
+          - Australia/Lord_Howe
+          - Pacific/Bougainville
+          - Pacific/Kosrae
+          - Pacific/Noumea
+          - Pacific/Norfolk
+          - Asia/Sakhalin
+          - Pacific/Guadalcanal
+          - Pacific/Efate
+          - Pacific/Fiji
+          - Pacific/Tarawa
+          - Asia/Kamchatka
+          - Pacific/Majuro
+          - Pacific/Nauru
+          - Pacific/Auckland
+          - Antarctica/McMurdo
+          - Pacific/Funafuti
+          - Pacific/Wake
+          - Pacific/Wallis
+          - Pacific/Chatham
+          - Pacific/Kanton
+          - Pacific/Apia
+          - Pacific/Fakaofo
+          - Pacific/Tongatapu
+          - Pacific/Kiritimati
           description: Customer timezone.
           example: Europe/Paris
         external_id:
@@ -3926,6 +3709,66 @@ components:
               type:
               - string
               - 'null'
+              enum:
+              - AA
+              - AE
+              - AK
+              - AL
+              - AP
+              - AR
+              - AS
+              - AZ
+              - CA
+              - CO
+              - CT
+              - DC
+              - DE
+              - FL
+              - GA
+              - GU
+              - HI
+              - IA
+              - ID
+              - IL
+              - IN
+              - KS
+              - KY
+              - LA
+              - MA
+              - MD
+              - ME
+              - MI
+              - MN
+              - MO
+              - MP
+              - MS
+              - MT
+              - NC
+              - ND
+              - NE
+              - NH
+              - NJ
+              - NM
+              - NV
+              - NY
+              - OH
+              - OK
+              - OR
+              - PA
+              - PR
+              - RI
+              - SC
+              - SD
+              - TN
+              - TX
+              - UT
+              - VA
+              - VI
+              - VT
+              - WA
+              - WI
+              - WV
+              - WY
               description: Only for US country. Second part of subdivision code in
                 ISO format. See [ISO 3166-2:US](https://en.wikipedia.org/wiki/ISO_3166-2:US).
               example: CA
@@ -3933,6 +3776,262 @@ components:
               type:
               - string
               - 'null'
+              enum:
+              - AD
+              - AE
+              - AF
+              - AG
+              - AI
+              - AL
+              - AM
+              - AO
+              - AQ
+              - AR
+              - AS
+              - AT
+              - AU
+              - AW
+              - AX
+              - AZ
+              - BA
+              - BB
+              - BD
+              - BE
+              - BG
+              - BH
+              - BI
+              - BJ
+              - BL
+              - BM
+              - BN
+              - BO
+              - BQ
+              - BR
+              - BS
+              - BT
+              - BF
+              - BV
+              - BW
+              - BY
+              - BZ
+              - CA
+              - CC
+              - CD
+              - CF
+              - CG
+              - CH
+              - CI
+              - CK
+              - CL
+              - CM
+              - CN
+              - CO
+              - CR
+              - CU
+              - CV
+              - CW
+              - CX
+              - CY
+              - CZ
+              - DE
+              - DJ
+              - DK
+              - DM
+              - DO
+              - DZ
+              - EC
+              - EE
+              - EG
+              - EH
+              - ER
+              - ES
+              - ES-CE
+              - ES-ML
+              - ET
+              - FI
+              - FJ
+              - FK
+              - FM
+              - FO
+              - FR
+              - GA
+              - GB
+              - GD
+              - GE
+              - GF
+              - GG
+              - GH
+              - GI
+              - GL
+              - GM
+              - GN
+              - GP
+              - GQ
+              - GR
+              - GS
+              - GT
+              - GU
+              - GW
+              - GY
+              - HK
+              - HM
+              - HN
+              - HR
+              - HT
+              - HU
+              - IC
+              - ID
+              - IE
+              - IL
+              - IM
+              - IN
+              - IO
+              - IQ
+              - IR
+              - IS
+              - IT
+              - JE
+              - JM
+              - JO
+              - JP
+              - KE
+              - KG
+              - KH
+              - KI
+              - KM
+              - KN
+              - KP
+              - KR
+              - KW
+              - KY
+              - KZ
+              - LA
+              - LB
+              - LC
+              - LI
+              - LK
+              - LR
+              - LS
+              - LT
+              - LU
+              - LV
+              - LY
+              - MA
+              - MC
+              - MD
+              - ME
+              - MF
+              - MG
+              - MH
+              - MK
+              - ML
+              - MM
+              - MN
+              - MO
+              - MP
+              - MQ
+              - MR
+              - MS
+              - MT
+              - MU
+              - MV
+              - MW
+              - MX
+              - MY
+              - MZ
+              - NA
+              - NC
+              - NE
+              - NF
+              - NG
+              - NI
+              - NL
+              - 'NO'
+              - NP
+              - NR
+              - NU
+              - NZ
+              - OM
+              - PA
+              - PE
+              - PF
+              - PG
+              - PH
+              - PK
+              - PL
+              - PM
+              - PN
+              - PR
+              - PS
+              - PT
+              - PT-20
+              - PT-30
+              - PW
+              - PY
+              - QA
+              - RE
+              - RO
+              - RS
+              - RU
+              - RW
+              - SA
+              - SB
+              - SC
+              - SD
+              - SE
+              - SG
+              - SH
+              - SI
+              - SJ
+              - SK
+              - SL
+              - SM
+              - SN
+              - SO
+              - SR
+              - SS
+              - ST
+              - SV
+              - SX
+              - SY
+              - SZ
+              - TC
+              - TD
+              - TF
+              - TG
+              - TH
+              - TJ
+              - TK
+              - TL
+              - TM
+              - TN
+              - TO
+              - TR
+              - TT
+              - TV
+              - TW
+              - TZ
+              - UA
+              - UG
+              - UM
+              - US
+              - UY
+              - UZ
+              - VA
+              - VC
+              - VE
+              - VG
+              - VI
+              - VN
+              - VU
+              - WF
+              - WS
+              - XK
+              - YE
+              - YT
+              - ZA
+              - ZM
+              - ZW
               description: Two-letter country code in ISO format. See [ISO 3166-1
                 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).
               example: FR
@@ -4110,6 +4209,37 @@ components:
                 description: ID of the entity in the provider.
               provider_name:
                 type: string
+                enum:
+                - adyen
+                - stripe
+                - mollie
+                - gocardless
+                - airwallex
+                - salesforce
+                - hubspot
+                - attio
+                - xero
+                - pennylane
+                - zoho-books
+                - exact-online
+                - quickbooks
+                - netsuite
+                - rillet
+                - datev
+                - anrok
+                - chargebee
+                - slack
+                - plain
+                - zendesk
+                - pylon
+                - intercom
+                - front
+                - helpscout
+                - claap
+                - grain
+                - gong
+                - jiminny
+                - posthog
                 description: Provider name.
               provider_account_id:
                 type: string
@@ -4185,38 +4315,6 @@ components:
       - updated_at
       - deleted_at
       title: CustomerV1
-    PaginatedInvoiceV1:
-      type: object
-      properties:
-        meta:
-          type: object
-          properties:
-            total:
-              type: number
-              description: Total of existing items.
-              example: 1
-            taken:
-              type: number
-              description: Number of items returned.
-              example: 1
-            skipped:
-              type: number
-              description: Number of items skipped.
-              example: 0
-          required:
-          - total
-          - taken
-          - skipped
-          title: PaginatedInvoiceV1Meta
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/InvoiceDeprecated'
-          description: List of InvoiceV1.
-      required:
-      - meta
-      - data
-      title: PaginatedInvoiceV1
     CreateInvoice:
       type: object
       properties:
@@ -4226,6 +4324,162 @@ components:
           example: cus_Typ0px2W0aiEtl
         currency:
           type: string
+          enum:
+          - EUR
+          - AED
+          - AFN
+          - XCD
+          - ALL
+          - AMD
+          - AOA
+          - ARS
+          - USD
+          - AUD
+          - AWG
+          - AZN
+          - BAM
+          - BBD
+          - BDT
+          - BGN
+          - BHD
+          - BIF
+          - XOF
+          - BMD
+          - BND
+          - BOB
+          - BRL
+          - BSD
+          - BTN
+          - NOK
+          - BWP
+          - BYR
+          - BZD
+          - CAD
+          - CDF
+          - XAF
+          - CHF
+          - NZD
+          - CLP
+          - CNY
+          - COP
+          - CRC
+          - CUP
+          - CVE
+          - ANG
+          - CZK
+          - DJF
+          - DKK
+          - DOP
+          - DZD
+          - EGP
+          - MAD
+          - ERN
+          - ETB
+          - FJD
+          - FKP
+          - GBP
+          - GEL
+          - GHS
+          - GIP
+          - GMD
+          - GNF
+          - GTQ
+          - GYD
+          - HKD
+          - HNL
+          - HRK
+          - HTG
+          - HUF
+          - IDR
+          - ILS
+          - INR
+          - IQD
+          - IRR
+          - ISK
+          - JMD
+          - JOD
+          - JPY
+          - KES
+          - KGS
+          - KHR
+          - KMF
+          - KPW
+          - KRW
+          - KWD
+          - KYD
+          - KZT
+          - LAK
+          - LBP
+          - LKR
+          - LRD
+          - LSL
+          - LYD
+          - MDL
+          - MGA
+          - MKD
+          - MMK
+          - MNT
+          - MOP
+          - MRO
+          - MUR
+          - MVR
+          - MWK
+          - MXN
+          - MYR
+          - MZN
+          - NAD
+          - XPF
+          - NGN
+          - NIO
+          - NPR
+          - OMR
+          - PAB
+          - PEN
+          - PGK
+          - PHP
+          - PKR
+          - PLN
+          - PYG
+          - QAR
+          - RON
+          - RSD
+          - RUB
+          - RWF
+          - SAR
+          - SBD
+          - SCR
+          - SDG
+          - SEK
+          - SGD
+          - SHP
+          - SLL
+          - SOS
+          - SRD
+          - SSP
+          - STD
+          - SYP
+          - SZL
+          - THB
+          - TJS
+          - TMT
+          - TND
+          - TOP
+          - TRY
+          - TTD
+          - TWD
+          - TZS
+          - UAH
+          - UGX
+          - UYU
+          - UZS
+          - VEF
+          - VND
+          - VUV
+          - WST
+          - YER
+          - ZAR
+          - ZMW
+          - ZWL
           description: Currency code of the invoice. See [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes).
           example: EUR
         status:
@@ -4567,6 +4821,37 @@ components:
                   description: ID of the entity in the provider.
                 provider_name:
                   type: string
+                  enum:
+                  - adyen
+                  - stripe
+                  - mollie
+                  - gocardless
+                  - airwallex
+                  - salesforce
+                  - hubspot
+                  - attio
+                  - xero
+                  - pennylane
+                  - zoho-books
+                  - exact-online
+                  - quickbooks
+                  - netsuite
+                  - rillet
+                  - datev
+                  - anrok
+                  - chargebee
+                  - slack
+                  - plain
+                  - zendesk
+                  - pylon
+                  - intercom
+                  - front
+                  - helpscout
+                  - claap
+                  - grain
+                  - gong
+                  - jiminny
+                  - posthog
                   description: Provider name.
                 provider_account_id:
                   type: string
@@ -4584,239 +4869,6 @@ components:
         required:
         - integrations
         title: InvoiceDetailsV1
-    UpdateInvoice:
-      type: object
-      properties:
-        type:
-          type: string
-          enum:
-          - invoice
-          - credit_note
-          - document
-          description: "Type of the invoice.\n\n- `invoice`: Legal invoice to be paid\
-            \ by your customer.\n- `credit_note`: Legal credit note cancelling an\
-            \ invoice and refunding your customer.\n- `document`: Custom document\
-            \ with no legal value. Can be generated from a subscription to meet specific\
-            \ needs.\n  "
-          example: invoice
-        document_name:
-          type:
-          - string
-          - 'null'
-          description: If the invoice is of type `document` you can give it a custom
-            name (displayed on the final PDF).
-        reference:
-          type:
-          - string
-          - 'null'
-          description: Unique identifier to ease reconciliation with payment. Useful
-            for bank transfer.
-          example: V0KAHOU6J3
-        purchase_order:
-          type:
-          - string
-          - 'null'
-          description: Reference to the purchase order linked to the invoice.
-          example: PO-12345
-        custom_note:
-          type:
-          - string
-          - 'null'
-          maxLength: 20000
-          description: Custom note added to the invoice.
-          example: Thank you for your purchase!
-        additional_info:
-          type:
-          - string
-          - 'null'
-          maxLength: 20000
-          description: Additional information added to the invoice. If not defined,
-            it will be inherited from the invoicing entity's settings.
-          example: This invoice must be paid within the payment delay indicated. After
-            this period a late payment penalty of 10% will be applied.
-        footer:
-          type:
-          - string
-          - 'null'
-          maxLength: 20000
-          description: Footer added to the invoice. If not defined, it will be inherited
-            from the invoicing entity's settings.
-          example: "ACME (Acme SAS) is a company registered in France | SIREN N\xB0\
-            123456"
-        tax_scheme:
-          type: string
-          enum:
-          - auto
-          - not_eligible
-          default: auto
-          description: "Tax scheme of the invoice.\n\n- `auto`: Tax is automatically\
-            \ computed and applied.\n- `not_eligible`: Tax collection is disabled\
-            \ for the invoice.\n  "
-          example: auto
-        line_items:
-          type: array
-          items:
-            $ref: '#/components/schemas/CreateInvoiceLineItem'
-          minItems: 1
-        coupons:
-          type: array
-          items:
-            type: object
-            properties:
-              coupon_id:
-                type: string
-                description: Coupon ID.
-                example: cou_1eTaiytfA0i2Vb
-              name:
-                type: string
-                description: Name of the coupon.
-                example: Black Friday 2023
-              discount_amount:
-                type: number
-                exclusiveMinimum: 0
-                description: Amount corresponding to the discounted part of the total
-                  amount.
-                example: 500
-              line_item_indexes:
-                type:
-                - array
-                - 'null'
-                items:
-                  type: number
-                description: Index of the line items to which the coupon applies.
-                  Null means all line items.
-                example:
-                - 0
-                - 1
-            additionalProperties: true
-            description: ''
-            title: UpdateInvoiceCoupon
-        payment_method_type:
-          type:
-          - string
-          - 'null'
-          enum:
-          - external
-        payment_method_id:
-          type:
-          - string
-          - 'null'
-          description: ID of the default payment method used to pay the invoice. Transactions
-            related to the invoice may use different payment methods.
-          example: pm_1ryTrMj4TTAT1N
-        bank_account_id:
-          type:
-          - string
-          - 'null'
-          description: ID of the bank account displayed on the invoice. Transactions
-            related to the invoice may use different bank accounts.
-          example: bac_KJyPrMA1toAqRG
-        subscription_id:
-          type:
-          - string
-          - 'null'
-          description: ID of the subscription related to the invoice.
-          example: sub_amiaWZ3lzDIWaoT
-        properties:
-          type:
-          - object
-          - 'null'
-          additionalProperties:
-            anyOf:
-            - type: string
-            - type: number
-            - type: boolean
-            - type: 'null'
-            - type: array
-              items:
-                anyOf:
-                - type: string
-                - type: number
-                - type: boolean
-                - type: 'null'
-                - type: 'null'
-            - type: 'null'
-          description: Key/value pairs to store any metadata useful in your context.
-        custom_properties:
-          type:
-          - object
-          - 'null'
-          additionalProperties:
-            anyOf:
-            - type: string
-            - type: number
-            - type: boolean
-            - type: string
-              format: date-time
-              description: UTC date time string in the [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601)
-                format.
-              example: '2024-12-20T16:04:11Z'
-            - type: array
-              items:
-                type: string
-            - type: 'null'
-          description: Values for custom properties defined for the `invoice` entity,
-            keyed by slug.
-        additional_display_fields:
-          type:
-          - array
-          - 'null'
-          items:
-            type: object
-            properties:
-              type:
-                type: string
-                enum:
-                - standard
-                description: Display a standard invoice field.
-              field:
-                type: string
-                enum:
-                - customer_id
-                - subscription_id
-                - quote_id
-                description: Standard invoice field to display.
-              slug:
-                type: string
-                description: Slug of the invoice or customer custom property to display.
-              label:
-                type: string
-                minLength: 1
-                maxLength: 100
-                description: Label displayed on the invoice.
-              value:
-                type: string
-                maxLength: 500
-                description: Value displayed on the invoice.
-            additionalProperties: true
-            description: ''
-            title: UpdateInvoiceAdditionalDisplayField
-          maxItems: 20
-          description: Ordered additional fields displayed on the invoice PDF. Invoice
-            and customer custom properties are referenced by slug.
-        customer:
-          type: object
-          properties:
-            name:
-              type: string
-            email:
-              type:
-              - string
-              - 'null'
-            tax_id:
-              type:
-              - string
-              - 'null'
-            local_tax_number:
-              type:
-              - string
-              - 'null'
-            address:
-              $ref: '#/components/schemas/Address'
-          description: Override customer details on the invoice. Only allowed for
-            draft or grace period invoices.
-          title: UpdateInvoiceCustomer
-      title: UpdateInvoice
     Customer:
       type: object
       properties:
@@ -4852,12 +4904,424 @@ components:
           type:
           - string
           - 'null'
+          enum:
+          - EUR
+          - AED
+          - AFN
+          - XCD
+          - ALL
+          - AMD
+          - AOA
+          - ARS
+          - USD
+          - AUD
+          - AWG
+          - AZN
+          - BAM
+          - BBD
+          - BDT
+          - BGN
+          - BHD
+          - BIF
+          - XOF
+          - BMD
+          - BND
+          - BOB
+          - BRL
+          - BSD
+          - BTN
+          - NOK
+          - BWP
+          - BYR
+          - BZD
+          - CAD
+          - CDF
+          - XAF
+          - CHF
+          - NZD
+          - CLP
+          - CNY
+          - COP
+          - CRC
+          - CUP
+          - CVE
+          - ANG
+          - CZK
+          - DJF
+          - DKK
+          - DOP
+          - DZD
+          - EGP
+          - MAD
+          - ERN
+          - ETB
+          - FJD
+          - FKP
+          - GBP
+          - GEL
+          - GHS
+          - GIP
+          - GMD
+          - GNF
+          - GTQ
+          - GYD
+          - HKD
+          - HNL
+          - HRK
+          - HTG
+          - HUF
+          - IDR
+          - ILS
+          - INR
+          - IQD
+          - IRR
+          - ISK
+          - JMD
+          - JOD
+          - JPY
+          - KES
+          - KGS
+          - KHR
+          - KMF
+          - KPW
+          - KRW
+          - KWD
+          - KYD
+          - KZT
+          - LAK
+          - LBP
+          - LKR
+          - LRD
+          - LSL
+          - LYD
+          - MDL
+          - MGA
+          - MKD
+          - MMK
+          - MNT
+          - MOP
+          - MRO
+          - MUR
+          - MVR
+          - MWK
+          - MXN
+          - MYR
+          - MZN
+          - NAD
+          - XPF
+          - NGN
+          - NIO
+          - NPR
+          - OMR
+          - PAB
+          - PEN
+          - PGK
+          - PHP
+          - PKR
+          - PLN
+          - PYG
+          - QAR
+          - RON
+          - RSD
+          - RUB
+          - RWF
+          - SAR
+          - SBD
+          - SCR
+          - SDG
+          - SEK
+          - SGD
+          - SHP
+          - SLL
+          - SOS
+          - SRD
+          - SSP
+          - STD
+          - SYP
+          - SZL
+          - THB
+          - TJS
+          - TMT
+          - TND
+          - TOP
+          - TRY
+          - TTD
+          - TWD
+          - TZS
+          - UAH
+          - UGX
+          - UYU
+          - UZS
+          - VEF
+          - VND
+          - VUV
+          - WST
+          - YER
+          - ZAR
+          - ZMW
+          - ZWL
           description: Currency code. See [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes).
           example: EUR
         country:
           type:
           - string
           - 'null'
+          enum:
+          - AD
+          - AE
+          - AF
+          - AG
+          - AI
+          - AL
+          - AM
+          - AO
+          - AQ
+          - AR
+          - AS
+          - AT
+          - AU
+          - AW
+          - AX
+          - AZ
+          - BA
+          - BB
+          - BD
+          - BE
+          - BG
+          - BH
+          - BI
+          - BJ
+          - BL
+          - BM
+          - BN
+          - BO
+          - BQ
+          - BR
+          - BS
+          - BT
+          - BF
+          - BV
+          - BW
+          - BY
+          - BZ
+          - CA
+          - CC
+          - CD
+          - CF
+          - CG
+          - CH
+          - CI
+          - CK
+          - CL
+          - CM
+          - CN
+          - CO
+          - CR
+          - CU
+          - CV
+          - CW
+          - CX
+          - CY
+          - CZ
+          - DE
+          - DJ
+          - DK
+          - DM
+          - DO
+          - DZ
+          - EC
+          - EE
+          - EG
+          - EH
+          - ER
+          - ES
+          - ES-CE
+          - ES-ML
+          - ET
+          - FI
+          - FJ
+          - FK
+          - FM
+          - FO
+          - FR
+          - GA
+          - GB
+          - GD
+          - GE
+          - GF
+          - GG
+          - GH
+          - GI
+          - GL
+          - GM
+          - GN
+          - GP
+          - GQ
+          - GR
+          - GS
+          - GT
+          - GU
+          - GW
+          - GY
+          - HK
+          - HM
+          - HN
+          - HR
+          - HT
+          - HU
+          - IC
+          - ID
+          - IE
+          - IL
+          - IM
+          - IN
+          - IO
+          - IQ
+          - IR
+          - IS
+          - IT
+          - JE
+          - JM
+          - JO
+          - JP
+          - KE
+          - KG
+          - KH
+          - KI
+          - KM
+          - KN
+          - KP
+          - KR
+          - KW
+          - KY
+          - KZ
+          - LA
+          - LB
+          - LC
+          - LI
+          - LK
+          - LR
+          - LS
+          - LT
+          - LU
+          - LV
+          - LY
+          - MA
+          - MC
+          - MD
+          - ME
+          - MF
+          - MG
+          - MH
+          - MK
+          - ML
+          - MM
+          - MN
+          - MO
+          - MP
+          - MQ
+          - MR
+          - MS
+          - MT
+          - MU
+          - MV
+          - MW
+          - MX
+          - MY
+          - MZ
+          - NA
+          - NC
+          - NE
+          - NF
+          - NG
+          - NI
+          - NL
+          - 'NO'
+          - NP
+          - NR
+          - NU
+          - NZ
+          - OM
+          - PA
+          - PE
+          - PF
+          - PG
+          - PH
+          - PK
+          - PL
+          - PM
+          - PN
+          - PR
+          - PS
+          - PT
+          - PT-20
+          - PT-30
+          - PW
+          - PY
+          - QA
+          - RE
+          - RO
+          - RS
+          - RU
+          - RW
+          - SA
+          - SB
+          - SC
+          - SD
+          - SE
+          - SG
+          - SH
+          - SI
+          - SJ
+          - SK
+          - SL
+          - SM
+          - SN
+          - SO
+          - SR
+          - SS
+          - ST
+          - SV
+          - SX
+          - SY
+          - SZ
+          - TC
+          - TD
+          - TF
+          - TG
+          - TH
+          - TJ
+          - TK
+          - TL
+          - TM
+          - TN
+          - TO
+          - TR
+          - TT
+          - TV
+          - TW
+          - TZ
+          - UA
+          - UG
+          - UM
+          - US
+          - UY
+          - UZ
+          - VA
+          - VC
+          - VE
+          - VG
+          - VI
+          - VN
+          - VU
+          - WF
+          - WS
+          - XK
+          - YE
+          - YT
+          - ZA
+          - ZM
+          - ZW
           description: Two-letter country code in ISO format. See [ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).
           example: FR
         domain:
@@ -4949,6 +5413,323 @@ components:
           type:
           - string
           - 'null'
+          enum:
+          - Pacific/Midway
+          - Pacific/Pago_Pago
+          - Pacific/Niue
+          - Pacific/Rarotonga
+          - Pacific/Honolulu
+          - Pacific/Tahiti
+          - Pacific/Marquesas
+          - Pacific/Gambier
+          - America/Adak
+          - America/Anchorage
+          - Pacific/Pitcairn
+          - America/Hermosillo
+          - America/Phoenix
+          - America/Los_Angeles
+          - America/Tijuana
+          - America/Vancouver
+          - America/Whitehorse
+          - America/Belize
+          - America/Guatemala
+          - America/Managua
+          - America/Mexico_City
+          - America/Costa_Rica
+          - America/El_Salvador
+          - America/Regina
+          - America/Tegucigalpa
+          - Pacific/Easter
+          - Pacific/Galapagos
+          - America/Edmonton
+          - America/Ciudad_Juarez
+          - America/Denver
+          - America/Rio_Branco
+          - America/Chicago
+          - America/Matamoros
+          - America/Winnipeg
+          - America/Bogota
+          - America/Atikokan
+          - America/Cancun
+          - America/Cayman
+          - America/Jamaica
+          - America/Panama
+          - America/Guayaquil
+          - America/Lima
+          - America/Manaus
+          - America/St_Kitts
+          - America/Blanc-Sablon
+          - America/Montserrat
+          - America/Barbados
+          - America/Port_of_Spain
+          - America/Martinique
+          - America/St_Lucia
+          - America/St_Barthelemy
+          - America/St_Vincent
+          - America/Kralendijk
+          - America/Guadeloupe
+          - America/Marigot
+          - America/Aruba
+          - America/Lower_Princes
+          - America/Tortola
+          - America/Dominica
+          - America/St_Thomas
+          - America/Grenada
+          - America/Antigua
+          - America/Puerto_Rico
+          - America/Santo_Domingo
+          - America/Anguilla
+          - America/Curacao
+          - America/La_Paz
+          - America/Santiago
+          - America/Havana
+          - America/Nassau
+          - America/New_York
+          - America/Port-au-Prince
+          - America/Grand_Turk
+          - America/Toronto
+          - America/Guyana
+          - America/Caracas
+          - America/Argentina/Buenos_Aires
+          - America/Halifax
+          - Atlantic/Bermuda
+          - America/Thule
+          - America/Sao_Paulo
+          - Antarctica/Palmer
+          - America/Punta_Arenas
+          - Atlantic/Stanley
+          - America/Cayenne
+          - America/Asuncion
+          - America/Paramaribo
+          - America/Montevideo
+          - America/St_Johns
+          - America/Noronha
+          - Atlantic/South_Georgia
+          - America/Miquelon
+          - Atlantic/Cape_Verde
+          - America/Nuuk
+          - Atlantic/Azores
+          - Etc/UTC
+          - Africa/Abidjan
+          - Africa/Bamako
+          - Africa/Bissau
+          - Africa/Conakry
+          - Africa/Dakar
+          - America/Danmarkshavn
+          - Africa/Freetown
+          - Atlantic/St_Helena
+          - Africa/Accra
+          - Africa/Lome
+          - Africa/Monrovia
+          - Africa/Nouakchott
+          - Africa/Ouagadougou
+          - Atlantic/Reykjavik
+          - Africa/Sao_Tome
+          - Africa/Banjul
+          - Africa/Algiers
+          - Africa/Tunis
+          - Europe/Isle_of_Man
+          - Europe/Dublin
+          - Europe/London
+          - Europe/Jersey
+          - Europe/Guernsey
+          - Africa/Bangui
+          - Africa/Malabo
+          - Africa/Brazzaville
+          - Africa/Porto-Novo
+          - Africa/Douala
+          - Africa/Kinshasa
+          - Africa/Lagos
+          - Africa/Libreville
+          - Africa/Luanda
+          - Africa/Ndjamena
+          - Africa/Niamey
+          - Africa/Casablanca
+          - Africa/El_Aaiun
+          - Atlantic/Canary
+          - Europe/Lisbon
+          - Atlantic/Faroe
+          - Africa/Bujumbura
+          - Africa/Gaborone
+          - Africa/Harare
+          - Africa/Juba
+          - Africa/Khartoum
+          - Africa/Kigali
+          - Africa/Blantyre
+          - Africa/Lubumbashi
+          - Africa/Lusaka
+          - Africa/Maputo
+          - Africa/Windhoek
+          - Europe/Andorra
+          - Europe/Belgrade
+          - Europe/Berlin
+          - Europe/Bratislava
+          - Europe/Brussels
+          - Europe/Budapest
+          - Europe/Copenhagen
+          - Europe/Gibraltar
+          - Europe/Ljubljana
+          - Arctic/Longyearbyen
+          - Europe/Luxembourg
+          - Europe/Madrid
+          - Europe/Monaco
+          - Europe/Oslo
+          - Europe/Paris
+          - Europe/Podgorica
+          - Europe/Prague
+          - Europe/Rome
+          - Europe/Amsterdam
+          - Europe/San_Marino
+          - Europe/Malta
+          - Europe/Sarajevo
+          - Europe/Skopje
+          - Europe/Stockholm
+          - Europe/Tirane
+          - Europe/Vaduz
+          - Europe/Vatican
+          - Europe/Vienna
+          - Europe/Warsaw
+          - Europe/Zagreb
+          - Europe/Zurich
+          - Europe/Kaliningrad
+          - Africa/Tripoli
+          - Antarctica/Troll
+          - Africa/Johannesburg
+          - Africa/Mbabane
+          - Africa/Maseru
+          - Asia/Kuwait
+          - Asia/Bahrain
+          - Asia/Baghdad
+          - Asia/Qatar
+          - Asia/Riyadh
+          - Asia/Aden
+          - Asia/Amman
+          - Asia/Damascus
+          - Africa/Addis_Ababa
+          - Indian/Antananarivo
+          - Africa/Asmara
+          - Africa/Dar_es_Salaam
+          - Africa/Djibouti
+          - Africa/Kampala
+          - Indian/Mayotte
+          - Africa/Mogadishu
+          - Indian/Comoro
+          - Africa/Nairobi
+          - Europe/Athens
+          - Asia/Beirut
+          - Europe/Bucharest
+          - Africa/Cairo
+          - Europe/Chisinau
+          - Asia/Hebron
+          - Europe/Helsinki
+          - Europe/Kyiv
+          - Europe/Mariehamn
+          - Asia/Nicosia
+          - Europe/Riga
+          - Europe/Sofia
+          - Europe/Tallinn
+          - Europe/Vilnius
+          - Asia/Jerusalem
+          - Europe/Minsk
+          - Europe/Moscow
+          - Europe/Simferopol
+          - Antarctica/Syowa
+          - Europe/Istanbul
+          - Asia/Tehran
+          - Asia/Yerevan
+          - Asia/Baku
+          - Asia/Tbilisi
+          - Asia/Dubai
+          - Asia/Muscat
+          - Indian/Mauritius
+          - Indian/Reunion
+          - Europe/Samara
+          - Indian/Mahe
+          - Asia/Kabul
+          - Indian/Kerguelen
+          - Asia/Almaty
+          - Indian/Maldives
+          - Antarctica/Mawson
+          - Asia/Karachi
+          - Asia/Dushanbe
+          - Asia/Ashgabat
+          - Asia/Tashkent
+          - Asia/Yekaterinburg
+          - Asia/Colombo
+          - Asia/Kolkata
+          - Asia/Kathmandu
+          - Asia/Dhaka
+          - Asia/Thimphu
+          - Asia/Urumqi
+          - Indian/Chagos
+          - Asia/Bishkek
+          - Asia/Omsk
+          - Indian/Cocos
+          - Asia/Yangon
+          - Indian/Christmas
+          - Antarctica/Davis
+          - Asia/Hovd
+          - Asia/Bangkok
+          - Asia/Ho_Chi_Minh
+          - Asia/Phnom_Penh
+          - Asia/Vientiane
+          - Asia/Novosibirsk
+          - Asia/Jakarta
+          - Antarctica/Casey
+          - Australia/Perth
+          - Asia/Brunei
+          - Asia/Makassar
+          - Asia/Macau
+          - Asia/Shanghai
+          - Asia/Hong_Kong
+          - Asia/Irkutsk
+          - Asia/Kuala_Lumpur
+          - Asia/Manila
+          - Asia/Singapore
+          - Asia/Taipei
+          - Asia/Ulaanbaatar
+          - Australia/Eucla
+          - Asia/Jayapura
+          - Asia/Tokyo
+          - Asia/Pyongyang
+          - Asia/Seoul
+          - Pacific/Palau
+          - Asia/Dili
+          - Asia/Chita
+          - Australia/Adelaide
+          - Australia/Darwin
+          - Australia/Brisbane
+          - Australia/Sydney
+          - Pacific/Guam
+          - Pacific/Saipan
+          - Pacific/Chuuk
+          - Antarctica/DumontDUrville
+          - Pacific/Port_Moresby
+          - Asia/Vladivostok
+          - Australia/Lord_Howe
+          - Pacific/Bougainville
+          - Pacific/Kosrae
+          - Pacific/Noumea
+          - Pacific/Norfolk
+          - Asia/Sakhalin
+          - Pacific/Guadalcanal
+          - Pacific/Efate
+          - Pacific/Fiji
+          - Pacific/Tarawa
+          - Asia/Kamchatka
+          - Pacific/Majuro
+          - Pacific/Nauru
+          - Pacific/Auckland
+          - Antarctica/McMurdo
+          - Pacific/Funafuti
+          - Pacific/Wake
+          - Pacific/Wallis
+          - Pacific/Chatham
+          - Pacific/Kanton
+          - Pacific/Apia
+          - Pacific/Fakaofo
+          - Pacific/Tongatapu
+          - Pacific/Kiritimati
           description: Customer timezone.
           example: Europe/Paris
         external_id:
@@ -5041,6 +5822,66 @@ components:
               type:
               - string
               - 'null'
+              enum:
+              - AA
+              - AE
+              - AK
+              - AL
+              - AP
+              - AR
+              - AS
+              - AZ
+              - CA
+              - CO
+              - CT
+              - DC
+              - DE
+              - FL
+              - GA
+              - GU
+              - HI
+              - IA
+              - ID
+              - IL
+              - IN
+              - KS
+              - KY
+              - LA
+              - MA
+              - MD
+              - ME
+              - MI
+              - MN
+              - MO
+              - MP
+              - MS
+              - MT
+              - NC
+              - ND
+              - NE
+              - NH
+              - NJ
+              - NM
+              - NV
+              - NY
+              - OH
+              - OK
+              - OR
+              - PA
+              - PR
+              - RI
+              - SC
+              - SD
+              - TN
+              - TX
+              - UT
+              - VA
+              - VI
+              - VT
+              - WA
+              - WI
+              - WV
+              - WY
               description: Only for US country. Second part of subdivision code in
                 ISO format. See [ISO 3166-2:US](https://en.wikipedia.org/wiki/ISO_3166-2:US).
               example: CA
@@ -5048,6 +5889,262 @@ components:
               type:
               - string
               - 'null'
+              enum:
+              - AD
+              - AE
+              - AF
+              - AG
+              - AI
+              - AL
+              - AM
+              - AO
+              - AQ
+              - AR
+              - AS
+              - AT
+              - AU
+              - AW
+              - AX
+              - AZ
+              - BA
+              - BB
+              - BD
+              - BE
+              - BG
+              - BH
+              - BI
+              - BJ
+              - BL
+              - BM
+              - BN
+              - BO
+              - BQ
+              - BR
+              - BS
+              - BT
+              - BF
+              - BV
+              - BW
+              - BY
+              - BZ
+              - CA
+              - CC
+              - CD
+              - CF
+              - CG
+              - CH
+              - CI
+              - CK
+              - CL
+              - CM
+              - CN
+              - CO
+              - CR
+              - CU
+              - CV
+              - CW
+              - CX
+              - CY
+              - CZ
+              - DE
+              - DJ
+              - DK
+              - DM
+              - DO
+              - DZ
+              - EC
+              - EE
+              - EG
+              - EH
+              - ER
+              - ES
+              - ES-CE
+              - ES-ML
+              - ET
+              - FI
+              - FJ
+              - FK
+              - FM
+              - FO
+              - FR
+              - GA
+              - GB
+              - GD
+              - GE
+              - GF
+              - GG
+              - GH
+              - GI
+              - GL
+              - GM
+              - GN
+              - GP
+              - GQ
+              - GR
+              - GS
+              - GT
+              - GU
+              - GW
+              - GY
+              - HK
+              - HM
+              - HN
+              - HR
+              - HT
+              - HU
+              - IC
+              - ID
+              - IE
+              - IL
+              - IM
+              - IN
+              - IO
+              - IQ
+              - IR
+              - IS
+              - IT
+              - JE
+              - JM
+              - JO
+              - JP
+              - KE
+              - KG
+              - KH
+              - KI
+              - KM
+              - KN
+              - KP
+              - KR
+              - KW
+              - KY
+              - KZ
+              - LA
+              - LB
+              - LC
+              - LI
+              - LK
+              - LR
+              - LS
+              - LT
+              - LU
+              - LV
+              - LY
+              - MA
+              - MC
+              - MD
+              - ME
+              - MF
+              - MG
+              - MH
+              - MK
+              - ML
+              - MM
+              - MN
+              - MO
+              - MP
+              - MQ
+              - MR
+              - MS
+              - MT
+              - MU
+              - MV
+              - MW
+              - MX
+              - MY
+              - MZ
+              - NA
+              - NC
+              - NE
+              - NF
+              - NG
+              - NI
+              - NL
+              - 'NO'
+              - NP
+              - NR
+              - NU
+              - NZ
+              - OM
+              - PA
+              - PE
+              - PF
+              - PG
+              - PH
+              - PK
+              - PL
+              - PM
+              - PN
+              - PR
+              - PS
+              - PT
+              - PT-20
+              - PT-30
+              - PW
+              - PY
+              - QA
+              - RE
+              - RO
+              - RS
+              - RU
+              - RW
+              - SA
+              - SB
+              - SC
+              - SD
+              - SE
+              - SG
+              - SH
+              - SI
+              - SJ
+              - SK
+              - SL
+              - SM
+              - SN
+              - SO
+              - SR
+              - SS
+              - ST
+              - SV
+              - SX
+              - SY
+              - SZ
+              - TC
+              - TD
+              - TF
+              - TG
+              - TH
+              - TJ
+              - TK
+              - TL
+              - TM
+              - TN
+              - TO
+              - TR
+              - TT
+              - TV
+              - TW
+              - TZ
+              - UA
+              - UG
+              - UM
+              - US
+              - UY
+              - UZ
+              - VA
+              - VC
+              - VE
+              - VG
+              - VI
+              - VN
+              - VU
+              - WF
+              - WS
+              - XK
+              - YE
+              - YT
+              - ZA
+              - ZM
+              - ZW
               description: Two-letter country code in ISO format. See [ISO 3166-1
                 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).
               example: FR
@@ -5185,6 +6282,37 @@ components:
                 description: ID of the entity in the provider.
               provider_name:
                 type: string
+                enum:
+                - adyen
+                - stripe
+                - mollie
+                - gocardless
+                - airwallex
+                - salesforce
+                - hubspot
+                - attio
+                - xero
+                - pennylane
+                - zoho-books
+                - exact-online
+                - quickbooks
+                - netsuite
+                - rillet
+                - datev
+                - anrok
+                - chargebee
+                - slack
+                - plain
+                - zendesk
+                - pylon
+                - intercom
+                - front
+                - helpscout
+                - claap
+                - grain
+                - gong
+                - jiminny
+                - posthog
                 description: Provider name.
               provider_account_id:
                 type: string
@@ -5516,6 +6644,162 @@ components:
             example: bac_KJyPrMA1toAqRG
           currency:
             type: string
+            enum:
+            - EUR
+            - AED
+            - AFN
+            - XCD
+            - ALL
+            - AMD
+            - AOA
+            - ARS
+            - USD
+            - AUD
+            - AWG
+            - AZN
+            - BAM
+            - BBD
+            - BDT
+            - BGN
+            - BHD
+            - BIF
+            - XOF
+            - BMD
+            - BND
+            - BOB
+            - BRL
+            - BSD
+            - BTN
+            - NOK
+            - BWP
+            - BYR
+            - BZD
+            - CAD
+            - CDF
+            - XAF
+            - CHF
+            - NZD
+            - CLP
+            - CNY
+            - COP
+            - CRC
+            - CUP
+            - CVE
+            - ANG
+            - CZK
+            - DJF
+            - DKK
+            - DOP
+            - DZD
+            - EGP
+            - MAD
+            - ERN
+            - ETB
+            - FJD
+            - FKP
+            - GBP
+            - GEL
+            - GHS
+            - GIP
+            - GMD
+            - GNF
+            - GTQ
+            - GYD
+            - HKD
+            - HNL
+            - HRK
+            - HTG
+            - HUF
+            - IDR
+            - ILS
+            - INR
+            - IQD
+            - IRR
+            - ISK
+            - JMD
+            - JOD
+            - JPY
+            - KES
+            - KGS
+            - KHR
+            - KMF
+            - KPW
+            - KRW
+            - KWD
+            - KYD
+            - KZT
+            - LAK
+            - LBP
+            - LKR
+            - LRD
+            - LSL
+            - LYD
+            - MDL
+            - MGA
+            - MKD
+            - MMK
+            - MNT
+            - MOP
+            - MRO
+            - MUR
+            - MVR
+            - MWK
+            - MXN
+            - MYR
+            - MZN
+            - NAD
+            - XPF
+            - NGN
+            - NIO
+            - NPR
+            - OMR
+            - PAB
+            - PEN
+            - PGK
+            - PHP
+            - PKR
+            - PLN
+            - PYG
+            - QAR
+            - RON
+            - RSD
+            - RUB
+            - RWF
+            - SAR
+            - SBD
+            - SCR
+            - SDG
+            - SEK
+            - SGD
+            - SHP
+            - SLL
+            - SOS
+            - SRD
+            - SSP
+            - STD
+            - SYP
+            - SZL
+            - THB
+            - TJS
+            - TMT
+            - TND
+            - TOP
+            - TRY
+            - TTD
+            - TWD
+            - TZS
+            - UAH
+            - UGX
+            - UYU
+            - UZS
+            - VEF
+            - VND
+            - VUV
+            - WST
+            - YER
+            - ZAR
+            - ZMW
+            - ZWL
             description: Bank account currency.
             example: EUR
           bank_name:
@@ -5639,6 +6923,162 @@ components:
             example: bac_KJyPrMA1toAqRG
           currency:
             type: string
+            enum:
+            - EUR
+            - AED
+            - AFN
+            - XCD
+            - ALL
+            - AMD
+            - AOA
+            - ARS
+            - USD
+            - AUD
+            - AWG
+            - AZN
+            - BAM
+            - BBD
+            - BDT
+            - BGN
+            - BHD
+            - BIF
+            - XOF
+            - BMD
+            - BND
+            - BOB
+            - BRL
+            - BSD
+            - BTN
+            - NOK
+            - BWP
+            - BYR
+            - BZD
+            - CAD
+            - CDF
+            - XAF
+            - CHF
+            - NZD
+            - CLP
+            - CNY
+            - COP
+            - CRC
+            - CUP
+            - CVE
+            - ANG
+            - CZK
+            - DJF
+            - DKK
+            - DOP
+            - DZD
+            - EGP
+            - MAD
+            - ERN
+            - ETB
+            - FJD
+            - FKP
+            - GBP
+            - GEL
+            - GHS
+            - GIP
+            - GMD
+            - GNF
+            - GTQ
+            - GYD
+            - HKD
+            - HNL
+            - HRK
+            - HTG
+            - HUF
+            - IDR
+            - ILS
+            - INR
+            - IQD
+            - IRR
+            - ISK
+            - JMD
+            - JOD
+            - JPY
+            - KES
+            - KGS
+            - KHR
+            - KMF
+            - KPW
+            - KRW
+            - KWD
+            - KYD
+            - KZT
+            - LAK
+            - LBP
+            - LKR
+            - LRD
+            - LSL
+            - LYD
+            - MDL
+            - MGA
+            - MKD
+            - MMK
+            - MNT
+            - MOP
+            - MRO
+            - MUR
+            - MVR
+            - MWK
+            - MXN
+            - MYR
+            - MZN
+            - NAD
+            - XPF
+            - NGN
+            - NIO
+            - NPR
+            - OMR
+            - PAB
+            - PEN
+            - PGK
+            - PHP
+            - PKR
+            - PLN
+            - PYG
+            - QAR
+            - RON
+            - RSD
+            - RUB
+            - RWF
+            - SAR
+            - SBD
+            - SCR
+            - SDG
+            - SEK
+            - SGD
+            - SHP
+            - SLL
+            - SOS
+            - SRD
+            - SSP
+            - STD
+            - SYP
+            - SZL
+            - THB
+            - TJS
+            - TMT
+            - TND
+            - TOP
+            - TRY
+            - TTD
+            - TWD
+            - TZS
+            - UAH
+            - UGX
+            - UYU
+            - UZS
+            - VEF
+            - VND
+            - VUV
+            - WST
+            - YER
+            - ZAR
+            - ZMW
+            - ZWL
             description: Bank account currency.
             example: EUR
           bank_name:
@@ -5803,6 +7243,162 @@ components:
           example: PO-12345
         currency:
           type: string
+          enum:
+          - EUR
+          - AED
+          - AFN
+          - XCD
+          - ALL
+          - AMD
+          - AOA
+          - ARS
+          - USD
+          - AUD
+          - AWG
+          - AZN
+          - BAM
+          - BBD
+          - BDT
+          - BGN
+          - BHD
+          - BIF
+          - XOF
+          - BMD
+          - BND
+          - BOB
+          - BRL
+          - BSD
+          - BTN
+          - NOK
+          - BWP
+          - BYR
+          - BZD
+          - CAD
+          - CDF
+          - XAF
+          - CHF
+          - NZD
+          - CLP
+          - CNY
+          - COP
+          - CRC
+          - CUP
+          - CVE
+          - ANG
+          - CZK
+          - DJF
+          - DKK
+          - DOP
+          - DZD
+          - EGP
+          - MAD
+          - ERN
+          - ETB
+          - FJD
+          - FKP
+          - GBP
+          - GEL
+          - GHS
+          - GIP
+          - GMD
+          - GNF
+          - GTQ
+          - GYD
+          - HKD
+          - HNL
+          - HRK
+          - HTG
+          - HUF
+          - IDR
+          - ILS
+          - INR
+          - IQD
+          - IRR
+          - ISK
+          - JMD
+          - JOD
+          - JPY
+          - KES
+          - KGS
+          - KHR
+          - KMF
+          - KPW
+          - KRW
+          - KWD
+          - KYD
+          - KZT
+          - LAK
+          - LBP
+          - LKR
+          - LRD
+          - LSL
+          - LYD
+          - MDL
+          - MGA
+          - MKD
+          - MMK
+          - MNT
+          - MOP
+          - MRO
+          - MUR
+          - MVR
+          - MWK
+          - MXN
+          - MYR
+          - MZN
+          - NAD
+          - XPF
+          - NGN
+          - NIO
+          - NPR
+          - OMR
+          - PAB
+          - PEN
+          - PGK
+          - PHP
+          - PKR
+          - PLN
+          - PYG
+          - QAR
+          - RON
+          - RSD
+          - RUB
+          - RWF
+          - SAR
+          - SBD
+          - SCR
+          - SDG
+          - SEK
+          - SGD
+          - SHP
+          - SLL
+          - SOS
+          - SRD
+          - SSP
+          - STD
+          - SYP
+          - SZL
+          - THB
+          - TJS
+          - TMT
+          - TND
+          - TOP
+          - TRY
+          - TTD
+          - TWD
+          - TZS
+          - UAH
+          - UGX
+          - UYU
+          - UZS
+          - VEF
+          - VND
+          - VUV
+          - WST
+          - YER
+          - ZAR
+          - ZMW
+          - ZWL
           description: Currency code. See [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes).
           example: EUR
         source:
@@ -6211,6 +7807,162 @@ components:
                   example: 31500
                 currency:
                   type: string
+                  enum:
+                  - EUR
+                  - AED
+                  - AFN
+                  - XCD
+                  - ALL
+                  - AMD
+                  - AOA
+                  - ARS
+                  - USD
+                  - AUD
+                  - AWG
+                  - AZN
+                  - BAM
+                  - BBD
+                  - BDT
+                  - BGN
+                  - BHD
+                  - BIF
+                  - XOF
+                  - BMD
+                  - BND
+                  - BOB
+                  - BRL
+                  - BSD
+                  - BTN
+                  - NOK
+                  - BWP
+                  - BYR
+                  - BZD
+                  - CAD
+                  - CDF
+                  - XAF
+                  - CHF
+                  - NZD
+                  - CLP
+                  - CNY
+                  - COP
+                  - CRC
+                  - CUP
+                  - CVE
+                  - ANG
+                  - CZK
+                  - DJF
+                  - DKK
+                  - DOP
+                  - DZD
+                  - EGP
+                  - MAD
+                  - ERN
+                  - ETB
+                  - FJD
+                  - FKP
+                  - GBP
+                  - GEL
+                  - GHS
+                  - GIP
+                  - GMD
+                  - GNF
+                  - GTQ
+                  - GYD
+                  - HKD
+                  - HNL
+                  - HRK
+                  - HTG
+                  - HUF
+                  - IDR
+                  - ILS
+                  - INR
+                  - IQD
+                  - IRR
+                  - ISK
+                  - JMD
+                  - JOD
+                  - JPY
+                  - KES
+                  - KGS
+                  - KHR
+                  - KMF
+                  - KPW
+                  - KRW
+                  - KWD
+                  - KYD
+                  - KZT
+                  - LAK
+                  - LBP
+                  - LKR
+                  - LRD
+                  - LSL
+                  - LYD
+                  - MDL
+                  - MGA
+                  - MKD
+                  - MMK
+                  - MNT
+                  - MOP
+                  - MRO
+                  - MUR
+                  - MVR
+                  - MWK
+                  - MXN
+                  - MYR
+                  - MZN
+                  - NAD
+                  - XPF
+                  - NGN
+                  - NIO
+                  - NPR
+                  - OMR
+                  - PAB
+                  - PEN
+                  - PGK
+                  - PHP
+                  - PKR
+                  - PLN
+                  - PYG
+                  - QAR
+                  - RON
+                  - RSD
+                  - RUB
+                  - RWF
+                  - SAR
+                  - SBD
+                  - SCR
+                  - SDG
+                  - SEK
+                  - SGD
+                  - SHP
+                  - SLL
+                  - SOS
+                  - SRD
+                  - SSP
+                  - STD
+                  - SYP
+                  - SZL
+                  - THB
+                  - TJS
+                  - TMT
+                  - TND
+                  - TOP
+                  - TRY
+                  - TTD
+                  - TWD
+                  - TZS
+                  - UAH
+                  - UGX
+                  - UYU
+                  - UZS
+                  - VEF
+                  - VND
+                  - VUV
+                  - WST
+                  - YER
+                  - ZAR
+                  - ZMW
+                  - ZWL
                   description: Transaction currency.
                   example: EUR
                 customer_id:
@@ -6277,6 +8029,162 @@ components:
                         unit.
                     currency:
                       type: string
+                      enum:
+                      - EUR
+                      - AED
+                      - AFN
+                      - XCD
+                      - ALL
+                      - AMD
+                      - AOA
+                      - ARS
+                      - USD
+                      - AUD
+                      - AWG
+                      - AZN
+                      - BAM
+                      - BBD
+                      - BDT
+                      - BGN
+                      - BHD
+                      - BIF
+                      - XOF
+                      - BMD
+                      - BND
+                      - BOB
+                      - BRL
+                      - BSD
+                      - BTN
+                      - NOK
+                      - BWP
+                      - BYR
+                      - BZD
+                      - CAD
+                      - CDF
+                      - XAF
+                      - CHF
+                      - NZD
+                      - CLP
+                      - CNY
+                      - COP
+                      - CRC
+                      - CUP
+                      - CVE
+                      - ANG
+                      - CZK
+                      - DJF
+                      - DKK
+                      - DOP
+                      - DZD
+                      - EGP
+                      - MAD
+                      - ERN
+                      - ETB
+                      - FJD
+                      - FKP
+                      - GBP
+                      - GEL
+                      - GHS
+                      - GIP
+                      - GMD
+                      - GNF
+                      - GTQ
+                      - GYD
+                      - HKD
+                      - HNL
+                      - HRK
+                      - HTG
+                      - HUF
+                      - IDR
+                      - ILS
+                      - INR
+                      - IQD
+                      - IRR
+                      - ISK
+                      - JMD
+                      - JOD
+                      - JPY
+                      - KES
+                      - KGS
+                      - KHR
+                      - KMF
+                      - KPW
+                      - KRW
+                      - KWD
+                      - KYD
+                      - KZT
+                      - LAK
+                      - LBP
+                      - LKR
+                      - LRD
+                      - LSL
+                      - LYD
+                      - MDL
+                      - MGA
+                      - MKD
+                      - MMK
+                      - MNT
+                      - MOP
+                      - MRO
+                      - MUR
+                      - MVR
+                      - MWK
+                      - MXN
+                      - MYR
+                      - MZN
+                      - NAD
+                      - XPF
+                      - NGN
+                      - NIO
+                      - NPR
+                      - OMR
+                      - PAB
+                      - PEN
+                      - PGK
+                      - PHP
+                      - PKR
+                      - PLN
+                      - PYG
+                      - QAR
+                      - RON
+                      - RSD
+                      - RUB
+                      - RWF
+                      - SAR
+                      - SBD
+                      - SCR
+                      - SDG
+                      - SEK
+                      - SGD
+                      - SHP
+                      - SLL
+                      - SOS
+                      - SRD
+                      - SSP
+                      - STD
+                      - SYP
+                      - SZL
+                      - THB
+                      - TJS
+                      - TMT
+                      - TND
+                      - TOP
+                      - TRY
+                      - TTD
+                      - TWD
+                      - TZS
+                      - UAH
+                      - UGX
+                      - UYU
+                      - UZS
+                      - VEF
+                      - VND
+                      - VUV
+                      - WST
+                      - YER
+                      - ZAR
+                      - ZMW
+                      - ZWL
                       description: Currency code. See [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes).
                       example: EUR
                     exchange_rate:
@@ -6325,6 +8233,37 @@ components:
                         description: ID of the entity in the provider.
                       provider_name:
                         type: string
+                        enum:
+                        - adyen
+                        - stripe
+                        - mollie
+                        - gocardless
+                        - airwallex
+                        - salesforce
+                        - hubspot
+                        - attio
+                        - xero
+                        - pennylane
+                        - zoho-books
+                        - exact-online
+                        - quickbooks
+                        - netsuite
+                        - rillet
+                        - datev
+                        - anrok
+                        - chargebee
+                        - slack
+                        - plain
+                        - zendesk
+                        - pylon
+                        - intercom
+                        - front
+                        - helpscout
+                        - claap
+                        - grain
+                        - gong
+                        - jiminny
+                        - posthog
                         description: Provider name.
                       provider_account_id:
                         type: string
@@ -6555,6 +8494,66 @@ components:
           type:
           - string
           - 'null'
+          enum:
+          - AA
+          - AE
+          - AK
+          - AL
+          - AP
+          - AR
+          - AS
+          - AZ
+          - CA
+          - CO
+          - CT
+          - DC
+          - DE
+          - FL
+          - GA
+          - GU
+          - HI
+          - IA
+          - ID
+          - IL
+          - IN
+          - KS
+          - KY
+          - LA
+          - MA
+          - MD
+          - ME
+          - MI
+          - MN
+          - MO
+          - MP
+          - MS
+          - MT
+          - NC
+          - ND
+          - NE
+          - NH
+          - NJ
+          - NM
+          - NV
+          - NY
+          - OH
+          - OK
+          - OR
+          - PA
+          - PR
+          - RI
+          - SC
+          - SD
+          - TN
+          - TX
+          - UT
+          - VA
+          - VI
+          - VT
+          - WA
+          - WI
+          - WV
+          - WY
           description: Only for US country. Second part of subdivision code in ISO
             format. See [ISO 3166-2:US](https://en.wikipedia.org/wiki/ISO_3166-2:US).
           example: CA
@@ -6562,6 +8561,262 @@ components:
           type:
           - string
           - 'null'
+          enum:
+          - AD
+          - AE
+          - AF
+          - AG
+          - AI
+          - AL
+          - AM
+          - AO
+          - AQ
+          - AR
+          - AS
+          - AT
+          - AU
+          - AW
+          - AX
+          - AZ
+          - BA
+          - BB
+          - BD
+          - BE
+          - BG
+          - BH
+          - BI
+          - BJ
+          - BL
+          - BM
+          - BN
+          - BO
+          - BQ
+          - BR
+          - BS
+          - BT
+          - BF
+          - BV
+          - BW
+          - BY
+          - BZ
+          - CA
+          - CC
+          - CD
+          - CF
+          - CG
+          - CH
+          - CI
+          - CK
+          - CL
+          - CM
+          - CN
+          - CO
+          - CR
+          - CU
+          - CV
+          - CW
+          - CX
+          - CY
+          - CZ
+          - DE
+          - DJ
+          - DK
+          - DM
+          - DO
+          - DZ
+          - EC
+          - EE
+          - EG
+          - EH
+          - ER
+          - ES
+          - ES-CE
+          - ES-ML
+          - ET
+          - FI
+          - FJ
+          - FK
+          - FM
+          - FO
+          - FR
+          - GA
+          - GB
+          - GD
+          - GE
+          - GF
+          - GG
+          - GH
+          - GI
+          - GL
+          - GM
+          - GN
+          - GP
+          - GQ
+          - GR
+          - GS
+          - GT
+          - GU
+          - GW
+          - GY
+          - HK
+          - HM
+          - HN
+          - HR
+          - HT
+          - HU
+          - IC
+          - ID
+          - IE
+          - IL
+          - IM
+          - IN
+          - IO
+          - IQ
+          - IR
+          - IS
+          - IT
+          - JE
+          - JM
+          - JO
+          - JP
+          - KE
+          - KG
+          - KH
+          - KI
+          - KM
+          - KN
+          - KP
+          - KR
+          - KW
+          - KY
+          - KZ
+          - LA
+          - LB
+          - LC
+          - LI
+          - LK
+          - LR
+          - LS
+          - LT
+          - LU
+          - LV
+          - LY
+          - MA
+          - MC
+          - MD
+          - ME
+          - MF
+          - MG
+          - MH
+          - MK
+          - ML
+          - MM
+          - MN
+          - MO
+          - MP
+          - MQ
+          - MR
+          - MS
+          - MT
+          - MU
+          - MV
+          - MW
+          - MX
+          - MY
+          - MZ
+          - NA
+          - NC
+          - NE
+          - NF
+          - NG
+          - NI
+          - NL
+          - 'NO'
+          - NP
+          - NR
+          - NU
+          - NZ
+          - OM
+          - PA
+          - PE
+          - PF
+          - PG
+          - PH
+          - PK
+          - PL
+          - PM
+          - PN
+          - PR
+          - PS
+          - PT
+          - PT-20
+          - PT-30
+          - PW
+          - PY
+          - QA
+          - RE
+          - RO
+          - RS
+          - RU
+          - RW
+          - SA
+          - SB
+          - SC
+          - SD
+          - SE
+          - SG
+          - SH
+          - SI
+          - SJ
+          - SK
+          - SL
+          - SM
+          - SN
+          - SO
+          - SR
+          - SS
+          - ST
+          - SV
+          - SX
+          - SY
+          - SZ
+          - TC
+          - TD
+          - TF
+          - TG
+          - TH
+          - TJ
+          - TK
+          - TL
+          - TM
+          - TN
+          - TO
+          - TR
+          - TT
+          - TV
+          - TW
+          - TZ
+          - UA
+          - UG
+          - UM
+          - US
+          - UY
+          - UZ
+          - VA
+          - VC
+          - VE
+          - VG
+          - VI
+          - VN
+          - VU
+          - WF
+          - WS
+          - XK
+          - YE
+          - YT
+          - ZA
+          - ZM
+          - ZW
           description: Two-letter country code in ISO format. See [ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).
           example: FR
       description: Customer billing address.
@@ -6613,6 +8868,69 @@ components:
       description: Custom bank account for the customer. If not defined and customer
         paying by bank transfer, the bank accounts configured in your account settings
         will be used.
+    CreateInvoiceLineItem:
+      allOf:
+      - type: object
+        properties:
+          description:
+            type: string
+            maxLength: 5000
+            description: Description of the line item as it will appear on the invoice.
+              Default to the product description.
+            example: Access fee for the period of November 2024
+          units_count:
+            type: number
+            default: 1
+            description: Count of units of the product related to the invoice line
+              item.
+            example: 1
+          tax_rate:
+            type: number
+            minimum: 0
+            maximum: 100
+            description: Tax rate of the invoice line item.
+            example: 20
+          period_start:
+            type: string
+            format: date-time
+            description: Start date of the period corresponding to the line item charge.
+            example: '2024-10-13T00:00:00.000Z'
+          period_end:
+            type: string
+            format: date-time
+            description: End date of the period corresponding to the line item charge.
+            example: '2024-11-13T00:00:00.000Z'
+          display_unit_amount:
+            type: boolean
+            description: Whether the unit amount is displayed on the invoice PDF.
+              Defaults to true.
+            example: true
+          display_service_period:
+            type: boolean
+            description: Whether the service period dates are displayed in the line
+              item description on the invoice PDF. Defaults to true.
+            example: true
+        title: CreateInvoiceLineItem
+      - type: object
+        properties:
+          product_id:
+            type: string
+            description: Product ID related to the invoice line item.
+            example: itm_KbLcWt2qm5p1S2
+          name:
+            type: string
+            description: Name of the line item as it will appear on the invoice. Default
+              to the product name.
+            example: Platform access
+          unit_amount:
+            type: number
+            description: Amount of one unit of the product related to the invoice
+              line item. Default to the product price amount. Expressed in currency's
+              smallest unit.
+            example: 24000
+        additionalProperties: true
+        description: ''
+        title: CreateInvoiceLineItem
     InvoiceDeprecated:
       type: object
       properties:
@@ -6717,6 +9035,162 @@ components:
           example: PO-12345
         currency:
           type: string
+          enum:
+          - EUR
+          - AED
+          - AFN
+          - XCD
+          - ALL
+          - AMD
+          - AOA
+          - ARS
+          - USD
+          - AUD
+          - AWG
+          - AZN
+          - BAM
+          - BBD
+          - BDT
+          - BGN
+          - BHD
+          - BIF
+          - XOF
+          - BMD
+          - BND
+          - BOB
+          - BRL
+          - BSD
+          - BTN
+          - NOK
+          - BWP
+          - BYR
+          - BZD
+          - CAD
+          - CDF
+          - XAF
+          - CHF
+          - NZD
+          - CLP
+          - CNY
+          - COP
+          - CRC
+          - CUP
+          - CVE
+          - ANG
+          - CZK
+          - DJF
+          - DKK
+          - DOP
+          - DZD
+          - EGP
+          - MAD
+          - ERN
+          - ETB
+          - FJD
+          - FKP
+          - GBP
+          - GEL
+          - GHS
+          - GIP
+          - GMD
+          - GNF
+          - GTQ
+          - GYD
+          - HKD
+          - HNL
+          - HRK
+          - HTG
+          - HUF
+          - IDR
+          - ILS
+          - INR
+          - IQD
+          - IRR
+          - ISK
+          - JMD
+          - JOD
+          - JPY
+          - KES
+          - KGS
+          - KHR
+          - KMF
+          - KPW
+          - KRW
+          - KWD
+          - KYD
+          - KZT
+          - LAK
+          - LBP
+          - LKR
+          - LRD
+          - LSL
+          - LYD
+          - MDL
+          - MGA
+          - MKD
+          - MMK
+          - MNT
+          - MOP
+          - MRO
+          - MUR
+          - MVR
+          - MWK
+          - MXN
+          - MYR
+          - MZN
+          - NAD
+          - XPF
+          - NGN
+          - NIO
+          - NPR
+          - OMR
+          - PAB
+          - PEN
+          - PGK
+          - PHP
+          - PKR
+          - PLN
+          - PYG
+          - QAR
+          - RON
+          - RSD
+          - RUB
+          - RWF
+          - SAR
+          - SBD
+          - SCR
+          - SDG
+          - SEK
+          - SGD
+          - SHP
+          - SLL
+          - SOS
+          - SRD
+          - SSP
+          - STD
+          - SYP
+          - SZL
+          - THB
+          - TJS
+          - TMT
+          - TND
+          - TOP
+          - TRY
+          - TTD
+          - TWD
+          - TZS
+          - UAH
+          - UGX
+          - UYU
+          - UZS
+          - VEF
+          - VND
+          - VUV
+          - WST
+          - YER
+          - ZAR
+          - ZMW
+          - ZWL
           description: Currency code. See [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes).
           example: EUR
         source:
@@ -7141,6 +9615,162 @@ components:
                   example: 31500
                 currency:
                   type: string
+                  enum:
+                  - EUR
+                  - AED
+                  - AFN
+                  - XCD
+                  - ALL
+                  - AMD
+                  - AOA
+                  - ARS
+                  - USD
+                  - AUD
+                  - AWG
+                  - AZN
+                  - BAM
+                  - BBD
+                  - BDT
+                  - BGN
+                  - BHD
+                  - BIF
+                  - XOF
+                  - BMD
+                  - BND
+                  - BOB
+                  - BRL
+                  - BSD
+                  - BTN
+                  - NOK
+                  - BWP
+                  - BYR
+                  - BZD
+                  - CAD
+                  - CDF
+                  - XAF
+                  - CHF
+                  - NZD
+                  - CLP
+                  - CNY
+                  - COP
+                  - CRC
+                  - CUP
+                  - CVE
+                  - ANG
+                  - CZK
+                  - DJF
+                  - DKK
+                  - DOP
+                  - DZD
+                  - EGP
+                  - MAD
+                  - ERN
+                  - ETB
+                  - FJD
+                  - FKP
+                  - GBP
+                  - GEL
+                  - GHS
+                  - GIP
+                  - GMD
+                  - GNF
+                  - GTQ
+                  - GYD
+                  - HKD
+                  - HNL
+                  - HRK
+                  - HTG
+                  - HUF
+                  - IDR
+                  - ILS
+                  - INR
+                  - IQD
+                  - IRR
+                  - ISK
+                  - JMD
+                  - JOD
+                  - JPY
+                  - KES
+                  - KGS
+                  - KHR
+                  - KMF
+                  - KPW
+                  - KRW
+                  - KWD
+                  - KYD
+                  - KZT
+                  - LAK
+                  - LBP
+                  - LKR
+                  - LRD
+                  - LSL
+                  - LYD
+                  - MDL
+                  - MGA
+                  - MKD
+                  - MMK
+                  - MNT
+                  - MOP
+                  - MRO
+                  - MUR
+                  - MVR
+                  - MWK
+                  - MXN
+                  - MYR
+                  - MZN
+                  - NAD
+                  - XPF
+                  - NGN
+                  - NIO
+                  - NPR
+                  - OMR
+                  - PAB
+                  - PEN
+                  - PGK
+                  - PHP
+                  - PKR
+                  - PLN
+                  - PYG
+                  - QAR
+                  - RON
+                  - RSD
+                  - RUB
+                  - RWF
+                  - SAR
+                  - SBD
+                  - SCR
+                  - SDG
+                  - SEK
+                  - SGD
+                  - SHP
+                  - SLL
+                  - SOS
+                  - SRD
+                  - SSP
+                  - STD
+                  - SYP
+                  - SZL
+                  - THB
+                  - TJS
+                  - TMT
+                  - TND
+                  - TOP
+                  - TRY
+                  - TTD
+                  - TWD
+                  - TZS
+                  - UAH
+                  - UGX
+                  - UYU
+                  - UZS
+                  - VEF
+                  - VND
+                  - VUV
+                  - WST
+                  - YER
+                  - ZAR
+                  - ZMW
+                  - ZWL
                   description: Transaction currency.
                   example: EUR
                 customer_id:
@@ -7207,6 +9837,162 @@ components:
                         unit.
                     currency:
                       type: string
+                      enum:
+                      - EUR
+                      - AED
+                      - AFN
+                      - XCD
+                      - ALL
+                      - AMD
+                      - AOA
+                      - ARS
+                      - USD
+                      - AUD
+                      - AWG
+                      - AZN
+                      - BAM
+                      - BBD
+                      - BDT
+                      - BGN
+                      - BHD
+                      - BIF
+                      - XOF
+                      - BMD
+                      - BND
+                      - BOB
+                      - BRL
+                      - BSD
+                      - BTN
+                      - NOK
+                      - BWP
+                      - BYR
+                      - BZD
+                      - CAD
+                      - CDF
+                      - XAF
+                      - CHF
+                      - NZD
+                      - CLP
+                      - CNY
+                      - COP
+                      - CRC
+                      - CUP
+                      - CVE
+                      - ANG
+                      - CZK
+                      - DJF
+                      - DKK
+                      - DOP
+                      - DZD
+                      - EGP
+                      - MAD
+                      - ERN
+                      - ETB
+                      - FJD
+                      - FKP
+                      - GBP
+                      - GEL
+                      - GHS
+                      - GIP
+                      - GMD
+                      - GNF
+                      - GTQ
+                      - GYD
+                      - HKD
+                      - HNL
+                      - HRK
+                      - HTG
+                      - HUF
+                      - IDR
+                      - ILS
+                      - INR
+                      - IQD
+                      - IRR
+                      - ISK
+                      - JMD
+                      - JOD
+                      - JPY
+                      - KES
+                      - KGS
+                      - KHR
+                      - KMF
+                      - KPW
+                      - KRW
+                      - KWD
+                      - KYD
+                      - KZT
+                      - LAK
+                      - LBP
+                      - LKR
+                      - LRD
+                      - LSL
+                      - LYD
+                      - MDL
+                      - MGA
+                      - MKD
+                      - MMK
+                      - MNT
+                      - MOP
+                      - MRO
+                      - MUR
+                      - MVR
+                      - MWK
+                      - MXN
+                      - MYR
+                      - MZN
+                      - NAD
+                      - XPF
+                      - NGN
+                      - NIO
+                      - NPR
+                      - OMR
+                      - PAB
+                      - PEN
+                      - PGK
+                      - PHP
+                      - PKR
+                      - PLN
+                      - PYG
+                      - QAR
+                      - RON
+                      - RSD
+                      - RUB
+                      - RWF
+                      - SAR
+                      - SBD
+                      - SCR
+                      - SDG
+                      - SEK
+                      - SGD
+                      - SHP
+                      - SLL
+                      - SOS
+                      - SRD
+                      - SSP
+                      - STD
+                      - SYP
+                      - SZL
+                      - THB
+                      - TJS
+                      - TMT
+                      - TND
+                      - TOP
+                      - TRY
+                      - TTD
+                      - TWD
+                      - TZS
+                      - UAH
+                      - UGX
+                      - UYU
+                      - UZS
+                      - VEF
+                      - VND
+                      - VUV
+                      - WST
+                      - YER
+                      - ZAR
+                      - ZMW
+                      - ZWL
                       description: Currency code. See [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes).
                       example: EUR
                     exchange_rate:
@@ -7255,6 +10041,37 @@ components:
                         description: ID of the entity in the provider.
                       provider_name:
                         type: string
+                        enum:
+                        - adyen
+                        - stripe
+                        - mollie
+                        - gocardless
+                        - airwallex
+                        - salesforce
+                        - hubspot
+                        - attio
+                        - xero
+                        - pennylane
+                        - zoho-books
+                        - exact-online
+                        - quickbooks
+                        - netsuite
+                        - rillet
+                        - datev
+                        - anrok
+                        - chargebee
+                        - slack
+                        - plain
+                        - zendesk
+                        - pylon
+                        - intercom
+                        - front
+                        - helpscout
+                        - claap
+                        - grain
+                        - gong
+                        - jiminny
+                        - posthog
                         description: Provider name.
                       provider_account_id:
                         type: string
@@ -7442,69 +10259,6 @@ components:
       - transactions
       - public_url
       title: InvoiceDeprecated
-    CreateInvoiceLineItem:
-      allOf:
-      - type: object
-        properties:
-          description:
-            type: string
-            maxLength: 5000
-            description: Description of the line item as it will appear on the invoice.
-              Default to the product description.
-            example: Access fee for the period of November 2024
-          units_count:
-            type: number
-            default: 1
-            description: Count of units of the product related to the invoice line
-              item.
-            example: 1
-          tax_rate:
-            type: number
-            minimum: 0
-            maximum: 100
-            description: Tax rate of the invoice line item.
-            example: 20
-          period_start:
-            type: string
-            format: date-time
-            description: Start date of the period corresponding to the line item charge.
-            example: '2024-10-13T00:00:00.000Z'
-          period_end:
-            type: string
-            format: date-time
-            description: End date of the period corresponding to the line item charge.
-            example: '2024-11-13T00:00:00.000Z'
-          display_unit_amount:
-            type: boolean
-            description: Whether the unit amount is displayed on the invoice PDF.
-              Defaults to true.
-            example: true
-          display_service_period:
-            type: boolean
-            description: Whether the service period dates are displayed in the line
-              item description on the invoice PDF. Defaults to true.
-            example: true
-        title: CreateInvoiceLineItem
-      - type: object
-        properties:
-          product_id:
-            type: string
-            description: Product ID related to the invoice line item.
-            example: itm_KbLcWt2qm5p1S2
-          name:
-            type: string
-            description: Name of the line item as it will appear on the invoice. Default
-              to the product name.
-            example: Platform access
-          unit_amount:
-            type: number
-            description: Amount of one unit of the product related to the invoice
-              line item. Default to the product price amount. Expressed in currency's
-              smallest unit.
-            example: 24000
-        additionalProperties: true
-        description: ''
-        title: CreateInvoiceLineItem
     InvoiceLineItem:
       type: object
       properties:

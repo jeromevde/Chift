@@ -1,14 +1,15 @@
 """
 
-Validate generated models against payloads built from the spec's own examples.
+Validate generated models against payloads built from the spec's own examples!
 
 A failure means the spec contradicts itself (a `format` that its own `example`
 violates, say) — worth seeing at generate time, not in production.
 
 
 """
-import random
 from typing import Any
+
+from pydantic import ValidationError
 
 MAX_DEPTH = 12
 
@@ -72,10 +73,11 @@ def check(spec: dict, models) -> list[str]:
                 name = schema["$ref"].rsplit("/", 1)[-1]
                 model = getattr(models, name, None)
                 if model is None:
+                    problems.append(f"{verb.upper()} {path} -> missing model {name}")
                     continue
                 try:
                     model.model_validate(example(schema, spec))
-                except Exception as exc:
+                except ValidationError as exc:
                     detail = str(exc).splitlines()
                     problems.append(f"{verb.upper()} {path} -> {name}: {detail[1].strip() if len(detail) > 1 else exc}")
     return problems

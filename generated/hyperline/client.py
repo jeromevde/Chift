@@ -1,11 +1,53 @@
 """Generated from Hyperline API — do not edit."""
 
-from codegeneration.runtime import RestClient
+from __future__ import annotations
+
+from typing import Any, Mapping, TypeVar
+
+import httpx
+from pydantic import BaseModel
 
 from . import models
 
+M = TypeVar("M", bound=BaseModel)
 
-class HyperlineClient(RestClient):
+
+class _Http:
+    def __init__(self, base_url: str, token: str, timeout: float = 30.0):
+        self._http = httpx.Client(
+            base_url=base_url,
+            timeout=timeout,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    def _encode_body(self, body: BaseModel | Mapping[str, Any] | None) -> Any:
+        if body is None:
+            return None
+        if isinstance(body, BaseModel):
+            return body.model_dump(mode="json", exclude_none=True)
+        return dict(body)
+
+    def _call(
+        self,
+        verb: str,
+        path: str,
+        query: Mapping[str, object],
+        body: BaseModel | Mapping[str, Any] | None,
+        model: type[M] | None,
+    ) -> M | None:
+        r = self._http.request(
+            verb,
+            path,
+            params={k: v for k, v in query.items() if v is not None},
+            json=self._encode_body(body),
+        )
+        r.raise_for_status()
+        if model is None:
+            return None
+        return model.model_validate(r.json())
+
+
+class HyperlineClient(_Http):
 
     def list_customers(self, **query: object) -> models.CursorPaginatedCustomer:
         """List customers"""
@@ -23,21 +65,9 @@ class HyperlineClient(RestClient):
         """Get invoice"""
         return self._call("GET", f"/v2/invoices/{id}", query, None, models.InvoiceDetails)
 
-    def list_customers_deprecated(self, **query: object) -> models.PaginatedCustomerV1:
-        """List customers"""
-        return self._call("GET", f"/v1/customers", query, None, models.PaginatedCustomerV1)
-
     def create_customer(self, body: models.CreateCustomer, **query: object) -> models.CustomerDetailsV1:
         """Create customer"""
         return self._call("POST", f"/v1/customers", query, body, models.CustomerDetailsV1)
-
-    def get_customer_deprecated(self, id: str, **query: object) -> models.CustomerDetailsV1:
-        """Get customer"""
-        return self._call("GET", f"/v1/customers/{id}", query, None, models.CustomerDetailsV1)
-
-    def update_customer(self, id: str, body: models.UpdateCustomer, **query: object) -> models.CustomerDetailsV1:
-        """Update customer"""
-        return self._call("PUT", f"/v1/customers/{id}", query, body, models.CustomerDetailsV1)
 
     def delete_customer(self, id: str, **query: object) -> None:
         """Delete customer"""
@@ -47,21 +77,9 @@ class HyperlineClient(RestClient):
         """Archive customer"""
         return self._call("PUT", f"/v1/customers/{id}/archive", query, None, models.CustomerV1)
 
-    def list_invoices_deprecated(self, **query: object) -> models.PaginatedInvoiceV1:
-        """List invoices"""
-        return self._call("GET", f"/v1/invoices", query, None, models.PaginatedInvoiceV1)
-
     def create_invoice(self, body: models.CreateInvoice, **query: object) -> models.InvoiceDetailsV1:
         """Create invoice"""
         return self._call("POST", f"/v1/invoices", query, body, models.InvoiceDetailsV1)
-
-    def get_invoice_deprecated(self, id: str, **query: object) -> models.InvoiceDetailsV1:
-        """Get invoice"""
-        return self._call("GET", f"/v1/invoices/{id}", query, None, models.InvoiceDetailsV1)
-
-    def update_invoice(self, id: str, body: models.UpdateInvoice, **query: object) -> models.InvoiceDetailsV1:
-        """Update invoice"""
-        return self._call("PATCH", f"/v1/invoices/{id}", query, body, models.InvoiceDetailsV1)
 
     def delete_invoice(self, id: str, **query: object) -> None:
         """Delete invoice"""

@@ -1,4 +1,12 @@
-"""Canonical Chift response shapes. Connectors map into these."""
+"""Canonical Chift response shapes. Connectors map into these.
+
+Aligned with the fields we use from `chift/chift.openapi.yaml` (ContactItemOut /
+InvoiceItemOut). Unused optional Chift-only blobs (Italian specificities, journal
+refs, …) are omitted on purpose.
+"""
+from __future__ import annotations
+
+from datetime import date, datetime
 from enum import Enum
 from typing import Generic, TypeVar
 
@@ -88,9 +96,9 @@ class ContactItemOut(BaseModel):
     comment: str | None = None
     customer_account_number: str | None = None
     supplier_account_number: str | None = None
-    birthdate: str | None = None
+    birthdate: date | None = None
     gender: ContactGender | None = None
-    addresses: list[AddressItemOutInvoicing] = Field(default_factory=list)
+    addresses: list[AddressItemOutInvoicing] | None = Field(default_factory=list)
     external_reference: str | None = None
 
 
@@ -110,31 +118,37 @@ class InvoiceLineItemOut(BaseModel):
     untaxed_amount: float
     total: float
     tax_rate: float | None = None
+    account_number: str | None = None
+    tax_id: str | None = None
     product_id: str | None = None
+    product_code: str | None = None
+    product_name: str | None = None
 
 
 class InvoiceItemOut(BaseModel):
     id: str
     source_ref: Ref
     currency: str
-    invoice_type: InvoicingInvoiceType | None = None
+    invoice_type: InvoicingInvoiceType
     status: InvoiceStatus
-    invoice_date: str
+    invoice_date: date
     tax_amount: float
     untaxed_amount: float
     total: float
     lines: list[InvoiceLineItemOut] = Field(default_factory=list)
     partner_id: str | None = None
     invoice_number: str | None = None
-    due_date: str | None = None
+    due_date: date | None = None
     reference: str | None = None
     customer_memo: str | None = None
-    last_updated_on: str | None = None
+    last_updated_on: datetime | None = None
     outstanding_amount: float | None = None
+    last_payment_date: date | None = None
+    accounting_date: date | None = None
 
 
 # ── errors ──────────────────────────────────────────────────────────────────
-# Chift declares exactly two error shapes (see README § Errors):
+# Chift declares exactly two error shapes:
 #   ChiftError          400 / 404 / 405 / 409 / 502
 #   HTTPValidationError 422  (FastAPI's built-in)
 

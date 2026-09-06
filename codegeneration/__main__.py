@@ -1,4 +1,4 @@
-from codegeneration.generate import main
+from codegeneration.run import main
 
 if __name__ == "__main__":
     main()

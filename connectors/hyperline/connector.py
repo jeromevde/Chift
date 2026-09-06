@@ -6,10 +6,11 @@ Generated client fetches Hyperline; this maps into chift.models.
 from __future__ import annotations
 
 import functools
-import uuid
+from datetime import date, datetime
 from typing import Any
 
 import httpx
+from pydantic import ValidationError
 
 from chift.models import (
     ChiftAPIError,
@@ -28,39 +29,56 @@ from generated.hyperline import models as hl
 from generated.hyperline.client import HyperlineClient
 from connectors.hyperline.config import get_settings
 
-_CHIFT_NAMESPACE = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
-
+# Explicit maps only — unknown provider values raise (see `_require_map`).
 INVOICE_STATUS = {
     "draft": InvoiceStatus.draft,
     "pending_approval": InvoiceStatus.draft,
+    "changes_requested": InvoiceStatus.draft,
+    "open": InvoiceStatus.posted,
     "to_pay": InvoiceStatus.posted,
     "grace_period": InvoiceStatus.posted,
     "partially_paid": InvoiceStatus.posted,
     "paid": InvoiceStatus.paid,
     "closed": InvoiceStatus.paid,
     "voided": InvoiceStatus.cancelled,
+    "uncollectible": InvoiceStatus.cancelled,
+    "archived": InvoiceStatus.cancelled,
 }
 
 INVOICE_TYPE = {
     "invoice": InvoicingInvoiceType.customer_invoice,
     "document": InvoicingInvoiceType.customer_invoice,
     "credit_note": InvoicingInvoiceType.customer_refund,
+    "child_invoice_ref": InvoicingInvoiceType.customer_invoice,
+    "child_creditnote_ref": InvoicingInvoiceType.customer_refund,
 }
 
 
-def _chift_id(kind: str, source_id: str) -> str:
-    return str(uuid.uuid5(_CHIFT_NAMESPACE, f"hyperline:{kind}:{source_id}"))
+def _require_map(table: dict, key: str | None, *, kind: str):
+    if key is None or key not in table:
+        raise ChiftAPIError(
+            502,
+            ChiftError(
+                message=f"Unmapped Hyperline {kind}: {key!r}",
+                detail=f"hyperline {kind}={key}",
+                error_code="MappingError",
+            ),
+        )
+    return table[key]
 
 
 def _cents(n: float | int | None) -> float | None:
     return None if n is None else float(n) / 100
 
 
-def _day(s: Any) -> str | None:
+def _day(s: Any) -> date | None:
     if s is None:
         return None
-    text = s if isinstance(s, str) else s.isoformat()
-    return text[:10]
+    if isinstance(s, datetime):
+        return s.date()
+    if isinstance(s, date):
+        return s
+    return date.fromisoformat(str(s)[:10])
 
 
 def _addr(kind: AddressTypeInvoicing, raw: Any) -> AddressItemOutInvoicing | None:
@@ -92,8 +110,9 @@ def _line(item: hl.InvoiceLineItem) -> InvoiceLineItemOut:
 def to_contact(data: hl.Customer | hl.CustomerDetails | hl.CustomerDetailsV1) -> ContactItemOut:
     company = data.type == "corporate"
     taxes = data.tax_ids or []
+    # Pass-through: Chift `id` == Hyperline id (no id store in this POC).
     return ContactItemOut(
-        id=_chift_id("customer", data.id or ""),
+        id=data.id or "",
         source_ref=Ref(id=data.id, model="customer"),
         is_customer=True,
         is_prospect=False,
@@ -130,16 +149,27 @@ def _issue_date(data: Any) -> Any:
 def to_invoice(data: hl.Invoice | hl.InvoiceDetails | hl.InvoiceDetailsV1) -> InvoiceItemOut:
     customer = data.customer
     lines = data.line_items or []
+    invoice_date = _day(_issue_date(data))
+    if invoice_date is None:
+        raise ChiftAPIError(
+            502,
+            ChiftError(
+                message="Hyperline invoice has no issue date",
+                detail=f"hyperline invoice id={data.id}",
+                error_code="MappingError",
+            ),
+        )
+    # Pass-through: Chift `id` / `partner_id` == Hyperline ids (no id store in this POC).
     return InvoiceItemOut(
-        id=_chift_id("invoice", data.id or ""),
+        id=data.id or "",
         source_ref=Ref(id=data.id, model="invoice"),
         currency=data.currency or "",
-        invoice_type=INVOICE_TYPE.get(data.type or "", InvoicingInvoiceType.customer_invoice),
-        status=INVOICE_STATUS.get(data.status or "", InvoiceStatus.posted),
+        invoice_type=_require_map(INVOICE_TYPE, data.type, kind="invoice type"),
+        status=_require_map(INVOICE_STATUS, data.status, kind="invoice status"),
         invoice_number=data.number,
-        invoice_date=_day(_issue_date(data)) or "",
+        invoice_date=invoice_date,
         due_date=_day(data.due_at),
-        partner_id=_chift_id("customer", customer.id) if customer and customer.id else None,
+        partner_id=customer.id if customer and customer.id else None,
         total=_cents(data.total_amount) or 0.0,
         untaxed_amount=_cents(data.amount_excluding_tax) or 0.0,
         tax_amount=_cents(data.tax_amount) or 0.0,
@@ -211,6 +241,19 @@ def _raise_chift(method):
             return method(*args, **kwargs)
         except httpx.HTTPStatusError as exc:
             raise to_error(exc) from exc
+        except ValidationError as exc:
+            # We keep the provider's full enums (see codegeneration/normalize.py), so a
+            # value Hyperline adds later fails here. That is a downstream change, not a
+            # bad request from our caller: 502, with the offending field named.
+            fields = ", ".join(".".join(str(p) for p in e["loc"]) for e in exc.errors()[:3])
+            raise ChiftAPIError(
+                502,
+                ChiftError(
+                    message="Provider response did not match Hyperline's published schema",
+                    detail=f"unexpected value at: {fields}",
+                    error_code="ProviderSchemaMismatch",
+                ),
+            ) from exc
 
     return wrapper
 

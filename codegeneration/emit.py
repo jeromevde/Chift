@@ -39,12 +39,54 @@ import yaml
 
 HEAD = '''"""Generated from {title} — do not edit."""
 
-from codegeneration.runtime import RestClient
+from __future__ import annotations
+
+from typing import Any, Mapping, TypeVar
+
+import httpx
+from pydantic import BaseModel
 
 from . import models
 
+M = TypeVar("M", bound=BaseModel)
 
-class {cls}(RestClient):
+
+class _Http:
+    def __init__(self, base_url: str, token: str, timeout: float = 30.0):
+        self._http = httpx.Client(
+            base_url=base_url,
+            timeout=timeout,
+            headers={{"Authorization": f"Bearer {{token}}"}},
+        )
+
+    def _encode_body(self, body: BaseModel | Mapping[str, Any] | None) -> Any:
+        if body is None:
+            return None
+        if isinstance(body, BaseModel):
+            return body.model_dump(mode="json", exclude_none=True)
+        return dict(body)
+
+    def _call(
+        self,
+        verb: str,
+        path: str,
+        query: Mapping[str, object],
+        body: BaseModel | Mapping[str, Any] | None,
+        model: type[M] | None,
+    ) -> M | None:
+        r = self._http.request(
+            verb,
+            path,
+            params={{k: v for k, v in query.items() if v is not None}},
+            json=self._encode_body(body),
+        )
+        r.raise_for_status()
+        if model is None:
+            return None
+        return model.model_validate(r.json())
+
+
+class {cls}(_Http):
 '''
 
 METHOD = '''

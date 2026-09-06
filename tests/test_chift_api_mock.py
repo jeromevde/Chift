@@ -60,13 +60,14 @@ def test_create_two_contacts_and_get_them_back(client):
             assert r.status_code == 200, r.text
             contacts.append(r.json())
 
-        created_ids = [c["source_ref"]["id"] for c in contacts]
+        created_ids = [c["id"] for c in contacts]
 
         for contact in contacts:
-            cid = contact["source_ref"]["id"]
+            cid = contact["id"]
             got = http.get(f"/consumers/{CONSUMER}/invoicing/contacts/{cid}")
             assert got.status_code == 200, got.text
             body = got.json()
+            assert body["id"] == cid
             assert body["source_ref"]["id"] == cid
             assert body["company_name"] == contact["company_name"]
             assert body["email"] == contact["email"]
@@ -78,7 +79,7 @@ def test_create_two_contacts_and_get_them_back(client):
             params={"page": 1, "size": 50},
         )
         assert listed.status_code == 200, listed.text
-        listed_ids = {c["source_ref"]["id"] for c in listed.json()["items"]}
+        listed_ids = {c["id"] for c in listed.json()["items"]}
         assert set(created_ids).issubset(listed_ids)
     finally:
         for cid in created_ids:
@@ -101,7 +102,7 @@ def test_create_two_invoices_and_get_them_back(client):
             },
         )
         assert created.status_code == 200, created.text
-        customer_id = created.json()["source_ref"]["id"]
+        customer_id = created.json()["id"]
 
         invoices = []
         for label in ("a", "b"):
@@ -112,14 +113,16 @@ def test_create_two_invoices_and_get_them_back(client):
             assert r.status_code == 200, r.text
             invoices.append(r.json())
 
-        invoice_ids = [i["source_ref"]["id"] for i in invoices]
+        invoice_ids = [i["id"] for i in invoices]
 
         for invoice in invoices:
-            iid = invoice["source_ref"]["id"]
+            iid = invoice["id"]
             got = http.get(f"/consumers/{CONSUMER}/invoicing/invoices/{iid}")
             assert got.status_code == 200, got.text
             body = got.json()
+            assert body["id"] == iid
             assert body["source_ref"]["id"] == iid
+            assert body["partner_id"] == customer_id
             assert body["reference"] == invoice["reference"]
             assert body["currency"] == "EUR"
             assert body["total"] > 0
@@ -129,7 +132,7 @@ def test_create_two_invoices_and_get_them_back(client):
             params={"page": 1, "size": 50},
         )
         assert listed.status_code == 200, listed.text
-        listed_ids = {i["source_ref"]["id"] for i in listed.json()["items"]}
+        listed_ids = {i["id"] for i in listed.json()["items"]}
         assert set(invoice_ids).issubset(listed_ids)
     finally:
         for iid in invoice_ids:
