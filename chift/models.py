@@ -131,3 +131,39 @@ class InvoiceItemOut(BaseModel):
     customer_memo: str | None = None
     last_updated_on: str | None = None
     outstanding_amount: float | None = None
+
+
+# ── errors ──────────────────────────────────────────────────────────────────
+# Chift declares exactly two error shapes (see README § Errors):
+#   ChiftError          400 / 404 / 405 / 409 / 502
+#   HTTPValidationError 422  (FastAPI's built-in)
+
+
+class ChiftError(BaseModel):
+    message: str
+    status: str | None = "error"
+    detail: str | None = ""
+    error_code: str | None = None
+
+
+class ValidationError(BaseModel):
+    loc: list[str | int]
+    msg: str
+    type: str
+    input: object | None = None
+    ctx: dict | None = None
+
+
+class HTTPValidationError(BaseModel):
+    message: str = "Validation error"
+    status: str = "error"
+    detail: list[ValidationError] = Field(default_factory=list)
+
+
+class ChiftAPIError(Exception):
+    """What a Chift endpoint raises. The API layer renders it as `error`, with `status_code`."""
+
+    def __init__(self, status_code: int, error: ChiftError | HTTPValidationError):
+        super().__init__(error.message)
+        self.status_code = status_code
+        self.error = error

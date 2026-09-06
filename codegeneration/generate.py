@@ -1,9 +1,9 @@
 """Generate a connector package: prune -> normalize -> models + client.
 
 Usage (from repo root):
-  python -m cli.generate
-  python -m cli.generate hyperline
-  python -m cli.generate chift
+  python -m codegeneration.generate
+  python -m codegeneration.generate hyperline
+  python -m codegeneration.generate chift
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from pathlib import Path
 
 import yaml
 
-from cli import check, emit, normalize, prune
+from codegeneration import check, emit, normalize, prune
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -22,11 +22,12 @@ DMCG = """--input-file-type openapi --output-model-type pydantic_v2.BaseModel
 --enum-field-as-literal all --collapse-root-models
 --target-python-version 3.11 --formatters ruff-format""".split()
 
-# Assignment paths: Chift contact/invoice surface + Hyperline write ops used by live tests.
+# Provider APIs the connector *consumes*. Chift is not here: we implement Chift's
+# contract, we don't call it — `chift/models.py` is the target shape, not a client.
 CONNECTORS = {
     "hyperline": (
         "connectors/hyperline/openapi.hyperline.yaml",
-        "codegen/hyperline",
+        "generated/hyperline",
         "HyperlineClient",
         [
             "/v2/customers",
@@ -38,17 +39,6 @@ CONNECTORS = {
             "/v1/customers/{id}/archive",
             "/v1/invoices",
             "/v1/invoices/{id}",
-        ],
-    ),
-    "chift": (
-        "chift/chift.openapi.yaml",
-        "codegen/chift",
-        "ChiftClient",
-        [
-            "/consumers/{consumer_id}/invoicing/contacts",
-            "/consumers/{consumer_id}/invoicing/contacts/{contact_id}",
-            "/consumers/{consumer_id}/invoicing/invoices",
-            "/consumers/{consumer_id}/invoicing/invoices/{invoice_id}",
         ],
     ),
 }
@@ -82,8 +72,8 @@ def generate(spec_path: Path, out_pkg: Path, client_cls: str, paths: list[str]) 
     )
     (out_pkg / "client.py").write_text(emit.emit(spec, client_cls))
 
-    sys.path.insert(0, str(out_pkg.parent.parent if out_pkg.parent.name == "codegen" else out_pkg.parent))
-    # Import as codegen.hyperline.models when out is codegen/hyperline
+    sys.path.insert(0, str(out_pkg.parent.parent if out_pkg.parent.name == "generated" else out_pkg.parent))
+    # Import as generated.hyperline.models when out is codegen/hyperline
     pkg_import = ".".join(out_pkg.relative_to(ROOT).parts)
     models = __import__(f"{pkg_import}.models", fromlist=["models"])
     for problem in check.check(spec, models):

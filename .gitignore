@@ -12,4 +12,4 @@ uv.lock
 dist/
 *.egg-info/
 .DS_Store
-codegen/hyperline/.ruff_cache/
+generated/hyperline/.ruff_cache/

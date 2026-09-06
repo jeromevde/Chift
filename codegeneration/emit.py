@@ -39,7 +39,7 @@ import yaml
 
 HEAD = '''"""Generated from {title} — do not edit."""
 
-from cli.runtime import RestClient
+from codegeneration.runtime import RestClient
 
 from . import models
 

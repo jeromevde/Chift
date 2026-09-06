@@ -34,15 +34,14 @@ neutralises the unmappable parts in the normalizer instead — see [Rule 2](#rul
 
 ## Layout
 
-Everything now lives in this repo; the generator is `cli/`, its output is `codegen/`.
+Everything lives in this repo: `codegeneration/` is the generator, `generated/` is its output.
 
 | Path | What it is |
 |---|---|
-| `cli/` | **the generator** — hand-written, ~650 lines, connector-agnostic |
-| `cli/generate.py` | glue + the connector registry (spec → output package → paths) |
-| `codegen/hyperline/` | generated `models.py` + `client.py` from Hyperline's spec |
-| `codegen/chift/` | generated models + client from **Chift's own** spec |
-| `connectors/hyperline/` | the connector: Hyperline → Chift mapping, config, first-pass hand-written models |
+| `codegeneration/` | **the generator** — hand-written, ~650 lines, connector-agnostic |
+| `codegeneration/generate.py` | glue + the connector registry (spec → output package → paths) |
+| `generated/hyperline/` | generated `models.py` + `client.py` from Hyperline's spec |
+| `connectors/hyperline/` | the connector: Hyperline → Chift mapping + config. No HTTP code — it calls the generated client directly |
 | `chift/` | Chift unified models + a mock `chift.api` dispatching by `consumer_id` |
 | `tests/` | live sandbox round-trip through `chift.api` |
 
@@ -50,12 +49,20 @@ Everything now lives in this repo; the generator is `cli/`, its output is `codeg
 cp .env.example .env          # add HYPERLINE_API_KEY_TEST
 pip install -e ".[dev]"
 
-python -m cli.generate            # regenerate both connectors
-python -m cli.generate hyperline  # just one
-pytest                            # live sandbox round-trip
+python -m codegeneration.generate            # regenerate every connector
+python -m codegeneration.generate hyperline  # just one
+pytest                                       # live sandbox round-trip
 ```
 
 Adding a connector is a spec file plus one entry in `CONNECTORS`.
+
+**Chift is deliberately not generated.** We *implement* Chift's contract; we never call it, so
+a generated `ChiftClient` would be dead code. The models are a closer call — Chift's spec does
+generate cleanly (26 classes / 470 lines, no contradictions), and that was worth proving as a
+reusability check — but `--force-optional` leaves generated `ContactItemOut` with **zero**
+required fields, where the hand-written one requires `id` and `source_ref`. Be liberal in what
+you accept, strict in what you emit: force-optional is right for a provider response and wrong
+for our own output contract. `chift/models.py` stays hand-written.
 
 Each generated package keeps the `openapi.normalized.yaml` it was built from, so the input to
 `datamodel-codegen` is always inspectable next to its output.
@@ -143,7 +150,7 @@ v1/v2 trap ([§6](#6-two-live-incompatible-schemas-for-one-resource)) visible at
 
 ## The four rewrites
 
-Each is one function in `cli/normalize.py`. Two kinds of rule live here, and
+Each is one function in `codegeneration/normalize.py`. Two kinds of rule live here, and
 keeping the distinction explicit matters:
 
 - **Equivalent normalization** reshapes a schema without changing which values it accepts.
@@ -491,6 +498,82 @@ cus_test123  →  source_ref.id = "cus_test123"  →  id = "cus_test123"
 hashes ids with `uuid.uuid5`, from an earlier belief that Chift required UUIDs. Either the
 mapper should drop the hashing, or this note is wrong — worth resolving before the walkthrough.
 
+### Errors — and what they reveal about how a spec is made
+
+The two documents describe failure very differently, and the reason is instructive.
+
+| | Chift | Hyperline |
+|---|---|---|
+| Named error schemas | 2 | **0** |
+| Error responses declared | 454 | 114 |
+| Shape | `$ref` to a shared schema | inline `{message}` ×107, empty ×6, one outlier |
+| Codes covered | 400, 404, 405, 409, 422, 502 | 400, 403, 404, 302 |
+
+Chift has `ChiftError` (400/404/405/409/502 — 302 uses) and `HTTPValidationError` (422 — 152
+uses):
+
+```json
+// ChiftError                      // HTTPValidationError
+{ "message": "...",                { "message": "Validation error",
+  "status": "error",                 "status": "error",
+  "detail": "",                      "detail": [{ "loc": ["body","email"],
+  "error_code": null }                            "msg": "...", "type": "..." }] }
+```
+
+**Chift's spec is FastAPI-generated.** `HTTPValidationError` wrapping
+`ValidationError{loc, msg, type}` is FastAPI's built-in 422 model verbatim, and every scalar
+field carries a `title` — the same thing that forced [Rule 4](#rule-4--name_from_path) to strip
+titles from non-objects. FastAPI derives the document *from the running code*, so error models
+appear automatically, `$ref`'d and reused. Nobody typed 422 onto 179 operations; the framework
+emitted it.
+
+**Hyperline's spec is maintained apart from its code.** The tell is the same `{message: string}`
+object repeated **inline 107 times** instead of one `$ref` — what you get when each route is
+annotated independently with no shared component.
+
+And it has drifted. The sandbox actually returns:
+
+```json
+{"statusCode": 400, "type": "ValidationError", "message": "Cannot delete a customer who is not archived", "errors": []}
+{"statusCode": 400, "type": "ZodError",        "message": "[...]",                                        "errors": []}
+```
+
+Four fields; the spec declares one. That shape appears **nowhere** in the document. The
+`ZodError` type says they validate with Zod at the edge and never reflected that schema into
+the OpenAPI file. The errors are real and structured — just undocumented.
+
+This is the same root cause as most of [§Nine things](#nine-things-openapi-cant-tell-a-generator):
+a spec that is a separate artefact drifts from the code; one that *is* the code cannot.
+
+**So the error path can't be generated — it has to be mapped, exactly like the success path.**
+`runtime.py` only calls `raise_for_status()`; generating typed errors from Hyperline's document
+would produce `message: str` and silently miss `statusCode`, `type` and `errors`. Left alone,
+that leaks: a Chift caller asking for a missing contact used to get an `httpx.HTTPStatusError`
+carrying Hyperline's `{statusCode, type, message}` — a shape Chift never promised.
+
+`connectors/hyperline/connector.py::to_error` closes it, and the `@translates_errors` class
+decorator applies it to every public connector method:
+
+```python
+ChiftAPIError(404, ChiftError(
+    message="The resource you are trying to access was not found",
+    status="error",
+    detail="hyperline 404 NotFound",   # provenance kept for debugging
+    error_code="NotFound",             # provider's type, surfaced not swallowed
+))
+```
+
+Unmapped statuses become **502** — Chift declares it on 29 operations, and it's the honest code
+for "the downstream software failed", not "your request was wrong". `chift/models.py` carries
+`ChiftError` / `HTTPValidationError` / `ValidationError` to match the spec, plus `ChiftAPIError`
+for the raise. Success stays in the return type (`-> InvoiceItemOut`) and failure travels as an
+exception — the FastAPI convention Chift's own API already follows.
+
+Worth noting on the Chift side too: `error_code` is `string | null` with **no enum**, so the one
+field a caller would branch on is opaque; and `detail` is a *string* on `ChiftError` but a *list
+of objects* on `HTTPValidationError`, so it can't be read safely without first checking the
+status code.
+
 ### Provider workflows
 
 Hyperline requires **archive then delete** for customers, and returns 400 on hard-deleting a
@@ -528,7 +611,7 @@ already `date-time`. Seeding a subscription confirmed the consequence: **one cus
 subscription broke `list_customers` for every caller**, not just that customer.
 
 **Hyperline has since corrected it.** The currently vendored document says `date-time`, the
-generated field is `AwareDatetime`, and `python -m cli.generate` now reports no
+generated field is `AwareDatetime`, and `python -m codegeneration.generate` now reports no
 contradictions — which is the regression test working as intended.
 
 It was deliberately never patched in the normalizer: silently widening a declared format hides
@@ -578,7 +661,7 @@ Stainless calls transforms and Speakeasy uses directly — **cannot express it**
 cannot compute a value from where the target sits in the document. `open_enum` is arguably
 expressible (RFC 9535 defines `length()`); `title = <parent> + <property>` is not, by design.
 
-**So:** roughly 80% of `codegen/` should be deleted in favour of Spectral + Redocly or
+**So:** roughly 80% of `codegeneration/` should be deleted in favour of Spectral + Redocly or
 openapi-generator's `FILTER`. Keep `normalize.py`'s naming and enum policy — ~40 real lines
 with no off-the-shelf equivalent. If it ever needs to be more than that, buy Stainless or
 Speakeasy rather than grow it; the judgment layer *is* their business.

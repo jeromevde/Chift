@@ -38,8 +38,6 @@ class RestClient:
             params={k: v for k, v in query.items() if v is not None},
             json=self._encode_body(body),
         )
-        if r.status_code == 404 and verb.upper() == "DELETE":
-            return None
         r.raise_for_status()
         if model is None or not r.content:
             return None

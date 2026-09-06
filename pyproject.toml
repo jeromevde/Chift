@@ -9,6 +9,7 @@ dependencies = [
     "python-dotenv>=1.0",
     "email-validator>=2.0",
     "PyYAML>=6.0",
+    "fastapi>=0.115",
 ]
 
 [project.optional-dependencies]
@@ -19,7 +20,7 @@ dev = [
 ]
 
 [project.scripts]
-generate = "cli.generate:main"
+generate = "codegeneration.generate:main"
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -27,7 +28,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["chift*", "cli*", "connectors*", "codegen*"]
+include = ["chift*", "codegeneration*", "connectors*", "generated*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

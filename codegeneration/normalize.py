@@ -117,9 +117,17 @@ def anonymous_union(schema: dict, name: str) -> dict:
             for t in ([b["type"]] if isinstance(b.get("type"), str) else b.get("type") or [])
         }
         if declared <= {"object", "null"}:
+            # Merge the branches' properties rather than discarding them: the field
+            # names are the only thing the spec author did write down, and for a
+            # request body they are load-bearing. First branch wins on a conflict.
+            merged: dict = {}
+            for branch in branches:
+                for key, value in (branch.get("properties") or {}).items():
+                    merged.setdefault(key, value)
             return {
                 # keep the null branch, or the field stops accepting null
                 "type": ["object", "null"] if "null" in declared else "object",
+                **({"properties": merged} if merged else {}),
                 "additionalProperties": True,
                 "description": schema.get("description", ""),
             }
