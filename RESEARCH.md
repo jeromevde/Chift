@@ -114,15 +114,25 @@ Mostly renames, plus cents, datetimes, and a nested customer.
 | Status | one `status`, 18 values | `status`, 4 values (`draft` / `posted` / `paid` / `cancelled`) |
 | Lines | `line_items[]` | `lines[]` (`InvoiceLineItemOut`) |
 
-Hyperline's 18 statuses collapse onto Chift's 4: not-yet-finalised → `draft`,
-issued-and-active → `posted`, `paid` → `paid`, void/discarded/written-off → `cancelled`.
+Chift has no `closed` status. Hyperline's 18 statuses collapse onto its four lifecycle states:
+
+| Chift | Hyperline |
+|---|---|
+| `draft` | `draft`, `pending_approval`, `changes_requested`, `open`, `grace_period`, `missing_info`, `pending_parent_concat`, `pending_consolidation` |
+| `posted` | `to_pay`, `partially_paid`, `error`, `charged_on_parent`, `consolidated`, `uncollectible` |
+| `paid` | `paid` |
+| `cancelled` | `voided`, `closed`, `archived` |
+
+In particular, Hyperline defines `closed` as not issued and discarded, so `cancelled` is the
+closest Chift state. `uncollectible` remains a valid issued invoice and Hyperline allows it to
+be paid later, so it stays `posted` rather than `cancelled`.
 
 > **There is no `payment_status` field on the real Chift invoice** — `payment_status` exists
 > only as a *query filter* on `GET /invoices`. Verified against `https://api.chift.eu/openapi.json`
 > on 2026-09-05; this replaces an earlier invented
 > `payment_status`/`total_excl_tax`/`total_tax`/`contact_id`/`comment` field set that was never real.
 
-### IDs — open question ⚠️
+### IDs — resolved: provider ID pass-through
 
 Checked against the real spec: **`id` is plain `{"type": "string"}` on both `ContactItemOut`
 and `InvoiceItemOut`. No UUID format is enforced.** (Only `consumer_id`, Chift's tenant
@@ -133,9 +143,11 @@ pass straight through:
 cus_test123  →  source_ref.id = "cus_test123"  →  id = "cus_test123"
 ```
 
-**The code disagrees with this conclusion.** `connectors/hyperline/connector.py:50` still
-hashes ids with `uuid.uuid5`, from an earlier belief that Chift required UUIDs. Either the
-mapper should drop the hashing, or this note is wrong — worth resolving before the walkthrough.
+The connector therefore uses the Hyperline ID unchanged for both `id` and `source_ref.id`.
+There is no UUID hashing and no stateful ID lookup in this POC, so an ID returned by list or
+create can be passed directly to retrieve-one. Production Chift may keep its own technical ID
+and provider-ID store, but adding that machinery here would not improve the four requested
+operations.
 
 ### Errors — and what they reveal about how a spec is made
 
@@ -196,12 +208,15 @@ carrying Hyperline's `{statusCode, type, message}` — a shape Chift never promi
 decorator applies it to every public connector method:
 
 ```python
-ChiftAPIError(404, ChiftError(
-    message="The resource you are trying to access was not found",
-    status="error",
-    detail="hyperline 404 NotFound",   # provenance kept for debugging
-    error_code="NotFound",             # provider's type, surfaced not swallowed
-))
+ChiftAPIError(
+    404,
+    ChiftError(
+        message="The resource you are trying to access was not found",
+        status="error",
+        detail="hyperline 404 NotFound",  # provenance kept for debugging
+        error_code="NotFound",  # provider's type, surfaced not swallowed
+    ),
+)
 ```
 
 Unmapped statuses become **502** — Chift declares it on 29 operations, and it's the honest code

@@ -4,6 +4,7 @@ Usage (from repo root):
   python -m codegeneration
   python -m codegeneration.run hyperline
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -20,9 +21,12 @@ ROOT = Path(__file__).resolve().parents[1]
 # then enforces the fields Chift needs (_required / status maps). Don't drop flags casually.
 DMCG = [
     # Input / output shape
-    "--input-file-type", "openapi",
-    "--output-model-type", "pydantic_v2.BaseModel",
-    "--target-python-version", "3.11",
+    "--input-file-type",
+    "openapi",
+    "--output-model-type",
+    "pydantic_v2.BaseModel",
+    "--target-python-version",
+    "3.11",
     # Prefer modern typing: list[str] and str | None instead of List/Optional.
     "--use-standard-collections",
     "--use-union-operator",
@@ -31,14 +35,17 @@ DMCG = [
     # Flatten RootModel wrappers so fields are on the model, not .root.
     "--collapse-root-models",
     # Enums as Literal[...] so `customer.type == "corporate"` works (Enum members don't).
-    "--enum-field-as-literal", "all",
+    "--enum-field-as-literal",
+    "all",
     # Soft intake: Hyperline's `required` often means "key may be present", not "value
     # always populated". Missing fields become None here; the connector fails loudly for
     # fields Chift cannot invent (see connectors/hyperline/connector.py::_required).
     "--force-optional",
-    # Stable diffs: no generated timestamp header; ruff-format for readable output.
+    # Stable diffs: no timestamp; Ruff fixes imports and formats generated output.
     "--disable-timestamp",
-    "--formatters", "ruff-format",
+    "--formatters",
+    "ruff-check",
+    "ruff-format",
 ]
 
 # Provider APIs the connector *consumes*. Chift is not here: we implement Chift's
@@ -115,7 +122,9 @@ def main(argv: list[str] | None = None) -> None:
     names = argv if argv is not None else sys.argv[1:]
     for name in names or CONNECTORS:
         if name not in CONNECTORS:
-            raise SystemExit(f"unknown connector {name!r}; choose from {sorted(CONNECTORS)}")
+            raise SystemExit(
+                f"unknown connector {name!r}; choose from {sorted(CONNECTORS)}"
+            )
         spec, out, client_cls, endpoints = CONNECTORS[name]
         print(f"{name}:")
         run(ROOT / spec, ROOT / out, client_cls, endpoints)

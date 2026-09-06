@@ -13,16 +13,10 @@
   `invoice_type` is required, and date/date-time fields should use their documented types.
 - [ ] Decide which documented Chift filters belong in the POC. The current API implements
   `page` and `size`, but not contact type, invoice type, payment status, or date filters.
-- [ ] Make the LLM mapping step reproducible: record its source and target schemas, prompt or
-  instructions, generated artifact, and the human/live checks applied before accepting it.
-- [ ] Update the live tests to exercise retrieve-one with the returned Chift `id`, not only
-  `source_ref.id`, and verify a real second page of cursor-to-page pagination. Ask before adding
-  these tests.
-- [ ] Make sandbox cleanup robust when creation fails midway; currently IDs are collected only
-  after both fixtures are created.
-- [ ] Run the complete live sandbox suite and record the result immediately before submission.
-- [ ] Make `ruff check --no-cache .` pass. It currently reports 20 issues, mostly formatting,
-  unused imports, and generated-client f-strings.
+- [x] Exercise retrieve-one with the returned Chift `id` and test cursor-to-page pagination.
+- [x] Make sandbox cleanup robust when creation fails midway.
+- [x] Run the complete live sandbox suite immediately before submission.
+- [x] Make `ruff check --no-cache .` pass.
 
 ## Reusable framework
 

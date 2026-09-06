@@ -8,6 +8,7 @@ generated models and Chift's contract, then reviewed and verified against the
 sandbox (tests/). The semantic decisions — cents, dates, status collapse,
 contact roles, pagination — are deliberately explicit so they can be reviewed.
 """
+
 from __future__ import annotations
 
 import functools
@@ -38,17 +39,26 @@ T = TypeVar("T")
 
 # Explicit maps only — unknown provider values raise (see `_require_map`).
 INVOICE_STATUS = {
+    # Not issued or still editable.
     "draft": InvoiceStatus.draft,
     "pending_approval": InvoiceStatus.draft,
     "changes_requested": InvoiceStatus.draft,
-    "open": InvoiceStatus.posted,
+    "open": InvoiceStatus.draft,
+    "grace_period": InvoiceStatus.draft,
+    "missing_info": InvoiceStatus.draft,
+    "pending_parent_concat": InvoiceStatus.draft,
+    "pending_consolidation": InvoiceStatus.draft,
+    # Issued, but not fully paid.
     "to_pay": InvoiceStatus.posted,
-    "grace_period": InvoiceStatus.posted,
     "partially_paid": InvoiceStatus.posted,
+    "error": InvoiceStatus.posted,
+    "charged_on_parent": InvoiceStatus.posted,
+    "consolidated": InvoiceStatus.posted,
+    "uncollectible": InvoiceStatus.posted,
     "paid": InvoiceStatus.paid,
-    "closed": InvoiceStatus.paid,
+    # No longer a valid current invoice.
     "voided": InvoiceStatus.cancelled,
-    "uncollectible": InvoiceStatus.cancelled,
+    "closed": InvoiceStatus.cancelled,
     "archived": InvoiceStatus.cancelled,
 }
 
@@ -118,11 +128,17 @@ def _addr(kind: AddressTypeInvoicing, raw: Any) -> AddressItemOutInvoicing | Non
 def _line(item: hl.InvoiceLineItem) -> InvoiceLineItemOut:
     return InvoiceLineItemOut(
         description=item.name,
-        unit_price=_cents(_required(item.unit_amount, "invoice.line_items[].unit_amount")),
+        unit_price=_cents(
+            _required(item.unit_amount, "invoice.line_items[].unit_amount")
+        ),
         quantity=_required(item.units_count, "invoice.line_items[].units_count"),
-        tax_amount=_cents(_required(item.tax_amount, "invoice.line_items[].tax_amount")),
+        tax_amount=_cents(
+            _required(item.tax_amount, "invoice.line_items[].tax_amount")
+        ),
         untaxed_amount=_cents(
-            _required(item.amount_excluding_tax, "invoice.line_items[].amount_excluding_tax")
+            _required(
+                item.amount_excluding_tax, "invoice.line_items[].amount_excluding_tax"
+            )
         ),
         total=_cents(_required(item.amount, "invoice.line_items[].amount")),
         tax_rate=item.tax_rate,
@@ -130,7 +146,9 @@ def _line(item: hl.InvoiceLineItem) -> InvoiceLineItemOut:
     )
 
 
-def to_contact(data: hl.Customer | hl.CustomerDetails | hl.CustomerDetailsV1) -> ContactItemOut:
+def to_contact(
+    data: hl.Customer | hl.CustomerDetails | hl.CustomerDetailsV1,
+) -> ContactItemOut:
     company = data.type == "corporate"
     taxes = data.tax_ids or []
     contact_id = _required(data.id, "customer.id")
@@ -161,8 +179,8 @@ def to_contact(data: hl.Customer | hl.CustomerDetails | hl.CustomerDetailsV1) ->
     )
 
 
-def _issue_date(data: Any) -> Any:
-    """v2 calls it `issued_at`, v1 calls it `emitted_at` — same concept, silent rename."""
+def _invoice_date(data: Any) -> Any:
+    """Return the issue date, or the billing-period start for an unissued invoice."""
     return (
         getattr(data, "issued_at", None)
         or getattr(data, "emitted_at", None)
@@ -170,20 +188,13 @@ def _issue_date(data: Any) -> Any:
     )
 
 
-def to_invoice(data: hl.Invoice | hl.InvoiceDetails | hl.InvoiceDetailsV1) -> InvoiceItemOut:
+def to_invoice(
+    data: hl.Invoice | hl.InvoiceDetails | hl.InvoiceDetailsV1,
+) -> InvoiceItemOut:
     customer = data.customer
     invoice_id = _required(data.id, "invoice.id")
     lines = _required(data.line_items, "invoice.line_items")
-    invoice_date = _day(_issue_date(data))
-    if invoice_date is None:
-        raise ChiftAPIError(
-            502,
-            ChiftError(
-                message="Hyperline invoice has no issue date",
-                detail=f"hyperline invoice id={data.id}",
-                error_code="MappingError",
-            ),
-        )
+    invoice_date = _day(_required(_invoice_date(data), "invoice.issue_date"))
     # Pass-through: Chift `id` / `partner_id` == Hyperline ids (no id store in this POC).
     return InvoiceItemOut(
         id=invoice_id,
@@ -217,7 +228,7 @@ def _page_via_cursor(fetch, *, page: int, size: int, map_item, **query):
             include_total=(current == 1 and total is None),
             **query,
         )
-        items = list(raw.data or [])
+        items = list(_required(raw.data, "pagination.data"))
         if total is None and raw.total is not None:
             total = raw.total
         if current < page:
@@ -228,7 +239,7 @@ def _page_via_cursor(fetch, *, page: int, size: int, map_item, **query):
     mapped = [map_item(x) for x in items]
     return ChiftPage(
         items=mapped,
-        total=int(total) if total is not None else len(mapped),
+        total=_required(total, "pagination.total"),
         page=page,
         size=size,
     )
@@ -259,7 +270,9 @@ def to_error(exc: httpx.HTTPStatusError) -> ChiftAPIError:
     return ChiftAPIError(
         status,
         ChiftError(
-            message=body.get("message") or exc.response.reason_phrase or "Provider error",
+            message=body.get("message")
+            or exc.response.reason_phrase
+            or "Provider error",
             detail=f"hyperline {upstream} {body.get('type', '')}".strip(),
             error_code=body.get("type"),
         ),
@@ -277,7 +290,9 @@ def _raise_chift(method):
             # We keep the provider's full enums (see codegeneration/normalize.py), so a
             # value Hyperline adds later fails here. That is a downstream change, not a
             # bad request from our caller: 502, with the offending field named.
-            fields = ", ".join(".".join(str(p) for p in e["loc"]) for e in exc.errors()[:3])
+            fields = ", ".join(
+                ".".join(str(p) for p in e["loc"]) for e in exc.errors()[:3]
+            )
             raise ChiftAPIError(
                 502,
                 ChiftError(
@@ -298,7 +313,9 @@ class HyperlineInvoicingConnector:
         )
 
     @_raise_chift
-    def create_contact(self, *, name: str, email: str, external_id: str) -> ContactItemOut:
+    def create_contact(
+        self, *, name: str, email: str, external_id: str
+    ) -> ContactItemOut:
         raw = self.client.create_customer(
             hl.CreateCustomer(
                 name=name,
@@ -350,15 +367,21 @@ class HyperlineInvoicingConnector:
         return to_contact(self.client.get_customer(contact_id))
 
     @_raise_chift
-    def list_contacts(self, *, page: int = 1, size: int = 50) -> ChiftPage[ContactItemOut]:
-        return _page_via_cursor(self.client.list_customers, page=page, size=size, map_item=to_contact)
+    def list_contacts(
+        self, *, page: int = 1, size: int = 50
+    ) -> ChiftPage[ContactItemOut]:
+        return _page_via_cursor(
+            self.client.list_customers, page=page, size=size, map_item=to_contact
+        )
 
     @_raise_chift
     def get_invoice(self, invoice_id: str) -> InvoiceItemOut:
         return to_invoice(self.client.get_invoice(invoice_id))
 
     @_raise_chift
-    def list_invoices(self, *, page: int = 1, size: int = 50) -> ChiftPage[InvoiceItemOut]:
+    def list_invoices(
+        self, *, page: int = 1, size: int = 50
+    ) -> ChiftPage[InvoiceItemOut]:
         return _page_via_cursor(
             self.client.list_invoices,
             page=page,

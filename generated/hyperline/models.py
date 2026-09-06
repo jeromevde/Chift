@@ -2,6 +2,9 @@
 #   filename:  openapi.normalized.yaml
 
 from __future__ import annotations
+
+from typing import Any, Literal
+
 from pydantic import (
     AnyUrl,
     AwareDatetime,
@@ -14,7 +17,6 @@ from pydantic import (
     confloat,
     constr,
 )
-from typing import Any, Literal
 
 
 class InvoiceDetailsIntegration(BaseModel):

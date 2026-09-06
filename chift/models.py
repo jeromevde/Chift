@@ -4,6 +4,7 @@ Aligned with the fields we use from `chift/chift.openapi.yaml` (ContactItemOut /
 InvoiceItemOut). Unused optional Chift-only blobs (Italian specificities, journal
 refs, …) are omitted on purpose.
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime

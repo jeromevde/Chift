@@ -124,7 +124,9 @@ bake-off live in `~/Desktop/experiment_openapi/`.
 class HyperlineClient(RestClient):
     def get_customer(self, id: str, **query: object) -> models.CustomerDetails:
         """Get customer"""
-        return self._call("GET", f"/v2/customers/{id}", query, None, models.CustomerDetails)
+        return self._call(
+            "GET", f"/v2/customers/{id}", query, None, models.CustomerDetails
+        )
 ```
 
 Query params stay `**query` deliberately: `/v2/customers` declares **95** of them
@@ -204,7 +206,11 @@ branch; the spec never wrote one, so the generator counts:
 
 ```python
 class PaymentMethod1(BaseModel): ...
+
+
 class PaymentMethod8(PaymentMethod1, PaymentMethod7): ...
+
+
 class PaymentMethod(RootModel[PaymentMethod8 | PaymentMethod9 | ...]): ...
 ```
 
@@ -606,7 +612,11 @@ the sandbox returns `bank_account: null`.
 
 ```python
 class PaymentMethod1(BaseModel): ...
+
+
 class PaymentMethod8(PaymentMethod1, PaymentMethod7): ...
+
+
 class PaymentMethod(RootModel[PaymentMethod8 | PaymentMethod9 | ...]): ...
 ```
 

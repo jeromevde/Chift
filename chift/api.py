@@ -3,6 +3,7 @@ Minimal Chift invoicing API (FastAPI).
 
 Connectors raise `ChiftAPIError`; this app only renders it as JSON.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -51,11 +52,14 @@ class CreateInvoiceBody(BaseModel):
     reference: str
 
 
-@app.get("/consumers/{consumer_id}/invoicing/contacts", response_model=ChiftPage[ContactItemOut])
+@app.get(
+    "/consumers/{consumer_id}/invoicing/contacts",
+    response_model=ChiftPage[ContactItemOut],
+)
 def list_contacts(
     consumer_id: str,
     page: int = Query(1, ge=1),
-    size: int = Query(50, ge=1),
+    size: int = Query(50, ge=1, le=100),
 ) -> ChiftPage[ContactItemOut]:
     return _connector(consumer_id).list_contacts(page=page, size=size)
 
@@ -75,11 +79,14 @@ def get_contact(consumer_id: str, contact_id: str) -> ContactItemOut:
     return _connector(consumer_id).get_contact(contact_id)
 
 
-@app.get("/consumers/{consumer_id}/invoicing/invoices", response_model=ChiftPage[InvoiceItemOut])
+@app.get(
+    "/consumers/{consumer_id}/invoicing/invoices",
+    response_model=ChiftPage[InvoiceItemOut],
+)
 def list_invoices(
     consumer_id: str,
     page: int = Query(1, ge=1),
-    size: int = Query(50, ge=1),
+    size: int = Query(50, ge=1, le=100),
 ) -> ChiftPage[InvoiceItemOut]:
     return _connector(consumer_id).list_invoices(page=page, size=size)
 

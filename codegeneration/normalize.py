@@ -77,10 +77,13 @@ name_from_path — an anonymous object needs a class name
     so it is set on objects and stripped everywhere else — FastAPI specs put a
     title on every scalar field, which otherwise yields RootModel[str | None].
 """
+
 import re
 import sys
+from pathlib import Path
 
 import yaml
+
 
 def pascal(*parts: str) -> str:
     """('get_customer', 'Response') -> 'GetCustomerResponse'. Keeps existing caps."""
@@ -94,6 +97,7 @@ def singular(name: str) -> str:
 
 
 # ── the rules ────────────────────────────────────────────────────────────────
+
 
 def annotated_ref(schema: dict, name: str) -> dict:
     """allOf of one $ref plus branches that add no properties -> the $ref."""
@@ -117,8 +121,11 @@ def anonymous_union(schema: dict, name: str) -> dict:
         if any("$ref" in b for b in branches):
             continue
         declared = {
-            t for b in branches
-            for t in ([b["type"]] if isinstance(b.get("type"), str) else b.get("type") or [])
+            t
+            for b in branches
+            for t in (
+                [b["type"]] if isinstance(b.get("type"), str) else b.get("type") or []
+            )
         }
         if declared <= {"object", "null"}:
             # Merge the branches' properties rather than discarding them: the field
@@ -150,6 +157,7 @@ RULES = (annotated_ref, anonymous_union, name_from_path)
 
 # ── applying them ────────────────────────────────────────────────────────────
 
+
 def walk(node, name: str):
     """Recurse into a schema, then apply every rule to it on the way back up."""
     if isinstance(node, list):
@@ -160,7 +168,8 @@ def walk(node, name: str):
     schema = dict(node)
     if isinstance(schema.get("properties"), dict):
         schema["properties"] = {
-            key: walk(value, name + pascal(key)) for key, value in schema["properties"].items()
+            key: walk(value, name + pascal(key))
+            for key, value in schema["properties"].items()
         }
     if "items" in schema:
         schema["items"] = walk(schema["items"], singular(name))
@@ -181,9 +190,11 @@ def hoist(spec: dict) -> dict:
             if not isinstance(operation, dict) or "operationId" not in operation:
                 continue
             holders = [(operation.get("requestBody"), "Body")]
-            holders += [(response, "Response")
-                        for code, response in (operation.get("responses") or {}).items()
-                        if code.startswith("2")]
+            holders += [
+                (response, "Response")
+                for code, response in (operation.get("responses") or {}).items()
+                if code.startswith("2")
+            ]
             for holder, suffix in holders:
                 content = (holder or {}).get("content", {}).get("application/json")
                 if not content or "$ref" in content.get("schema", {}):
@@ -208,10 +219,12 @@ def rename(node, alias: dict):
 
 # Hyperline marks these as `format: date` but the live API (and the spec's own
 # examples) return datetimes. Nested under Customer.subscriptions.items.
-_DATETIME_MASQUERADING_AS_DATE = frozenset({
-    "current_period_started_at",
-    "current_period_ends_at",
-})
+_DATETIME_MASQUERADING_AS_DATE = frozenset(
+    {
+        "current_period_started_at",
+        "current_period_ends_at",
+    }
+)
 
 
 def provider_quirks(node):
@@ -234,11 +247,19 @@ def normalize(spec: dict) -> dict:
     spec = hoist(spec)
     alias = {name: pascal(name) for name in spec["components"]["schemas"]}
     spec = rename(spec, alias)
-    schemas = {alias[name]: walk(schema, alias[name])
-               for name, schema in spec["components"]["schemas"].items()}
-    return provider_quirks({**spec, "components": {**spec["components"], "schemas": schemas}})
+    schemas = {
+        alias[name]: walk(schema, alias[name])
+        for name, schema in spec["components"]["schemas"].items()
+    }
+    return provider_quirks(
+        {**spec, "components": {**spec["components"], "schemas": schemas}}
+    )
 
 
 if __name__ == "__main__":
     src, dst = sys.argv[1:3]
-    yaml.safe_dump(normalize(yaml.safe_load(open(src))), open(dst, "w"), sort_keys=False)
+    Path(dst).write_text(
+        yaml.safe_dump(
+            normalize(yaml.safe_load(Path(src).read_text())), sort_keys=False
+        )
+    )

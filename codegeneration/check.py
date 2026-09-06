@@ -7,6 +7,7 @@ violates, say) — worth seeing at generate time, not in production.
 
 
 """
+
 from typing import Any
 
 from pydantic import ValidationError
@@ -15,10 +16,14 @@ MAX_DEPTH = 12
 
 # Placeholders for `format`ted strings the spec gives no example for.
 FORMATS = {
-    "uri": "https://example.com", "url": "https://example.com",
-    "email": "a@example.com", "uuid": "00000000-0000-0000-0000-000000000000",
-    "date": "2024-01-01", "date-time": "2024-01-01T00:00:00Z",
-    "hostname": "example.com", "ipv4": "127.0.0.1",
+    "uri": "https://example.com",
+    "url": "https://example.com",
+    "email": "a@example.com",
+    "uuid": "00000000-0000-0000-0000-000000000000",
+    "date": "2024-01-01",
+    "date-time": "2024-01-01T00:00:00Z",
+    "hostname": "example.com",
+    "ipv4": "127.0.0.1",
 }
 
 
@@ -49,9 +54,15 @@ def example(schema: dict, root: dict, depth: int = 0) -> Any:
     if "enum" in s:
         return s["enum"][0]
     types = s.get("type") or "object"
-    kind = next((t for t in (types if isinstance(types, list) else [types]) if t != "null"), "object")
+    kind = next(
+        (t for t in (types if isinstance(types, list) else [types]) if t != "null"),
+        "object",
+    )
     if kind == "object":
-        return {k: example(v, root, depth + 1) for k, v in (s.get("properties") or {}).items()}
+        return {
+            k: example(v, root, depth + 1)
+            for k, v in (s.get("properties") or {}).items()
+        }
     if kind == "array":
         return [example(s["items"], root, depth + 1)] if "items" in s else []
     if kind == "string":
@@ -67,7 +78,9 @@ def check(spec: dict, models) -> list[str]:
             if not isinstance(op, dict) or "operationId" not in op:
                 continue
             for code, response in (op.get("responses") or {}).items():
-                schema = ((response.get("content") or {}).get("application/json") or {}).get("schema")
+                schema = (
+                    (response.get("content") or {}).get("application/json") or {}
+                ).get("schema")
                 if not code.startswith("2") or not schema or "$ref" not in schema:
                     continue
                 name = schema["$ref"].rsplit("/", 1)[-1]
@@ -79,5 +92,7 @@ def check(spec: dict, models) -> list[str]:
                     model.model_validate(example(schema, spec))
                 except ValidationError as exc:
                     detail = str(exc).splitlines()
-                    problems.append(f"{verb.upper()} {path} -> {name}: {detail[1].strip() if len(detail) > 1 else exc}")
+                    problems.append(
+                        f"{verb.upper()} {path} -> {name}: {detail[1].strip() if len(detail) > 1 else exc}"
+                    )
     return problems

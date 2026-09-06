@@ -32,8 +32,10 @@ Four decisions, each of which costs lines somewhere if made the other way.
   Only application/json.  A multipart or octet-stream operation silently gets no
   body type. Worth knowing before pointing this at a file-upload endpoint.
 """
+
 import re
 import sys
+from pathlib import Path
 
 import yaml
 
@@ -41,7 +43,8 @@ HEAD = '''"""Generated from {title} — do not edit."""
 
 from __future__ import annotations
 
-from typing import Any, Mapping, TypeVar
+from collections.abc import Mapping
+from typing import Any, TypeVar
 
 import httpx
 from pydantic import BaseModel
@@ -92,7 +95,7 @@ class {cls}(_Http):
 METHOD = '''
     def {name}(self{args}, **query: object) -> {returns}:
         """{doc}"""
-        return self._call("{verb}", f"{path}", query, {body}, {returns})
+        return self._call("{verb}", {path}, query, {body}, {returns})
 '''
 
 VERBS = ("get", "post", "put", "patch", "delete")
@@ -111,12 +114,21 @@ def model_name(schema: dict) -> str:
 
 def json_schema(holder: dict) -> dict:
     """The application/json schema of a requestBody or a response."""
-    return ((holder or {}).get("content", {}).get("application/json") or {}).get("schema", {})
+    return ((holder or {}).get("content", {}).get("application/json") or {}).get(
+        "schema", {}
+    )
 
 
 def returns(operation: dict) -> str:
     """Model name for the first 2xx JSON response, else None."""
-    ok = next((r for code, r in operation.get("responses", {}).items() if code.startswith("2")), {})
+    ok = next(
+        (
+            r
+            for code, r in operation.get("responses", {}).items()
+            if code.startswith("2")
+        ),
+        {},
+    )
     return model_name(json_schema(ok))
 
 
@@ -142,13 +154,14 @@ def method(path: str, verb: str, operation: dict, spec: dict) -> str:
     """Render one method."""
     args = [f", {name}: str" for name in path_params(operation, spec)]
     request = body(operation)
+    url = f'f"{path}"' if "{" in path else f'"{path}"'
     if request != "None":
         args.append(f", body: {request}")
     return METHOD.format(
         name=snake(operation["operationId"]),
         args="".join(args),
         verb=verb.upper(),
-        path=path,
+        path=url,
         body="body" if request != "None" else "None",
         returns=returns(operation),
         doc=(operation.get("summary") or operation["operationId"]).strip(),
@@ -167,4 +180,4 @@ def emit(spec: dict, cls: str) -> str:
 
 if __name__ == "__main__":
     src, dst, cls = sys.argv[1:4]
-    open(dst, "w").write(emit(yaml.safe_load(open(src)), cls))
+    Path(dst).write_text(emit(yaml.safe_load(Path(src).read_text()), cls))

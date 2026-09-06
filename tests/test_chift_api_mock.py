@@ -1,44 +1,131 @@
-"""
-Live Hyperline sandbox round-trip through the FastAPI Chift mock.
+"""Offline connector edge cases and live Hyperline round trips through FastAPI.
 
-Creates 2 contacts + 2 invoices, reads them back, then deletes them.
-Needs HYPERLINE_API_KEY_TEST in .env.
+Live tests create 2 contacts + 2 invoices, read them back, then delete them.
+They need HYPERLINE_API_KEY_TEST in .env; offline tests always run.
 """
+
 from __future__ import annotations
 
 import uuid
+from types import SimpleNamespace
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from chift.api import CONNECTORS, app
+from chift.models import ChiftAPIError, InvoiceStatus
 from connectors.hyperline.config import get_settings
-from connectors.hyperline.connector import HyperlineInvoicingConnector, to_error
+from connectors.hyperline.connector import (
+    INVOICE_STATUS,
+    HyperlineInvoicingConnector,
+    _page_via_cursor,
+    to_error,
+    to_invoice,
+)
+from generated.hyperline import models as hl
 
 CONSUMER = "11111111-1111-1111-1111-111111111111"
-
-
-def _has_creds() -> bool:
-    try:
-        get_settings()
-        return True
-    except Exception:
-        return False
-
-
-pytestmark = pytest.mark.skipif(not _has_creds(), reason="Hyperline credentials not in .env")
 
 
 @pytest.fixture
 def client():
     get_settings.cache_clear()
-    connector = HyperlineInvoicingConnector()
+    try:
+        connector = HyperlineInvoicingConnector()
+    except ValueError:
+        pytest.skip("Hyperline credentials not in .env")
     CONNECTORS[CONSUMER] = connector
     with TestClient(app) as test_client:
         yield test_client, connector
     CONNECTORS.clear()
     get_settings.cache_clear()
+
+
+def _invoice(**changes) -> hl.Invoice:
+    """Build the smallest valid provider invoice needed by mapper tests."""
+    values = {
+        "id": "inv_test",
+        "type": "invoice",
+        "status": "draft",
+        "currency": "EUR",
+        "period_starts_at": "2024-01-15T00:00:00Z",
+        "total_amount": 12100,
+        "amount_excluding_tax": 10000,
+        "tax_amount": 2100,
+        "line_items": [],
+    }
+    return hl.Invoice(**(values | changes))
+
+
+def test_every_published_invoice_status_has_an_explicit_mapping():
+    status_schema = hl.Invoice.model_json_schema()["properties"]["status"]
+    published = next(
+        branch["enum"] for branch in status_schema["anyOf"] if "enum" in branch
+    )
+
+    assert set(INVOICE_STATUS) == set(published)
+    assert INVOICE_STATUS["closed"] is InvoiceStatus.cancelled
+    assert INVOICE_STATUS["open"] is InvoiceStatus.draft
+    assert INVOICE_STATUS["error"] is InvoiceStatus.posted
+    assert INVOICE_STATUS["paid"] is InvoiceStatus.paid
+
+
+def test_invoice_mapper_uses_real_values_or_fails_loudly():
+    assert to_invoice(_invoice()).invoice_date.isoformat() == "2024-01-15"
+
+    with pytest.raises(ChiftAPIError, match="published schema") as missing_amount:
+        to_invoice(_invoice(total_amount=None))
+    assert (
+        missing_amount.value.error.detail
+        == "missing required field: invoice.total_amount"
+    )
+
+    with pytest.raises(ChiftAPIError, match="published schema") as missing_date:
+        to_invoice(_invoice(period_starts_at=None))
+    assert (
+        missing_date.value.error.detail == "missing required field: invoice.issue_date"
+    )
+
+
+def test_cursor_pagination_walks_to_the_requested_page_without_stored_state():
+    responses = iter(
+        [
+            SimpleNamespace(data=["first"], total=2, next_cursor="next"),
+            SimpleNamespace(data=["second"], total=None, next_cursor=None),
+        ]
+    )
+    calls = []
+
+    def fetch(**query):
+        calls.append(query)
+        return next(responses)
+
+    page = _page_via_cursor(fetch, page=2, size=1, map_item=str.upper, status="all")
+
+    assert page.model_dump() == {"items": ["SECOND"], "total": 2, "page": 2, "size": 1}
+    assert calls == [
+        {"limit": 1, "cursor": None, "include_total": True, "status": "all"},
+        {"limit": 1, "cursor": "next", "include_total": False, "status": "all"},
+    ]
+
+
+def test_missing_provider_pagination_total_fails_loudly():
+    def fetch(**_query):
+        return SimpleNamespace(data=[], total=None, next_cursor=None)
+
+    with pytest.raises(ChiftAPIError, match="published schema") as error:
+        _page_via_cursor(fetch, page=1, size=50, map_item=lambda item: item)
+    assert error.value.error.detail == "missing required field: pagination.total"
+
+
+def test_chift_rejects_page_sizes_over_100_before_calling_a_connector():
+    with TestClient(app) as http:
+        response = http.get(
+            f"/consumers/{CONSUMER}/invoicing/invoices",
+            params={"size": 101},
+        )
+    assert response.status_code == 422
 
 
 def test_create_two_contacts_and_get_them_back(client):
@@ -58,9 +145,9 @@ def test_create_two_contacts_and_get_them_back(client):
                 },
             )
             assert r.status_code == 200, r.text
-            contacts.append(r.json())
-
-        created_ids = [c["id"] for c in contacts]
+            contact = r.json()
+            contacts.append(contact)
+            created_ids.append(contact["id"])
 
         for contact in contacts:
             cid = contact["id"]
@@ -111,9 +198,9 @@ def test_create_two_invoices_and_get_them_back(client):
                 json={"customer_id": customer_id, "reference": f"ref-{label}-{suffix}"},
             )
             assert r.status_code == 200, r.text
-            invoices.append(r.json())
-
-        invoice_ids = [i["id"] for i in invoices]
+            invoice = r.json()
+            invoices.append(invoice)
+            invoice_ids.append(invoice["id"])
 
         for invoice in invoices:
             iid = invoice["id"]
