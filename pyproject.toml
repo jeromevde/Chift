@@ -33,3 +33,5 @@ include = ["chift*", "codegeneration*", "connectors*", "generated*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["robustness: runs the pipeline against downloaded third-party specs"]
+addopts = "-m 'not robustness'"

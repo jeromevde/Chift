@@ -160,6 +160,22 @@ def body(operation: dict) -> str:
     return model_name(schema)
 
 
+def docstring(operation: dict) -> str:
+    """Summary plus `description`, which is where provider rules actually live.
+
+    OpenAPI has no way to say "call archive before this" or "amounts are in cents",
+    so vendors write those in prose. Hyperline's DELETE /v1/customers/{id} says
+    "The customer must be archived prior to the deletion" — a machine-actionable
+    rule available only as English. Dropping it costs a human, and the LLM writing
+    the mapper, the one hint the document gives.
+    """
+    summary = (operation.get("summary") or operation["operationId"]).strip()
+    description = " ".join((operation.get("description") or "").split())
+    if not description or description == summary:
+        return summary
+    return f"{summary}\n\n        {description}\n        "
+
+
 def method(path: str, verb: str, operation: dict) -> str:
     """Render one method."""
     parameters = re.findall(r"{([^{}]+)}", path)
@@ -177,7 +193,7 @@ def method(path: str, verb: str, operation: dict) -> str:
         path=url,
         body="body" if request != "None" else "None",
         returns=returns(operation),
-        doc=(operation.get("summary") or operation["operationId"]).strip(),
+        doc=docstring(operation),
     )
 
 

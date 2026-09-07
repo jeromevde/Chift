@@ -51,37 +51,64 @@ class _Http:
 class HyperlineClient(_Http):
 
     def list_customers(self, **query: object) -> models.CursorPaginatedCustomer:
-        """List customers"""
+        """List customers
+
+        Retrieve existing customers.
+        """
         return self._call("GET", "/v2/customers", query, None, models.CursorPaginatedCustomer)
 
     def get_customer(self, id: str, **query: object) -> models.CustomerDetails:
-        """Get customer"""
+        """Get customer
+
+        Retrieve the details of an existing customer.
+        """
         return self._call("GET", f"/v2/customers/{id}", query, None, models.CustomerDetails)
 
     def list_invoices(self, **query: object) -> models.CursorPaginatedInvoice:
-        """List invoices"""
+        """List invoices
+
+        Retrieve existing invoices. By default, invoices with status open are not included.
+        """
         return self._call("GET", "/v2/invoices", query, None, models.CursorPaginatedInvoice)
 
     def get_invoice(self, id: str, **query: object) -> models.InvoiceDetails:
-        """Get invoice"""
+        """Get invoice
+
+        Retrieve the details of an existing invoice.
+        """
         return self._call("GET", f"/v2/invoices/{id}", query, None, models.InvoiceDetails)
 
     def create_customer(self, body: models.CreateCustomer, **query: object) -> models.CustomerDetailsV1:
-        """Create customer"""
+        """Create customer
+
+        Create a new customer.
+        """
         return self._call("POST", "/v1/customers", query, body, models.CustomerDetailsV1)
 
     def delete_customer(self, id: str, **query: object) -> None:
-        """Delete customer"""
+        """Delete customer
+
+        Delete an existing customer. The customer must be archived prior to the deletion.
+        """
         return self._call("DELETE", f"/v1/customers/{id}", query, None, None)
 
     def archive_customer(self, id: str, **query: object) -> models.CustomerV1:
-        """Archive customer"""
+        """Archive customer
+
+        Archive an existing customer.
+        """
         return self._call("PUT", f"/v1/customers/{id}/archive", query, None, models.CustomerV1)
 
     def create_invoice(self, body: models.CreateInvoice, **query: object) -> models.InvoiceDetailsV1:
-        """Create invoice"""
+        """Create invoice
+
+        Create a new invoice.
+        """
         return self._call("POST", "/v1/invoices", query, body, models.InvoiceDetailsV1)
 
     def delete_invoice(self, id: str, **query: object) -> None:
-        """Delete invoice"""
+        """Delete invoice
+
+        Delete an invoice in `draft` status or imported from an external source. For other statuses, the `POST /v1/invoices/{id}/void` endpoint must be used.
+        """
         return self._call("DELETE", f"/v1/invoices/{id}", query, None, None)

@@ -1,11 +1,8 @@
 """
-
 Validate generated models against values documented by the specification.
-
 A failure means the spec contradicts itself (a `format` that its own `example`
 violates, say). Missing values are omitted instead of guessed.
-
-
+Just an extra check for robustness. Final tests are done via pytest
 """
 
 from typing import Any

@@ -1,4 +1,7 @@
-"""Keep chosen operations and every component they transitively reference."""
+"""
+Simplify the OpenAPI specification by keeping only the chosen operations
+Keep chosen operations and every component they transitively reference.
+"""
 
 HTTP_METHODS = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
 

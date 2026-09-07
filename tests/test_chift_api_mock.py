@@ -13,6 +13,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
+from chift import errors
 from chift.api import CONNECTORS, app
 from chift.models import ChiftAPIError, InvoiceStatus
 from connectors.hyperline.config import get_settings
@@ -21,7 +22,6 @@ from connectors.hyperline.connector import (
     HyperlineInvoicingConnector,
     _page_via_cursor,
     to_contact,
-    to_error,
     to_invoice,
 )
 from generated.hyperline import models as hl
@@ -291,14 +291,34 @@ def test_provider_errors_are_rendered_as_chift_error(client):
     body = r.json()
     assert body["message"]
     assert body["status"] == "error"
-    assert body["error_code"] == "NotFound"
-    assert "hyperline 404" in body["detail"]
+    assert body["error_code"] == errors.NOT_FOUND
+    # detail is diagnostic, not contract: it names the provider and its own error.
+    assert "hyperline.co 404" in body["detail"]
 
 
-def test_unknown_provider_failures_become_502():
-    """Statuses outside Chift's documented set are downstream failures."""
+def test_unknown_provider_failures_use_a_status_chift_documents():
+    """Chift declares only 400/404/422 on these endpoints, so 503 upstream becomes 400."""
     request = httpx.Request("GET", "https://sandbox.api.hyperline.co/v2/customers")
     response = httpx.Response(503, json={"message": "upstream down"}, request=request)
-    err = to_error(httpx.HTTPStatusError("boom", request=request, response=response))
-    assert err.status_code == 502
-    assert err.error.message == "upstream down"
+
+    err = errors.from_http_status_error(
+        httpx.HTTPStatusError("boom", request=request, response=response)
+    )
+
+    assert err.status_code == 400
+    assert err.error.error_code == errors.PROVIDER_ERROR
+    # the provider's own words survive in detail, for debugging
+    assert "upstream down" in err.error.detail
+    assert "503" in err.error.detail
+
+
+def test_provider_404_maps_to_chift_404():
+    request = httpx.Request("GET", "https://sandbox.api.hyperline.co/v2/customers/x")
+    response = httpx.Response(404, json={"type": "NotFound", "message": "nope"}, request=request)
+
+    err = errors.from_http_status_error(
+        httpx.HTTPStatusError("boom", request=request, response=response)
+    )
+
+    assert err.status_code == 404
+    assert err.error.error_code == errors.NOT_FOUND

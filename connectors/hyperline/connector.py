@@ -14,19 +14,16 @@ dates, status collapse, contact roles, pagination — stay explicit for review.
 
 from __future__ import annotations
 
-import functools
 from datetime import date, datetime
 from typing import Any, TypeVar
 
 import httpx
 from iso4217 import Currency
-from pydantic import ValidationError
 
+from chift import errors
 from chift.models import (
     AddressItemOutInvoicing,
     AddressTypeInvoicing,
-    ChiftAPIError,
-    ChiftError,
     ChiftPage,
     ContactItemOut,
     InvoiceItemOut,
@@ -86,14 +83,7 @@ INVOICE_TYPE = {
 
 def _require_map(table: dict, key: str | None, *, kind: str):
     if key is None or key not in table:
-        raise ChiftAPIError(
-            502,
-            ChiftError(
-                message=f"Unmapped Hyperline {kind}: {key!r}",
-                detail=f"hyperline {kind}={key}",
-                error_code="MappingError",
-            ),
-        )
+        raise errors.unmappable(kind, key)
     return table[key]
 
 
@@ -102,14 +92,7 @@ def _required(value: T | None, field: str) -> T:
     # Mapping decision: generated provider intake is soft, but values required by Chift
     # fail here instead of being replaced with invented defaults.
     if value is None:
-        raise ChiftAPIError(
-            502,
-            ChiftError(
-                message="Provider response did not match Hyperline's published schema",
-                detail=f"missing required field: {field}",
-                error_code="ProviderSchemaMismatch",
-            ),
-        )
+        raise errors.missing_required(field)
     return value
 
 
@@ -290,59 +273,8 @@ def _tolerate_404(call, *args):
         return None
 
 
-# Mapping decision: preserve only statuses Chift documents; any other provider HTTP status is
-# represented as Chift's downstream-failure status.
-_CHIFT_STATUSES = frozenset({400, 404, 405, 409, 422, 502})
-
-
-def to_error(exc: httpx.HTTPStatusError) -> ChiftAPIError:
-    """Map Hyperline's undeclared error body into ChiftAPIError; FastAPI renders it."""
-    upstream = exc.response.status_code
-    try:
-        body = exc.response.json()
-    except ValueError:
-        body = {}
-    status = upstream if upstream in _CHIFT_STATUSES else 502
-    return ChiftAPIError(
-        status,
-        ChiftError(
-            message=body.get("message")
-            or exc.response.reason_phrase
-            or "Provider error",
-            detail=f"hyperline {upstream} {body.get('type', '')}".strip(),
-            error_code=body.get("type"),
-        ),
-    )
-
-
-def _raise_chift(method):
-    @functools.wraps(method)
-    def wrapper(*args, **kwargs):
-        try:
-            return method(*args, **kwargs)
-        except httpx.HTTPStatusError as exc:
-            raise to_error(exc) from exc
-        except ValidationError as exc:
-            # REVIEW: this also catches mapper validation errors; narrowing the error boundary
-            # is intentionally left for the separate error-handling cleanup.
-            # We keep the provider's full enums (see codegeneration/normalize.py), so a
-            # value Hyperline adds later fails here. That is a downstream change, not a
-            # bad request from our caller: 502, with the offending field named.
-            fields = ", ".join(
-                ".".join(str(p) for p in e["loc"]) for e in exc.errors()[:3]
-            )
-            raise ChiftAPIError(
-                502,
-                ChiftError(
-                    message="Provider response did not match Hyperline's published schema",
-                    detail=f"unexpected value at: {fields}",
-                    error_code="ProviderSchemaMismatch",
-                ),
-            ) from exc
-
-    return wrapper
-
-
+# Provider failures propagate as-is; chift.errors translates them at the API boundary,
+# so this connector never decides Chift's error contract.
 class HyperlineInvoicingConnector:
     def __init__(self, client: HyperlineClient | None = None) -> None:
         settings = get_settings()
@@ -350,7 +282,6 @@ class HyperlineInvoicingConnector:
             settings.hyperline_base_url, settings.hyperline_api_key
         )
 
-    @_raise_chift
     def create_contact(
         self, *, name: str, email: str, external_id: str
     ) -> ContactItemOut:
@@ -369,7 +300,6 @@ class HyperlineInvoicingConnector:
         )
         return to_contact(raw)
 
-    @_raise_chift
     def create_invoice(self, *, customer_id: str, reference: str) -> InvoiceItemOut:
         raw = self.client.create_invoice(
             hl.CreateInvoice(
@@ -391,22 +321,18 @@ class HyperlineInvoicingConnector:
         )
         return to_invoice(raw)
 
-    @_raise_chift
     def delete_contact(self, contact_id: str) -> None:
         # Mapping decision: Hyperline requires archive before customer deletion.
         # Both steps are already-gone tolerant; the spec has no way to say so.
         _tolerate_404(self.client.archive_customer, contact_id)
         _tolerate_404(self.client.delete_customer, contact_id)
 
-    @_raise_chift
     def delete_invoice(self, invoice_id: str) -> None:
         _tolerate_404(self.client.delete_invoice, invoice_id)
 
-    @_raise_chift
     def get_contact(self, contact_id: str) -> ContactItemOut:
         return to_contact(self.client.get_customer(contact_id))
 
-    @_raise_chift
     def list_contacts(
         self, *, page: int = 1, size: int = 50
     ) -> ChiftPage[ContactItemOut]:
@@ -414,11 +340,9 @@ class HyperlineInvoicingConnector:
             self.client.list_customers, page=page, size=size, map_item=to_contact
         )
 
-    @_raise_chift
     def get_invoice(self, invoice_id: str) -> InvoiceItemOut:
         return to_invoice(self.client.get_invoice(invoice_id))
 
-    @_raise_chift
     def list_invoices(
         self, *, page: int = 1, size: int = 50
     ) -> ChiftPage[InvoiceItemOut]:
