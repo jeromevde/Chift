@@ -359,8 +359,8 @@ review and CI.
 Hyperline is one document with one house style, so a rule that looks general may just be
 Hyperline-shaped. `pytest --robustness` runs the *whole* pipeline — prune, normalize, generate,
 emit, validate examples, import both modules — against Stripe, GitHub, Discord, and Petstore,
-which differ in OpenAPI version, size, and idiom. Stripe's 6.4 MB document yields 899 importable
-models and a two-method client from one `paths.yaml` entry.
+which differ in OpenAPI version, size, and idiom. Stripe's 6.4 MB document yields roughly 880
+importable models and a two-method client from one `paths.yaml` entry.
 
 The test asserts that the emitted method is annotated with a model that exists, not merely that
 normalization returned a document. Every generator in the [appendix](#appendix-generator-experiments) returned *a* document too;

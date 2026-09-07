@@ -462,7 +462,7 @@ runner is the easy part, and the part that does not make the output correct.
 ## Step 5 — Expose and test
 
 Subclass `chift.connector.InvoicingConnector` and set `provider = "<name>"`. That class is the
-contract: five abstract methods, no shared behaviour. Defining the subclass registers it, and
+contract: seven abstract methods, no shared behaviour. Defining the subclass registers it, and
 `chift/api.py` resolves `consumer -> provider slug -> class -> from_env()` without naming any
 provider, so **no code in `chift/` changes when you add one**.
 
