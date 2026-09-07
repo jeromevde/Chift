@@ -4,7 +4,7 @@ Chift invoicing connector against Hyperline.
 Generated client fetches Hyperline; this maps into chift.models.
 
 Provenance:
-  Skill: skills/add_connector.md v9
+  Skill: skills/add_connector.md v12
   Models: generated/hyperline via `python -m codegeneration.run hyperline`
 
 Written by an LLM from that skill + Hyperline models + Chift's contract, then
@@ -19,25 +19,10 @@ from typing import Any, TypeVar
 
 from iso4217 import Currency
 
+from chift import models as chift
 from chift.connector import InvoicingConnector
-from chift.models import (
-    AddressItemOutInvoicing,
-    AddressTypeInvoicing,
-    ChiftPage,
-    ContactItemIn,
-    ContactItemOut,
-    InvoiceItemIn,
-    InvoiceItemOut,
-    InvoiceLineItemIn,
-    InvoiceLineItemOut,
-    InvoiceStatus,
-    InvoiceStatusIn,
-    InvoicingCreateInvoiceType,
-    InvoicingInvoiceType,
-    Ref,
-)
 from connectors.hyperline.config import get_settings
-from generated.hyperline import models as hl
+from generated.hyperline import models as hyperline
 from generated.hyperline.client import HyperlineClient
 
 T = TypeVar("T")
@@ -46,42 +31,42 @@ T = TypeVar("T")
 # unknown future values raise instead of receiving a plausible default.
 INVOICE_STATUS = {
     # Mapping decision: these invoices are not issued yet or remain pre-issuance work.
-    "draft": InvoiceStatus.draft,
-    "pending_approval": InvoiceStatus.draft,
-    "changes_requested": InvoiceStatus.draft,
-    "open": InvoiceStatus.draft,
+    "draft": chift.InvoiceStatus.draft,
+    "pending_approval": chift.InvoiceStatus.draft,
+    "changes_requested": chift.InvoiceStatus.draft,
+    "open": chift.InvoiceStatus.draft,
     # REVIEW: Hyperline does not define exact Chift equivalents for these transitional
     # states; their names place them before a standalone invoice is issued.
-    "missing_info": InvoiceStatus.draft,
-    "pending_parent_concat": InvoiceStatus.draft,
-    "pending_consolidation": InvoiceStatus.draft,
+    "missing_info": chift.InvoiceStatus.draft,
+    "pending_parent_concat": chift.InvoiceStatus.draft,
+    "pending_consolidation": chift.InvoiceStatus.draft,
     # Mapping decision: `grace_period` is after issuance; payment failures and
     # parent/consolidated invoices remain issued, so all belong to `posted`.
-    "grace_period": InvoiceStatus.posted,
-    "to_pay": InvoiceStatus.posted,
-    "partially_paid": InvoiceStatus.posted,
-    "error": InvoiceStatus.posted,
-    "charged_on_parent": InvoiceStatus.posted,
+    "grace_period": chift.InvoiceStatus.posted,
+    "to_pay": chift.InvoiceStatus.posted,
+    "partially_paid": chift.InvoiceStatus.posted,
+    "error": chift.InvoiceStatus.posted,
+    "charged_on_parent": chift.InvoiceStatus.posted,
     # REVIEW: Hyperline does not document a precise Chift equivalent for `consolidated`;
     # it is treated as issued rather than silently discarded.
-    "consolidated": InvoiceStatus.posted,
-    "uncollectible": InvoiceStatus.posted,
-    "paid": InvoiceStatus.paid,
+    "consolidated": chift.InvoiceStatus.posted,
+    "uncollectible": chift.InvoiceStatus.posted,
+    "paid": chift.InvoiceStatus.paid,
     # Mapping decision: voided, discarded, and superseded invoices are closest to
     # Chift's `cancelled` state.
-    "voided": InvoiceStatus.cancelled,
-    "closed": InvoiceStatus.cancelled,
-    "archived": InvoiceStatus.cancelled,
+    "voided": chift.InvoiceStatus.cancelled,
+    "closed": chift.InvoiceStatus.cancelled,
+    "archived": chift.InvoiceStatus.cancelled,
 }
 
 # Mapping decision: Hyperline documents and child references still represent customer-side
 # invoices; only credit-note variants become Chift refunds.
 INVOICE_TYPE = {
-    "invoice": InvoicingInvoiceType.customer_invoice,
-    "document": InvoicingInvoiceType.customer_invoice,
-    "credit_note": InvoicingInvoiceType.customer_refund,
-    "child_invoice_ref": InvoicingInvoiceType.customer_invoice,
-    "child_creditnote_ref": InvoicingInvoiceType.customer_refund,
+    "invoice": chift.InvoicingInvoiceType.customer_invoice,
+    "document": chift.InvoicingInvoiceType.customer_invoice,
+    "credit_note": chift.InvoicingInvoiceType.customer_refund,
+    "child_invoice_ref": chift.InvoicingInvoiceType.customer_invoice,
+    "child_creditnote_ref": chift.InvoicingInvoiceType.customer_refund,
 }
 
 
@@ -135,10 +120,12 @@ def _day(s: Any) -> date | None:
     return date.fromisoformat(str(s)[:10])
 
 
-def _addr(kind: AddressTypeInvoicing, raw: Any) -> AddressItemOutInvoicing | None:
+def _addr(
+    kind: chift.AddressTypeInvoicing, raw: Any
+) -> chift.AddressItemOutInvoicing | None:
     if not raw:
         return None
-    return AddressItemOutInvoicing(
+    return chift.AddressItemOutInvoicing(
         address_type=kind,
         name=raw.name,
         street=raw.line1,
@@ -148,8 +135,10 @@ def _addr(kind: AddressTypeInvoicing, raw: Any) -> AddressItemOutInvoicing | Non
     )
 
 
-def _line(item: hl.InvoiceLineItem, currency: str) -> InvoiceLineItemOut:
-    return InvoiceLineItemOut(
+def _line(
+    item: hyperline.InvoiceLineItem, currency: str
+) -> chift.InvoiceLineItemOut:
+    return chift.InvoiceLineItemOut(
         description=item.name,
         unit_price=_amount(
             _required(item.unit_amount, "invoice.line_items[].unit_amount"), currency
@@ -175,8 +164,10 @@ def _line(item: hl.InvoiceLineItem, currency: str) -> InvoiceLineItemOut:
 
 
 def to_contact(
-    data: hl.Customer | hl.CustomerDetails | hl.CustomerDetailsV1,
-) -> ContactItemOut:
+    data: hyperline.Customer
+    | hyperline.CustomerDetails
+    | hyperline.CustomerDetailsV1,
+) -> chift.ContactItemOut:
     # Mapping decision: only explicit entity-kind values classify the customer;
     # `automatically_created` is provenance and therefore remains unknown.
     company = {"corporate": True, "person": False}.get(data.type)
@@ -185,9 +176,9 @@ def to_contact(
     taxes = data.tax_ids or []
     contact_id = _required(data.id, "customer.id")
     # Mapping decision: pass provider IDs through because this POC has no technical-ID store.
-    return ContactItemOut(
+    return chift.ContactItemOut(
         id=contact_id,
-        source_ref=Ref(id=contact_id, model="customer"),
+        source_ref=chift.Ref(id=contact_id, model="customer"),
         # Mapping decision: every Hyperline Customer is a customer, never a prospect/supplier.
         is_customer=True,
         is_prospect=False,
@@ -208,8 +199,8 @@ def to_contact(
         addresses=[
             a
             for a in (
-                _addr(AddressTypeInvoicing.invoice, data.billing_address),
-                _addr(AddressTypeInvoicing.delivery, data.shipping_address),
+                _addr(chift.AddressTypeInvoicing.invoice, data.billing_address),
+                _addr(chift.AddressTypeInvoicing.delivery, data.shipping_address),
             )
             if a
         ],
@@ -221,13 +212,15 @@ def to_contact(
 # mapper sends only what the caller supplied. Nothing is defaulted on the caller's behalf:
 # an absent country stays absent rather than becoming the connector's own jurisdiction.
 # Unset fields stay None and the generated transport drops them (`exclude_none=True`).
-def _hl_address(addresses, kind: AddressTypeInvoicing) -> hl.Address | None:
+def _hl_address(
+    addresses, kind: chift.AddressTypeInvoicing
+) -> hyperline.Address | None:
     match = next((a for a in addresses or [] if a.address_type == kind), None)
     if match is None:
         return None
     # Mapping decision: Chift's postal fields map onto Hyperline's line1/zip names.
     # Hyperline's `line2` has no Chift source, so it is left unset.
-    return hl.Address(
+    return hyperline.Address(
         name=match.name,
         line1=match.street,
         city=match.city,
@@ -236,7 +229,7 @@ def _hl_address(addresses, kind: AddressTypeInvoicing) -> hl.Address | None:
     )
 
 
-def from_contact(body: ContactItemIn) -> hl.CreateCustomer:
+def from_contact(body: chift.ContactItemIn) -> hyperline.CreateCustomer:
     """Chift ContactItemIn -> Hyperline CreateCustomer. Inverse of `to_contact`."""
     # Mapping decision: mirror to_contact's classification. Chift's `is_company` carries the
     # entity kind; `automatically_created` is provenance Hyperline rejects on create, so an
@@ -245,8 +238,8 @@ def from_contact(body: ContactItemIn) -> hl.CreateCustomer:
     # Mapping decision: Chift splits person names across first/last and companies use
     # company_name; Hyperline has one `name`. Prefer the slot the classification implies.
     person_name = " ".join(x for x in (body.first_name, body.last_name) if x) or None
-    billing = _hl_address(body.addresses, AddressTypeInvoicing.invoice)
-    return hl.CreateCustomer(
+    billing = _hl_address(body.addresses, chift.AddressTypeInvoicing.invoice)
+    return hyperline.CreateCustomer(
         name=_required(body.company_name or person_name, "contact.company_name|first_name"),
         type=hl_type,
         currency=body.currency,
@@ -257,12 +250,14 @@ def from_contact(body: ContactItemIn) -> hl.CreateCustomer:
         # REVIEW: to_contact reads the *first* tax ID; this writes a single-element list, so
         # the pair round-trips. Hyperline caps the list at one and documents no ordering, so a
         # contact carrying several tax IDs cannot be represented faithfully in either direction.
-        tax_ids=[hl.CreateCustomerTaxId(value=body.vat)] if body.vat else None,
+        tax_ids=[hyperline.CreateCustomerTaxId(value=body.vat)] if body.vat else None,
         external_id=body.external_reference,
         billing_email=body.email,
         language=body.language,
         billing_address=billing,
-        shipping_address=_hl_address(body.addresses, AddressTypeInvoicing.delivery),
+        shipping_address=_hl_address(
+            body.addresses, chift.AddressTypeInvoicing.delivery
+        ),
     )
 
 
@@ -274,17 +269,19 @@ def _invoice_date(data: Any) -> Any:
 
 
 def to_invoice(
-    data: hl.Invoice | hl.InvoiceDetails | hl.InvoiceDetailsV1,
-) -> InvoiceItemOut:
+    data: hyperline.Invoice
+    | hyperline.InvoiceDetails
+    | hyperline.InvoiceDetailsV1,
+) -> chift.InvoiceItemOut:
     customer = data.customer
     invoice_id = _required(data.id, "invoice.id")
     currency = _required(data.currency, "invoice.currency")
     lines = _required(data.line_items, "invoice.line_items")
     invoice_date = _day(_required(_invoice_date(data), "invoice.issue_date"))
     # Mapping decision: pass provider IDs through because this POC has no technical-ID store.
-    return InvoiceItemOut(
+    return chift.InvoiceItemOut(
         id=invoice_id,
-        source_ref=Ref(id=invoice_id, model="invoice"),
+        source_ref=chift.Ref(id=invoice_id, model="invoice"),
         currency=currency,
         invoice_type=_require_map(INVOICE_TYPE, data.type, kind="invoice type"),
         status=_require_map(INVOICE_STATUS, data.status, kind="invoice status"),
@@ -331,8 +328,8 @@ def _instant(d: date | None) -> str | None:
 # Mapping decision: Hyperline requires only customer_id and line_items on create, so
 # everything else is sent only when Chift's body carries it.
 CREATE_INVOICE_TYPE = {
-    InvoicingCreateInvoiceType.customer_invoice: "invoice",
-    InvoicingCreateInvoiceType.customer_refund: "credit_note",
+    chift.InvoicingCreateInvoiceType.customer_invoice: "invoice",
+    chift.InvoicingCreateInvoiceType.customer_refund: "credit_note",
     # Mapping decision: Hyperline bills a vendor's own customers and has no accounts-payable
     # side, so supplier documents have no representation and are refused by name.
 }
@@ -340,17 +337,17 @@ CREATE_INVOICE_TYPE = {
 # Mapping decision: inverse of INVOICE_STATUS. Chift accepts only draft and posted on create;
 # `to_pay` is the issued state Hyperline puts a posted invoice into.
 CREATE_INVOICE_STATUS = {
-    InvoiceStatusIn.draft: "draft",
-    InvoiceStatusIn.posted: "to_pay",
+    chift.InvoiceStatusIn.draft: "draft",
+    chift.InvoiceStatusIn.posted: "to_pay",
 }
 
 
-def _hl_line(line: InvoiceLineItemIn, currency: str):
+def _hl_line(line: chift.InvoiceLineItemIn, currency: str):
     # REVIEW: Chift requires tax_amount, untaxed_amount and total on every input line, but
     # Hyperline derives all three from unit_amount, units_count and tax_rate. They are read
     # and deliberately not sent; Hyperline recomputes them, and to_invoice reads back what
     # Hyperline computed rather than what the caller stated.
-    return hl.CreateInvoiceLineItemCreateInvoiceLineItem3(
+    return hyperline.CreateInvoiceLineItemCreateInvoiceLineItem3(
         name=line.description,
         product_id=line.product_id,
         unit_amount=_minor(line.unit_price, currency),
@@ -359,10 +356,10 @@ def _hl_line(line: InvoiceLineItemIn, currency: str):
     )
 
 
-def from_invoice(body: InvoiceItemIn) -> hl.CreateInvoice:
+def from_invoice(body: chift.InvoiceItemIn) -> hyperline.CreateInvoice:
     """Chift InvoiceItemIn -> Hyperline CreateInvoice. Inverse of `to_invoice`."""
     currency = body.currency
-    return hl.CreateInvoice(
+    return hyperline.CreateInvoice(
         # Mapping decision: Chift's partner is Hyperline's invoice customer, and Hyperline
         # requires it, so an invoice with no partner fails here rather than at the provider.
         customer_id=_required(body.partner_id, "invoice.partner_id"),
@@ -405,7 +402,7 @@ def _page_via_cursor(fetch, *, page: int, size: int, map_item, **query):
                 break
             cursor = raw.next_cursor
     mapped = [map_item(x) for x in items]
-    return ChiftPage(
+    return chift.ChiftPage(
         items=mapped,
         total=_required(total, "pagination.total"),
         page=page,
@@ -432,11 +429,11 @@ class HyperlineInvoicingConnector(InvoicingConnector):
             )
         self.client = client
 
-    def create_contact(self, body: ContactItemIn) -> ContactItemOut:
+    def create_contact(self, body: chift.ContactItemIn) -> chift.ContactItemOut:
         raw = self.client.create_customer(from_contact(body))
         return to_contact(raw)
 
-    def create_invoice(self, body: InvoiceItemIn) -> InvoiceItemOut:
+    def create_invoice(self, body: chift.InvoiceItemIn) -> chift.InvoiceItemOut:
         raw = self.client.create_invoice(from_invoice(body))
         return to_invoice(raw)
 
@@ -448,22 +445,22 @@ class HyperlineInvoicingConnector(InvoicingConnector):
     def delete_invoice(self, invoice_id: str) -> None:
         self.client.delete_invoice(invoice_id)
 
-    def get_contact(self, contact_id: str) -> ContactItemOut:
+    def get_contact(self, contact_id: str) -> chift.ContactItemOut:
         return to_contact(self.client.get_customer(contact_id))
 
     def list_contacts(
         self, *, page: int = 1, size: int = 50
-    ) -> ChiftPage[ContactItemOut]:
+    ) -> chift.ChiftPage[chift.ContactItemOut]:
         return _page_via_cursor(
             self.client.list_customers, page=page, size=size, map_item=to_contact
         )
 
-    def get_invoice(self, invoice_id: str) -> InvoiceItemOut:
+    def get_invoice(self, invoice_id: str) -> chift.InvoiceItemOut:
         return to_invoice(self.client.get_invoice(invoice_id))
 
     def list_invoices(
         self, *, page: int = 1, size: int = 50
-    ) -> ChiftPage[InvoiceItemOut]:
+    ) -> chift.ChiftPage[chift.InvoiceItemOut]:
         # Mapping decision: request every lifecycle explicitly instead of relying on
         # Hyperline's undocumented default status filter.
         return _page_via_cursor(
