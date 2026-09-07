@@ -4,14 +4,12 @@ import pytest
 
 from codegeneration.normalize import (
     anonymous_union,
-    literal_union_titles,
-    name_from_path,
     normalize,
     ref_metadata,
 )
 
 
-def test_literal_variants_gain_unique_titles_without_changing_the_union():
+def test_literal_identifiable_union_is_not_flattened():
     schema = {
         "anyOf": [
             {"type": "object", "properties": {"type": {"const": "standard"}}},
@@ -20,14 +18,7 @@ def test_literal_variants_gain_unique_titles_without_changing_the_union():
         ]
     }
 
-    result = literal_union_titles(schema, "DisplayField")
-
-    assert [branch.get("title") for branch in result["anyOf"]] == [
-        "Standard",
-        "Custom",
-        None,
-    ]
-    assert result["anyOf"][0]["properties"] == schema["anyOf"][0]["properties"]
+    assert anonymous_union(schema) == schema
 
 
 def test_anonymous_union_is_widened_without_narrowing_branch_properties():
@@ -54,7 +45,7 @@ def test_anonymous_union_is_widened_without_narrowing_branch_properties():
         ]
     }
 
-    assert anonymous_union(schema, "Example") == {
+    assert anonymous_union(schema) == {
         "type": ["object", "null"],
         "properties": {
             "shared": {"type": "string"},
@@ -83,10 +74,10 @@ def test_anonymous_union_is_widened_without_narrowing_branch_properties():
     ],
 )
 def test_structured_unions_are_never_flattened(schema):
-    assert anonymous_union(schema, "PaymentMethod") == schema
+    assert anonymous_union(schema) == schema
 
 
-def test_reference_metadata_and_path_titles_only_change_annotations():
+def test_reference_metadata_only_changes_annotations():
     annotated_ref = {
         "allOf": [
             {"$ref": "#/components/schemas/PaymentMethod"},
@@ -100,18 +91,11 @@ def test_reference_metadata_and_path_titles_only_change_annotations():
         ]
     }
 
-    assert ref_metadata(annotated_ref, "Field") == {
+    assert ref_metadata(annotated_ref) == {
         "$ref": "#/components/schemas/PaymentMethod",
         "description": "Default method",
     }
-    assert ref_metadata(constrained_ref, "Field") == constrained_ref
-    assert (
-        name_from_path({"type": "object", "properties": {}}, "InvoiceCustomer")["title"]
-        == "InvoiceCustomer"
-    )
-    assert name_from_path({"type": "string", "title": "Email"}, "InvoiceEmail") == {
-        "type": "string"
-    }
+    assert ref_metadata(constrained_ref) == constrained_ref
 
 
 def test_normalize_renames_components_and_their_references():

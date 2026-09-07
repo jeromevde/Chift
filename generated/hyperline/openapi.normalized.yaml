@@ -1508,7 +1508,6 @@ components:
       - data
       - next_cursor
       - has_more
-      title: CursorPaginatedCustomer
     CustomerDetails:
       allOf:
       - $ref: '#/components/schemas/Customer'
@@ -1553,7 +1552,6 @@ components:
         - bank_account
         - organisation_id
         - organisation_invoicing
-        title: CustomerDetails
     CursorPaginatedInvoice:
       type: object
       properties:
@@ -1582,7 +1580,6 @@ components:
       - data
       - next_cursor
       - has_more
-      title: CursorPaginatedInvoice
     InvoiceDetails:
       allOf:
       - $ref: '#/components/schemas/Invoice'
@@ -1642,10 +1639,8 @@ components:
                 entity_id: '123456789'
                 provider_name: stripe
                 provider_account_id: acc_1234567890
-              title: InvoiceDetailsIntegration
         required:
         - integrations
-        title: InvoiceDetails
     CreateCustomer:
       type: object
       properties:
@@ -2109,7 +2104,6 @@ components:
                 example: FR123456789
             required:
             - value
-            title: CreateCustomerTaxId
           maxItems: 1
           description: Customer tax IDs.
         local_tax_number:
@@ -2153,13 +2147,11 @@ components:
           allOf:
           - $ref: '#/components/schemas/Address'
           - type: object
-            title: CreateCustomerBillingAddress
         shipping_address:
           allOf:
           - $ref: '#/components/schemas/Address'
           - type: object
             description: Customer shipping address.
-            title: CreateCustomerShippingAddress
         billing_email:
           type: string
           format: email
@@ -2591,7 +2583,6 @@ components:
                 - type: 'null'
             - type: 'null'
           description: Key/value pairs to store any metadata useful in your context.
-          title: CreateCustomerProperties
         custom_properties:
           type: object
           additionalProperties:
@@ -2610,7 +2601,6 @@ components:
             - type: 'null'
           description: A list of key value with the slug of the custom property as
             the key and the custom property value as value.
-          title: CreateCustomerCustomProperties
         invoice_reminders_enabled:
           anyOf:
           - type: boolean
@@ -2635,7 +2625,6 @@ components:
           description: IDs of Hyperline users following this customer.
           example:
           - usr_KMcxRWc1ZQwvJG
-      title: CreateCustomer
     CustomerDetailsV1:
       allOf:
       - $ref: '#/components/schemas/CustomerV1'
@@ -2706,7 +2695,6 @@ components:
                 type: string
             deprecated: true
             description: Deprecated field, please use `integrations`.
-            title: CustomerDetailsV1Providers
           current_payment_method:
             description: Default payment method of the customer. Only applies to card
               and direct debit.
@@ -2747,7 +2735,6 @@ components:
         - bank_account
         - organisation_id
         - organisation_invoicing
-        title: CustomerDetailsV1
     CustomerV1:
       type: object
       properties:
@@ -3253,7 +3240,6 @@ components:
             required:
             - value
             - status
-            title: CustomerV1TaxId
           description: Customer tax IDs.
         local_tax_number:
           type:
@@ -3655,7 +3641,6 @@ components:
             - type: 'null'
           description: Key/value pairs to store any metadata useful in your context.
           example: null
-          title: CustomerV1Properties
         custom_properties:
           type:
           - object
@@ -3676,7 +3661,6 @@ components:
             - type: 'null'
           description: A list of key value with the slug of the custom property as
             the key and the custom property value as value.
-          title: CustomerV1CustomProperties
         billing_address:
           $ref: '#/components/schemas/Address'
         shipping_address:
@@ -4045,7 +4029,6 @@ components:
                 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).
               example: FR
           description: Customer shipping address.
-          title: CustomerV1ShippingAddress
         billing_email:
           type:
           - string
@@ -4200,7 +4183,6 @@ components:
             - current_period_ends_at
             - plan_id
             - checkout_session_id
-            title: CustomerV1Subscription
         segment_ids:
           type: array
           items:
@@ -4262,7 +4244,6 @@ components:
               entity_id: '123456789'
               provider_name: stripe
               provider_account_id: acc_1234567890
-            title: CustomerV1Integration
         created_at:
           type: string
           format: date-time
@@ -4323,7 +4304,6 @@ components:
       - created_at
       - updated_at
       - deleted_at
-      title: CustomerV1
     CreateInvoice:
       type: object
       properties:
@@ -4669,7 +4649,6 @@ components:
                 - type: 'null'
             - type: 'null'
           description: Key/value pairs to store any metadata useful in your context.
-          title: CreateInvoiceProperties
         custom_properties:
           type: object
           additionalProperties:
@@ -4688,7 +4667,6 @@ components:
             - type: 'null'
           description: Values for custom properties defined for the `invoice` entity,
             keyed by slug.
-          title: CreateInvoiceCustomProperties
         additional_display_fields:
           type: array
           items:
@@ -4710,7 +4688,6 @@ components:
               required:
               - type
               - field
-              title: Standard
             - type: object
               properties:
                 type:
@@ -4725,7 +4702,6 @@ components:
               required:
               - type
               - slug
-              title: CustomProperty
             - type: object
               properties:
                 type:
@@ -4746,7 +4722,6 @@ components:
               - type
               - label
               - value
-              title: Custom
           maxItems: 20
           description: Ordered additional fields displayed on the invoice PDF. Invoice
             and customer custom properties are referenced by slug.
@@ -4930,7 +4905,6 @@ components:
       required:
       - customer_id
       - line_items
-      title: CreateInvoice
     InvoiceDetailsV1:
       allOf:
       - $ref: '#/components/schemas/InvoiceDeprecated'
@@ -4990,10 +4964,8 @@ components:
                 entity_id: '123456789'
                 provider_name: stripe
                 provider_account_id: acc_1234567890
-              title: InvoiceDetailsV1Integration
         required:
         - integrations
-        title: InvoiceDetailsV1
     Customer:
       type: object
       properties:
@@ -5483,7 +5455,6 @@ components:
             required:
             - value
             - status
-            title: CustomerTaxId
           description: Customer tax IDs.
         local_tax_number:
           type:
@@ -5885,7 +5856,6 @@ components:
             - type: 'null'
           description: Key/value pairs to store any metadata useful in your context.
           example: null
-          title: CustomerProperties
         custom_properties:
           type:
           - object
@@ -5906,7 +5876,6 @@ components:
             - type: 'null'
           description: A list of key value with the slug of the custom property as
             the key and the custom property value as value.
-          title: CustomerCustomProperties
         billing_address:
           $ref: '#/components/schemas/Address'
         shipping_address:
@@ -6275,7 +6244,6 @@ components:
                 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).
               example: FR
           description: Customer shipping address.
-          title: CustomerShippingAddress
         billing_email:
           type:
           - string
@@ -6390,7 +6358,6 @@ components:
             - current_period_ends_at
             - plan_id
             - checkout_session_id
-            title: CustomerSubscription
         segment_ids:
           type: array
           items:
@@ -6452,7 +6419,6 @@ components:
               entity_id: '123456789'
               provider_name: stripe
               provider_account_id: acc_1234567890
-            title: CustomerIntegration
         created_at:
           type: string
           format: date-time
@@ -6520,7 +6486,6 @@ components:
           - picture_url
           description: Hyperline user responsible for this customer and targeted by
             customer agent notifications.
-          title: CustomerOwner
         followers:
           type: array
           items:
@@ -6559,7 +6524,6 @@ components:
             - first_name
             - last_name
             - picture_url
-            title: CustomerFollower
           description: Hyperline users following this customer and targeted by customer
             agent notifications.
         payment_terms:
@@ -6642,7 +6606,6 @@ components:
       - payment_initiation_delay
       - payment_method_type
       - payment_method_id
-      title: Customer
     PaymentMethod:
       anyOf:
       - type: object
@@ -7022,7 +6985,6 @@ components:
             example: standard
         required:
         - type
-        title: StandardBankAccount
       - type: object
         properties:
           id:
@@ -7213,7 +7175,6 @@ components:
         - bank_name
         - name
         - country
-        title: StandardBankAccount
       - anyOf:
         - type: object
           properties:
@@ -7237,7 +7198,6 @@ components:
           - format
           - iban
           - bic_swift
-          title: IbanBicSwift
         - type: object
           properties:
             format:
@@ -7258,7 +7218,6 @@ components:
           - format
           - sort_code
           - account_number
-          title: SortCodeAccountNumber
         - type: object
           properties:
             format:
@@ -7279,7 +7238,6 @@ components:
           - format
           - account_number
           - routing_number
-          title: AccountNumberRoutingNumber
         - type: object
           properties:
             format:
@@ -7300,7 +7258,6 @@ components:
           - format
           - account_number
           - bic_swift
-          title: AccountNumberBicSwift
         example:
           format: iban_bic_swift
           iban: FR7630006000011234567890189
@@ -7359,7 +7316,6 @@ components:
         - balance
         - last_refreshed_at
         - last_error_type
-        title: ConnectedBankAccount
       - type: object
         properties:
           id:
@@ -7550,7 +7506,6 @@ components:
         - bank_name
         - name
         - country
-        title: ConnectedBankAccount
       - anyOf:
         - type: object
           properties:
@@ -7574,7 +7529,6 @@ components:
           - format
           - iban
           - bic_swift
-          title: IbanBicSwift
         - type: object
           properties:
             format:
@@ -7595,7 +7549,6 @@ components:
           - format
           - sort_code
           - account_number
-          title: SortCodeAccountNumber
         - type: object
           properties:
             format:
@@ -7616,7 +7569,6 @@ components:
           - format
           - account_number
           - routing_number
-          title: AccountNumberRoutingNumber
         - type: object
           properties:
             format:
@@ -7637,7 +7589,6 @@ components:
           - format
           - account_number
           - bic_swift
-          title: AccountNumberBicSwift
         example:
           format: iban_bic_swift
           iban: FR7630006000011234567890189
@@ -8072,7 +8023,6 @@ components:
           - tax_id
           - local_tax_number
           - address
-          title: InvoiceCustomer
         seller:
           type: object
           properties:
@@ -8098,7 +8048,6 @@ components:
           - name
           - tax_id
           - address
-          title: InvoiceSeller
         subscription_id:
           type:
           - string
@@ -8177,7 +8126,6 @@ components:
             - type: 'null'
           description: Key/value pairs to store any metadata useful in your context.
           example: null
-          title: InvoiceProperties
         custom_properties:
           type:
           - object
@@ -8199,7 +8147,6 @@ components:
           description: Values for custom properties defined for the `invoice` entity,
             keyed by slug.
           example: null
-          title: InvoiceCustomProperties
         additional_display_fields:
           type:
           - array
@@ -8223,7 +8170,6 @@ components:
               required:
               - type
               - field
-              title: Standard
             - type: object
               properties:
                 type:
@@ -8238,7 +8184,6 @@ components:
               required:
               - type
               - slug
-              title: CustomProperty
             - type: object
               properties:
                 type:
@@ -8259,7 +8204,6 @@ components:
               - type
               - label
               - value
-              title: Custom
           maxItems: 20
           description: Ordered additional fields displayed on the invoice PDF. Invoice
             and customer custom properties are referenced by slug.
@@ -8301,7 +8245,6 @@ components:
             required:
             - invoice_id
             - amount
-            title: InvoiceAllocation
           description: Current invoice applications made by this credit note. Only
             present for credit notes.
         coupons:
@@ -8729,7 +8672,6 @@ components:
                   description: Fee applied by the Payment Service Provider. Only supported
                     for Stripe.
                   example: null
-                  title: InvoiceTransactionProviderFee
                 chargeback:
                   type:
                   - object
@@ -8753,7 +8695,6 @@ components:
                     payment transaction.
                   deprecated: true
                   example: null
-                  title: InvoiceTransactionChargeback
                 integrations:
                   type: array
                   items:
@@ -8808,7 +8749,6 @@ components:
                       entity_id: '123456789'
                       provider_name: stripe
                       provider_account_id: acc_1234567890
-                    title: InvoiceTransactionIntegration
               required:
               - id
               - type
@@ -8825,7 +8765,6 @@ components:
               - provider_fee
               - chargeback
               - integrations
-              title: InvoiceTransaction
             - type: object
               properties:
                 payment_method_type:
@@ -8856,7 +8795,6 @@ components:
               required:
               - payment_method_type
               additionalProperties: true
-              title: InvoiceTransaction
             - type: object
               properties:
                 status:
@@ -8889,7 +8827,6 @@ components:
               required:
               - status
               additionalProperties: true
-              title: InvoiceTransaction
           description: List of transactions related to the invoice.
         public_url:
           type: string
@@ -8947,7 +8884,6 @@ components:
       - transactions
       - public_url
       - issued_at
-      title: Invoice
     Address:
       type:
       - object
@@ -9313,7 +9249,6 @@ components:
           description: Two-letter country code in ISO format. See [ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).
           example: FR
       description: Customer billing address.
-      title: Address
     UpdateBankAccount:
       allOf:
       - type: object
@@ -9324,7 +9259,6 @@ components:
             - 'null'
             description: Bank name.
             example: Fake bank
-        title: UpdateBankAccount
       - anyOf:
         - type: object
           properties:
@@ -9348,7 +9282,6 @@ components:
           - format
           - iban
           - bic_swift
-          title: IbanBicSwift
         - type: object
           properties:
             format:
@@ -9369,7 +9302,6 @@ components:
           - format
           - sort_code
           - account_number
-          title: SortCodeAccountNumber
         - type: object
           properties:
             format:
@@ -9390,7 +9322,6 @@ components:
           - format
           - account_number
           - routing_number
-          title: AccountNumberRoutingNumber
         - type: object
           properties:
             format:
@@ -9411,7 +9342,6 @@ components:
           - format
           - account_number
           - bic_swift
-          title: AccountNumberBicSwift
         example:
           format: iban_bic_swift
           iban: FR7630006000011234567890189
@@ -9461,7 +9391,6 @@ components:
             description: Whether the service period dates are displayed in the line
               item description on the invoice PDF. Defaults to true.
             example: true
-        title: CreateInvoiceLineItem
       - type: object
         properties:
           product_id:
@@ -9480,7 +9409,6 @@ components:
               smallest unit.
             example: 24000
         additionalProperties: true
-        title: CreateInvoiceLineItem
     InvoiceDeprecated:
       type: object
       properties:
@@ -9922,7 +9850,6 @@ components:
           - tax_id
           - local_tax_number
           - address
-          title: InvoiceDeprecatedCustomer
         seller:
           type: object
           properties:
@@ -9948,7 +9875,6 @@ components:
           - name
           - tax_id
           - address
-          title: InvoiceDeprecatedSeller
         subscription_id:
           type:
           - string
@@ -10032,7 +9958,6 @@ components:
             - type: 'null'
           description: Key/value pairs to store any metadata useful in your context.
           example: null
-          title: InvoiceDeprecatedProperties
         custom_properties:
           type:
           - object
@@ -10054,7 +9979,6 @@ components:
           description: Values for custom properties defined for the `invoice` entity,
             keyed by slug.
           example: null
-          title: InvoiceDeprecatedCustomProperties
         additional_display_fields:
           type:
           - array
@@ -10078,7 +10002,6 @@ components:
               required:
               - type
               - field
-              title: Standard
             - type: object
               properties:
                 type:
@@ -10093,7 +10016,6 @@ components:
               required:
               - type
               - slug
-              title: CustomProperty
             - type: object
               properties:
                 type:
@@ -10114,7 +10036,6 @@ components:
               - type
               - label
               - value
-              title: Custom
           maxItems: 20
           description: Ordered additional fields displayed on the invoice PDF. Invoice
             and customer custom properties are referenced by slug.
@@ -10156,7 +10077,6 @@ components:
             required:
             - invoice_id
             - amount
-            title: InvoiceDeprecatedAllocation
           description: Current invoice applications made by this credit note. Only
             present for credit notes.
         coupons:
@@ -10584,7 +10504,6 @@ components:
                   description: Fee applied by the Payment Service Provider. Only supported
                     for Stripe.
                   example: null
-                  title: InvoiceDeprecatedTransactionProviderFee
                 chargeback:
                   type:
                   - object
@@ -10608,7 +10527,6 @@ components:
                     payment transaction.
                   deprecated: true
                   example: null
-                  title: InvoiceDeprecatedTransactionChargeback
                 integrations:
                   type: array
                   items:
@@ -10663,7 +10581,6 @@ components:
                       entity_id: '123456789'
                       provider_name: stripe
                       provider_account_id: acc_1234567890
-                    title: InvoiceDeprecatedTransactionIntegration
               required:
               - id
               - type
@@ -10680,7 +10597,6 @@ components:
               - provider_fee
               - chargeback
               - integrations
-              title: InvoiceDeprecatedTransaction
             - type: object
               properties:
                 payment_method_type:
@@ -10711,7 +10627,6 @@ components:
               required:
               - payment_method_type
               additionalProperties: true
-              title: InvoiceDeprecatedTransaction
             - type: object
               properties:
                 status:
@@ -10744,7 +10659,6 @@ components:
               required:
               - status
               additionalProperties: true
-              title: InvoiceDeprecatedTransaction
           description: List of transactions related to the invoice.
         public_url:
           type: string
@@ -10798,7 +10712,6 @@ components:
       - coupons
       - transactions
       - public_url
-      title: InvoiceDeprecated
     InvoiceLineItem:
       type: object
       properties:
@@ -10975,7 +10888,6 @@ components:
       - display_unit_amount
       - display_service_period
       - original_line_item_id
-      title: InvoiceLineItem
     InvoiceCoupon:
       type: object
       properties:
@@ -11021,7 +10933,6 @@ components:
       - discount_amount
       - discount_percent
       - line_item_ids
-      title: InvoiceCoupon
   securitySchemes:
     bearer:
       type: http

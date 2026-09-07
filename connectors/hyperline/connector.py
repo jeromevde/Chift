@@ -4,7 +4,7 @@ Chift invoicing connector against Hyperline.
 Generated client fetches Hyperline; this maps into chift.models.
 
 Provenance:
-  Skill: skills/add_connector.md v6
+  Skill: skills/add_connector.md v8
   Models: generated/hyperline via `python -m codegeneration.run hyperline`
 
 Written by an LLM from that skill + Hyperline models + Chift's contract, then
@@ -99,7 +99,14 @@ def _required(value: T | None, field: str) -> T:
 # Mapping decision: Hyperline sends the currency's smallest unit, whose exponent is not always
 # two (EUR=2, JPY=0, KWD=3); ISO 4217 owns that vocabulary.
 def _amount(n: float, currency: str) -> float:
-    return float(n) / 10 ** Currency(currency).exponent
+    # Mapping decision: a code outside ISO 4217 has no exponent, so the amount cannot be
+    # scaled. Name the offending value like every other unmapped provider value rather
+    # than letting iso4217's ValueError escape as an anonymous integration failure.
+    try:
+        exponent = Currency(currency).exponent
+    except ValueError as exc:
+        raise errors.unmappable("currency", currency) from exc
+    return float(n) / 10**exponent
 
 
 def _day(s: Any) -> date | None:
@@ -226,6 +233,20 @@ def to_invoice(
             currency,
         ),
         tax_amount=_amount(_required(data.tax_amount, "invoice.tax_amount"), currency),
+        # Mapping decision: `amount_due` is the same "still owed" concept and the same
+        # smallest-unit convention as the other amounts. Compared against None rather than
+        # truthiness because a settled invoice legitimately owes 0.
+        outstanding_amount=(
+            _amount(data.amount_due, currency) if data.amount_due is not None else None
+        ),
+        # REVIEW: Hyperline's `settled_at` is *full* settlement; Chift asks for the *last*
+        # payment date. They agree on paid invoices and Hyperline exposes no per-payment
+        # date on this response, so a partially paid invoice stays None rather than
+        # reporting a date Hyperline did not give.
+        last_payment_date=_day(data.settled_at),
+        # Mapping decision: Chift's `last_updated_on` is a datetime, so unlike the date
+        # fields above this keeps the provider's time rather than trimming it.
+        last_updated_on=data.updated_at,
         customer_memo=data.custom_note,
         reference=data.reference,
         lines=[_line(x, currency) for x in lines],

@@ -92,10 +92,12 @@ def _write_models(normalized: Path, output: Path) -> None:
         # Prefer modern typing: list[str] and str | None instead of List/Optional.
         use_standard_collections=True,
         use_union_operator=True,
-        # Use schema `title` for class names (normalize sets those); avoids Customer1 noise.
+        # Respect provider and hoisted operation titles when naming classes.
         use_title_as_name=True,
         # Prefix titled variants with their parent context (PaymentMethodCard).
         naming_strategy=NamingStrategy.ParentPrefixed,
+        # Let the maintained generator name literal-identifiable union variants.
+        infer_union_variant_names=True,
         # Flatten RootModel wrappers so fields are on the model, not .root.
         collapse_root_models=True,
         # Enums as Literal[...] so `customer.type == "corporate"` works (Enum members don't).

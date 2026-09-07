@@ -1,7 +1,7 @@
 # Add a connector
 
 <!-- skill version: bump when the procedure or review rules change -->
-**version:** 7
+**version:** 8
 **applies to:** `connectors/<provider>/connector.py`
 
 How to onboard a new provider to Chift's unified invoicing API, end to end.
@@ -196,8 +196,7 @@ rules cover the cases that broke every generator we tested:
 | Symptom | Rule |
 |---|---|
 | `$ref` wrapped only to add a description | `ref_metadata` |
-| Existing object title overwritten or `Customer1` generated | `name_from_path` |
-| Anonymous variants share unique literal values | `literal_union_titles` |
+| Anonymous variants have distinct literal values | Preserve them; the generator infers their names |
 | Anonymous object variants produce numbered duplicate models | `anonymous_union` |
 | Client method returns `None` because the response is an inline schema | `hoist` |
 
@@ -206,11 +205,12 @@ output. Generic normalization must preserve which values the OpenAPI accepts unl
 documents why widening is appropriate. Provider-specific or contract-changing corrections
 generally belong in `patch.py`, with evidence.
 
-Preserve `$ref` unions, discriminators, and complete collision-free provider titles. The generic
-normalizer may add titles when every anonymous branch has a distinct const/single-enum value. Only
-otherwise unidentified inline object unions are widened: collect every documented property, use
-property-level `anyOf` for conflicting definitions, leave properties absent from any branch
-unconstrained, and keep requirements shared by every branch. Never use first-branch-wins merging.
+Preserve `$ref` unions, discriminators, complete collision-free provider titles, and unions whose
+branches have distinct const/single-enum values. The configured generator infers names for the
+literal variants. Only otherwise unidentified inline object unions are widened: collect every
+documented property, use property-level `anyOf` for conflicting definitions, leave properties
+absent from any branch unconstrained, and keep requirements shared by every branch. Never use
+first-branch-wins merging.
 
 The widened generated model accepts more combinations than the provider. When constructing a
 request, the mapper must still choose and document one valid provider alternative rather than
@@ -277,13 +277,21 @@ against a live sandbox. On the official-SDK path, this step is the bulk of the w
 
 ### Give the LLM these inputs
 
+There is deliberately no `generate-the-mapper` command. The inputs below are the procedure; a
+runner around them is the easy part and not the part that makes the output correct.
+
 1. Provider shapes — either `generated/<name>/models.py` (codegen) or the official SDK's
    types / response objects / docs for the operations you call.
 2. `chift/models.py` — the target contract.
-3. `connectors/hyperline/connector.py` — a worked example of the same job.
+3. A reviewed `connectors/<other>/connector.py` — a worked example of the same job.
 4. The provider's field **descriptions** (OpenAPI prose, SDK docstrings, or API docs). These
    carry the facts the types do not: *"Expressed in currency's smallest unit"* is the only place
    that says an amount needs currency-aware scaling.
+
+Then review what comes back, against the checklist below, before it becomes `connector.py`.
+`codegeneration.run` is deterministic and calls no LLM; a mapper is neither. The two fail
+differently: a bad `run` fails at generation time, while a bad mapper *runs fine* and quietly
+reports the wrong invoice status.
 
 ### What it must produce
 
@@ -291,11 +299,17 @@ against a live sandbox. On the official-SDK path, this step is the bulk of the w
 |---|---|
 | `to_contact` / `to_invoice` | provider model → `chift.models` |
 | Status/type tables | explicit dicts, **no `.get(x, default)`** — unknown values raise |
-| `_require_map` | the raiser: unmapped value → `ChiftAPIError(502)` |
+| `_require_map` | the raiser: unmapped value → `errors.unmappable(...)` |
 | `_page_via_cursor` | provider cursor pagination → Chift `page`/`size` |
-| `to_error` + `@_raise_chift` | provider HTTP error → `ChiftAPIError`, on every public method |
 | IDs | POC pass-through: Chift `id` == provider id, also in `source_ref.id` |
 | Decision comments | every non-obvious mapper choice, beside the code it affects |
+
+**No error translation.** Let provider exceptions propagate. `chift/api.py` registers one
+handler per exception type and `chift/errors.py` decides the status and `error_code`, so every
+connector fails identically. A mapper that catches `httpx.HTTPStatusError` itself is deciding
+Chift's error contract for one provider. The one thing the mapper *does* raise is
+`ChiftAPIError` for what only it can see: a value it cannot map (`_require_map`) or a field
+Chift needs that the provider omitted (`_required`).
 
 ### Make every mapper decision reviewable
 
@@ -371,7 +385,7 @@ collapse every other value into `False`.
 
 The draft wrote `INVOICE_STATUS.get(status, InvoiceStatus.posted)`. An unknown provider status
 would silently become `posted` — a wrong invoice state, delivered confidently, forever.
-→ `_require_map()` raises `ChiftAPIError(502)` instead.
+→ `_require_map()` raises via `errors.unmappable()` instead, naming the value.
 
 *Check:* grep the mapper for `.get(` with a second argument, and for `or <default>`. Each one is
 a silent wrong answer waiting for a value you have not seen.
@@ -398,10 +412,13 @@ shifts the day.
 **6. Does it fail loudly on anything it does not understand?**
 
 An unknown value needed for a required Chift concept, or a missing required source field, should
-raise `ChiftAPIError(502)`, never become a plausible default. A documented source value that
-answers a different question is not provider drift: if the Chift field is nullable, preserve
-`None` unless independent evidence answers it. 502 means the provider changed, not that the
-caller did anything wrong.
+raise a `ChiftAPIError` through `chift/errors.py`, never become a plausible default. A
+documented source value that answers a different question is not provider drift: if the Chift
+field is nullable, preserve `None` unless independent evidence answers it. **Never pick the
+status code in the mapper** — call `errors.unmappable()` / `errors.missing_required()` and let
+`chift/errors.py` own it. It currently returns 400, not the semantically obvious 502, because
+Chift's published spec declares 502 on exactly one unrelated POS route; that reasoning lives in
+one module docstring so it can be revisited in one place.
 
 Then run the live tests. Amount and date conversions are the ones that look right and are wrong.
 
@@ -440,11 +457,15 @@ Live tests need the provider key in `.env`, create fixtures, and must clean them
 - Put provider workflows in generated or third-party client wrappers. Archive-before-delete,
   404 tolerance and retries belong in the connector.
 - Trust the spec's (or SDK's) declared error schemas blindly. Providers document `{message}` and
-  return something else entirely; map the real JSON in `to_error`.
+  return something else entirely — Hyperline's sandbox sends `statusCode`/`type`/`message`/`errors`.
+  Generating typed error models from the document would be misleading, which is why
+  `chift/errors.py` reads the real JSON defensively instead.
 - Generate a Chift client. We **implement** Chift (`chift/models.py`, `chift/api.py`); we never
   call it. A generated `ChiftClient` is dead code.
-- Default an unknown value to something plausible. Raise `ChiftAPIError(502)` — provider drift
-  is a downstream failure, not a bad request from the caller.
+- Default an unknown value to something plausible. Raise through `chift/errors.py` — provider
+  drift is a downstream failure, not a bad request from the caller.
+- Choose an HTTP status in a connector, or translate provider errors there. `chift/errors.py`
+  owns the whole error contract so every provider fails identically.
 
 ---
 
@@ -457,11 +478,12 @@ Live tests need the provider key in `.env`, create fixtures, and must clean them
 - [ ] **If codegen:** `connectors/<name>/paths.yaml` listing only the needed path/method pairs
 - [ ] **If codegen:** `python -m codegeneration.run <name>` exits 0
 - [ ] **If codegen:** `connectors/<name>/config.py` reads credentials from `.env`; `.env.example` updated
+- [ ] Mapper written (by hand or by an LLM from the inputs in Step 4), then reviewed
 - [ ] Mapper with explicit tables and no silent defaults
 - [ ] Mapper docstring cites this skill version + client provenance (SDK package/version, or
       `generated/<provider>` commit / regenerate and update)
 - [ ] The four reads return `chift.models` types
-- [ ] Provider errors surface as `ChiftAPIError`, not raw SDK / `httpx` exceptions
+- [ ] Provider errors propagate untouched — no `try/except` translation in the connector
 - [ ] Live round-trip passes and cleans up after itself
 - [ ] `ruff check --no-cache .` passes
 - [ ] README note for any POC simplification you introduced (e.g. id pass-through)

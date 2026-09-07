@@ -34,11 +34,24 @@ The split is deliberate:
 Generated code is disposable. The durable assets are the normalization policy, provider
 corrections, Chift contract, and reviewed semantic mapping.
 
-The mapper was produced with LLM assistance from both contracts and the versioned
+### Why generation stops at the client
+
+The mapper was written by an LLM from both contracts and the versioned
 `skills/add_connector.md` procedure, then reviewed as ordinary Python. Regeneration never invokes
-an LLM. Review remains necessary because it caught real semantic failures, including versioned
-date names, silent status defaults, an omitted discount, and customer-kind inference from an
-unrelated provenance value.
+an LLM.
+
+The two halves fail differently, and that is the whole argument. A wrong client does not compile,
+or fails the generated-model example check. A wrong mapper *works*: it returns clean, running
+Python that reports the wrong invoice status or drops a discount, and nothing downstream
+notices.
+
+Review earns its place empirically. It caught versioned date names, silent status defaults, an
+omitted discount, and customer-kind inference from an unrelated provenance value — every one of
+which the draft rendered as plausible code. Those four defects are now the review checklist in
+the skill, so the next mapper is measured against the last one's mistakes.
+
+Wrapping the prompt in a runner would be easy, and would not make the output correct: the durable
+artefact here is the procedure and that checklist, not a script that calls a model.
 
 ## Generator experiments
 
@@ -63,7 +76,7 @@ Fifteen candidates were tested against the same Hyperline operations:
 | 15 | OpenAPI Generator built-in normalizer | 68 files / 15,647 lines | list validation failed | built-in rules insufficient |
 
 The current generated Hyperline package is two substantive files: a Pydantic model module and an
-87-line HTTP client. The model file is large because the provider's complete enum vocabulary is
+114-line HTTP client. The model file is large because the provider's complete enum vocabulary is
 preserved; generated line count is less important than a small, stable source pipeline.
 
 ### What the experiments established
@@ -123,9 +136,9 @@ and datamodel-code-generator's parent-prefixed naming turns them into contextual
 
 An anonymous union with a shared unique literal already has a stable identity even when its author
 omitted titles. For example, CreateInvoice's additional-display variants use `type: standard`,
-`type: custom_property`, and `type: custom`. The lossless `literal_union_titles` rule turns those
-values into titles, producing readable classes such as `CreateInvoiceStandard` and
-`CreateInvoiceCustomProperty` while retaining the union.
+`type: custom_property`, and `type: custom`. The normalizer leaves that union unchanged, and
+datamodel-code-generator's `infer_union_variant_names` option derives contextual names such as
+`CreateInvoiceAdditionalDisplayFieldsStandard` without a custom title-rewriting rule.
 
 The remaining inline object unions have no reusable identity. `CreateInvoiceLineItem`, for
 example, combines common fields with two identical property sets whose only difference is whether
@@ -143,14 +156,14 @@ such as `direct_debit`.
 This transformation is intentionally lossy: it forgets branch-specific required combinations and
 may accept a request the provider rejects. That is acceptable at the soft provider-intake boundary;
 request mappers must still construct a documented alternative. References, discriminators,
-complete collision-free titles, mixed scalar unions, and unions with sibling structural constraints
-are not flattened.
+complete collision-free titles, distinct literal identities, mixed scalar unions, and unions with
+sibling structural constraints are not flattened.
 
 ### Anonymous objects and inline responses
 
-An inline object such as `Invoice.customer` otherwise becomes `Customer1`. `name_from_path`
-names it from its location, producing `InvoiceCustomer`. Scalar `title` values are removed so
-FastAPI-generated titles do not become pointless root models.
+datamodel-code-generator's parent-prefixed naming gives inline objects contextual names such as
+`InvoiceCustomer`. The normalizer does not invent path-derived titles: that duplicated parent names
+in several generated models and made the generic traversal harder to understand.
 
 An inline request or response has no component name for the client annotation. `normalize.hoist`
 moves the JSON request body and first successful JSON response into `components.schemas` using
@@ -234,11 +247,25 @@ total_amount:
   description: Expressed in currency's smallest unit.
 ```
 
-The mapper converts totals, taxes, unit prices, and discounts using the currency exponent from
-the maintained [`iso4217`](https://pypi.org/project/iso4217/) package. This matters because EUR
-has two minor-unit digits, JPY has none, and KWD has three. A generated `float` cannot encode
-that unit convention. Tests use non-zero values for every monetary field because a zero fixture
-would hide an omitted mapping behind Chift's defaults.
+The mapper converts totals, taxes, unit prices, discounts, and the outstanding balance using the
+currency exponent from the maintained [`iso4217`](https://pypi.org/project/iso4217/) package.
+This matters because EUR has two minor-unit digits, JPY has none, and KWD has three. A generated
+`float` cannot encode that unit convention. Tests use non-zero values for every monetary field
+because a zero fixture would hide an omitted mapping behind Chift's defaults — and compare
+`amount_due` against `None` rather than truthiness, because a settled invoice legitimately
+owes `0`.
+
+**The two currency vocabularies do not agree.** `iso4217` ships the currencies that are *current*;
+Hyperline's enum still lists nine it has retired — BGN, HRK, ANG, BYR, MRO, SLL, STD, VEF, ZWL.
+Bulgaria adopting the euro in 2026 is enough to make `BGN` a code Hyperline accepts and the
+pinned package does not, so a historical invoice in any of the nine has no exponent to scale by.
+That gap is not hypothetical and not detectable by types: both sides are `str`.
+
+The mapper therefore treats it as an unmappable provider value like any other, naming the
+currency in the error rather than letting `iso4217`'s `ValueError` escape as an anonymous
+integration failure. Widening to a historical currency table is the obvious next step; this POC
+prefers a loud, named failure over a scaling factor guessed for a demonetised currency, since a
+wrong exponent is a silently wrong invoice total.
 
 ### Dates and API versions
 
@@ -339,11 +366,25 @@ The validation layers catch different failures:
 |---|---|---|
 | Spectral | General OpenAPI rule violations | no |
 | Generated-model example check | The document contradicting itself or generation dropping a model | no |
+| Foreign-spec run (`pytest --robustness`) | Rules that only work on Hyperline's house style | no |
 | Live sandbox tests | The document contradicting the provider API | yes |
 
 Generation is deterministic: tool versions are pinned, timestamps are disabled, and reference
 collection preserves document order. Byte-identical regeneration makes generated diffs usable in
 review and CI.
+
+### Foreign specifications
+
+Hyperline is one document with one house style, so a rule that looks general may just be
+Hyperline-shaped. `pytest --robustness` runs the *whole* pipeline — prune, normalize, generate,
+emit, validate examples, import both modules — against Stripe, GitHub, Discord, and Petstore,
+which differ in OpenAPI version, size, and idiom. Stripe's 6.4 MB document yields 899 importable
+models and a two-method client from one `paths.yaml` entry.
+
+The test asserts that the emitted method is annotated with a model that exists, not merely that
+normalization returned a document. Every generator in the table above returned *a* document too;
+what separates them is whether the result imports and validates. Nothing is committed — specs go
+to pytest's tmp dir and generated packages are deleted afterwards.
 
 ### Live sandbox
 

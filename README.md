@@ -1,10 +1,36 @@
 # Hyperline → Chift connector POC
 
-## Goal
-
 [Chift](https://chift.eu) exposes one invoicing contract across billing and accounting tools.
 This Python POC generates a typed Hyperline client from OpenAPI and maps Hyperline resources into
-Chift models, using an approach that can be repeated for another provider.
+Chift models, using an approach that can be repeated for another provider. Generation is
+deterministic; the mapping is reviewed code, for reasons worth two minutes of your time below.
+
+## Read this first
+
+Three commands, in the order that shows the most:
+
+```bash
+pip install -e ".[dev]" && python -m codegeneration.run hyperline
+# Regenerates generated/hyperline/ byte-identically. `git status` stays clean —
+# that is the point: generated diffs are reviewable.
+
+pytest
+# 29 tests. With HYPERLINE_API_KEY_TEST in .env, this creates real customers and
+# invoices in the Hyperline sandbox, reads them back through Chift's contract, and
+# deletes them. Without a key, the offline half still runs.
+
+pytest --robustness
+# Runs the same pipeline against Stripe, GitHub, Discord and Petstore. Stripe's
+# 6.4 MB spec → 899 importable models from one paths.yaml entry.
+```
+
+Three things to look at:
+
+| Where | Why it is the interesting part |
+|---|---|
+| [`connectors/hyperline/connector.py`](connectors/hyperline/connector.py) | Grep `# Mapping decision:` and `# REVIEW:`. Every semantic judgement is marked beside the code, so you can approve the lossy choices without reading the field renames. |
+| [`RESEARCH.md`](RESEARCH.md) § Generator experiments | Fifteen community generators tested against these same four endpoints, with what each produced and where each broke. It is why this pipeline exists rather than `openapi-generator`. |
+| [`skills/add_connector.md`](skills/add_connector.md) § Review it against this checklist | Six checks, each one a defect an LLM draft actually produced here. This is the reusable artefact. |
 
 ## Supported surface
 
@@ -32,16 +58,22 @@ Hyperline OpenAPI
 
 The boundary is intentional:
 
-- `python -m codegeneration.run` deterministically regenerates provider models and client code.
+- `python -m codegeneration.run` deterministically regenerates provider models and client code,
+  and never invokes an LLM.
 - `connectors/hyperline/connector.py` holds reviewed business meaning: units, statuses, names,
-  pagination, provider workflows, and error translation.
-- The mapper was LLM-assisted using [`skills/add_connector.md`](skills/add_connector.md), but the
-  generator does not invoke an LLM.
+  pagination, and provider workflows.
+- The mapper was written by an LLM from [`skills/add_connector.md`](skills/add_connector.md), then
+  reviewed as ordinary Python.
 
-The mapper is reviewable by construction: the connector skill requires every non-obvious choice
-to be marked next to the code with `# Mapping decision:` and its rationale. A reviewer can scan
-those comments to approve the lossy or product-specific choices without reading every mechanical
-field rename.
+That split is not squeamishness about generating the mapper — it is that the two halves fail
+differently. A wrong client does not compile. A wrong mapper *works*: it returns plausible Python
+that loses a discount or reports a status Chift's four states do not mean. The skill's six review
+checks are the defects that actually came out of a draft here, which is why review is a step
+rather than a formality.
+
+The mapper is reviewable by construction: every non-obvious choice is marked beside the code with
+`# Mapping decision:` and its rationale. A reviewer can scan those to approve the lossy choices
+without reading every mechanical field rename.
 
 Read [`RESEARCH.md`](RESEARCH.md) for the experiments, normalization rationale, mapping decisions,
 trade-offs, and sandbox evidence. Read
@@ -66,11 +98,11 @@ create temporary customers and invoices and clean them up afterward.
 
 | Path | Purpose |
 |---|---|
-| `chift/` | Chift models and minimal FastAPI surface |
+| `chift/` | Chift models, error contract, and minimal FastAPI surface |
 | `connectors/hyperline/` | Vendored spec, endpoint selection, provider patch, configuration, mapper |
 | `codegeneration/` | Provider-agnostic prune, normalize, generate, emit, and validate pipeline |
 | `generated/hyperline/` | Disposable generated Pydantic models and HTTP client |
-| `tests/` | Offline edge cases and live Hyperline round trips |
+| `tests/` | Offline edge cases, live Hyperline round trips, foreign-spec pipeline runs |
 | `skills/add_connector.md` | Repeatable procedure for onboarding another provider |
 | `RESEARCH.md` | Experiments, decisions, limitations, and evidence |
 
@@ -79,7 +111,8 @@ create temporary customers and invoices and clean them up afterward.
 1. Add `connectors/<provider>/openapi.<provider>.yaml` and `paths.yaml`.
 2. Add an asserted `patch.py` only for proven provider-spec defects.
 3. Run `python -m codegeneration.run <provider>`.
-4. Write and review the explicit provider → Chift mapper using the connector skill.
+4. Write the provider → Chift mapper with the connector skill, then review it against that
+   skill's checklist.
 5. Verify the four Chift reads against the provider sandbox.
 
 Generated code is disposable. Do not edit `generated/` by hand.
@@ -92,6 +125,17 @@ Generated code is disposable. Do not edit `generated/` by hand.
 - Hyperline IDs pass through because this POC has no persistent technical-ID store.
 - The generated transport supports bearer authentication and JSON only.
 - Only `page` and `size` are implemented from Chift's broader list-filter surface.
+- `chift/models.py` is hand-transcribed from the vendored `chift/chift.openapi.yaml`, not
+  generated. We implement Chift rather than call it, so there is no client to generate; the spec
+  is vendored as the reference a reviewer can diff the models against.
+- Retrieve-one-invoice returns Chift's list shape. `InvoiceItemOutSingle` adds a base64 `pdf`
+  field, and Hyperline offers a `public_url` rather than document bytes.
+- A provider outage becomes **400**, not 502 — Chift's published spec declares 502 on exactly one
+  unrelated POS route, so returning it here would send callers a status Chift never documented.
+  The full argument is in [`chift/errors.py`](chift/errors.py)'s module docstring.
+- Nine currencies Hyperline still publishes (BGN, HRK, ANG, …) have been retired from ISO 4217, so
+  they have no exponent to scale amounts by. Those invoices fail by name rather than guess.
+- Addresses drop Hyperline's `line2`; Chift has no equivalent slot.
 
 The reasons for these choices and the alternatives tested are in
 [`RESEARCH.md`](RESEARCH.md).

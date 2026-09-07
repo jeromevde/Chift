@@ -18,7 +18,8 @@ LLM-written mapper in `connectors/<provider>/connector.py`.
   generated or third-party client code.
 - Never generate a Chift client. We *implement* Chift (`chift/models.py`, `chift/api.py`);
   we never call it.
-- Unknown provider values raise `ChiftAPIError(502)`. No silent `.get(x, default)` fallbacks.
+- Unknown provider values raise through `chift/errors.py`. No silent `.get(x, default)`
+  fallbacks, and no connector picks a status code.
 
 ## Verify
 

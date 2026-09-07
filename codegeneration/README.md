@@ -66,12 +66,12 @@ That makes it fail visibly when the provider fixes its document.
 
 Generic structural rewrites belong in `normalize.py` and should preserve what the schema accepts.
 Provider-specific or contract-changing corrections belong in `patch.py` and must carry their
-evidence. Existing union branch titles, `$ref` unions, and discriminators are preserved. Anonymous
-variants with a shared unique literal receive stable titles without changing validation. Remaining
-inline object unions are deliberately widened into one permissive model: properties are combined,
-conflicting property schemas become `anyOf`, properties absent from a branch become unconstrained,
-and only universally required fields stay required. This is the normalizer's prominently documented
-lossy exception for soft provider intake.
+evidence. Existing union branch titles, `$ref` unions, discriminators, and variants identifiable by
+distinct literal values are preserved for datamodel-code-generator to name. Remaining inline object
+unions are deliberately widened into one permissive model: properties are combined, conflicting
+property schemas become `anyOf`, properties absent from a branch become unconstrained, and only
+universally required fields stay required. This is the normalizer's prominently documented lossy
+exception for soft provider intake.
 
 The permissive result gives request mappers stable generated nested models instead of synthetic
 numbered union classes. The mapper must still construct one valid provider alternative because the

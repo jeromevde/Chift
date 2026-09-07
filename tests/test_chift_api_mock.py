@@ -12,6 +12,7 @@ from types import SimpleNamespace
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+from iso4217 import Currency
 
 from chift import errors
 from chift.api import CONNECTORS, app
@@ -43,6 +44,16 @@ def client():
     get_settings.cache_clear()
 
 
+def _published_enum(model, field: str) -> list[str]:
+    """The values the provider's own schema declares for a field."""
+    schema = model.model_json_schema()["properties"][field]
+    return next(branch["enum"] for branch in schema["anyOf"] if "enum" in branch)
+
+
+def _published_currencies() -> list[str]:
+    return _published_enum(hl.Invoice, "currency")
+
+
 def _invoice(**changes) -> hl.Invoice:
     """Build the smallest valid provider invoice needed by mapper tests."""
     values = {
@@ -61,12 +72,7 @@ def _invoice(**changes) -> hl.Invoice:
 
 
 def test_every_published_invoice_status_has_an_explicit_mapping():
-    status_schema = hl.Invoice.model_json_schema()["properties"]["status"]
-    published = next(
-        branch["enum"] for branch in status_schema["anyOf"] if "enum" in branch
-    )
-
-    assert set(INVOICE_STATUS) == set(published)
+    assert set(INVOICE_STATUS) == set(_published_enum(hl.Invoice, "status"))
     assert INVOICE_STATUS["closed"] is InvoiceStatus.cancelled
     assert INVOICE_STATUS["open"] is InvoiceStatus.draft
     assert INVOICE_STATUS["grace_period"] is InvoiceStatus.posted
@@ -92,6 +98,51 @@ def test_invoice_mapper_uses_currency_units_or_fails_loudly():
     assert (
         missing_date.value.error.detail == "missing required field: invoice.issue_date"
     )
+
+
+def test_currency_hyperline_documents_but_iso4217_dropped_names_the_value():
+    """Reachable today, not defensive.
+
+    `iso4217` ships only *current* currencies. Hyperline's enum still includes ones
+    it has retired — BGN (euro from 2026), HRK, ANG, BYR, MRO, SLL, STD, VEF, ZWL —
+    so a historical invoice in any of them has no exponent to scale by. That must
+    name the currency, not escape as an anonymous integration failure.
+    """
+    retired = [
+        code
+        for code in _published_currencies()
+        if code not in {c.code for c in Currency}
+    ]
+    assert "BGN" in retired, "expected Hyperline to still publish retired currencies"
+
+    with pytest.raises(ChiftAPIError, match="Unmapped provider currency") as error:
+        to_invoice(_invoice(currency="BGN", total_amount=1000))
+    assert error.value.error.error_code == errors.MAPPING_ERROR
+    assert error.value.error.detail == "currency=BGN"
+
+
+def test_settlement_and_audit_fields_are_mapped_not_left_to_chift_defaults():
+    """Every field Hyperline exposes that Chift declares, with distinct non-zero values."""
+    invoice = to_invoice(
+        _invoice(
+            amount_due=4200,
+            settled_at="2024-02-03T22:45:00Z",
+            updated_at="2024-02-04T09:15:30Z",
+        )
+    )
+
+    assert invoice.outstanding_amount == 42.0
+    # a date, trimmed from the provider datetime
+    assert invoice.last_payment_date.isoformat() == "2024-02-03"
+    # a datetime, deliberately not trimmed
+    assert invoice.last_updated_on.isoformat() == "2024-02-04T09:15:30+00:00"
+
+    # A settled invoice owes 0. That is a mapped value, not an absent one.
+    assert to_invoice(_invoice(amount_due=0)).outstanding_amount == 0.0
+    assert to_invoice(_invoice(amount_due=None)).outstanding_amount is None
+
+    # An unpaid invoice has no settlement date; Chift's field stays null.
+    assert to_invoice(_invoice()).last_payment_date is None
 
 
 def test_import_source_and_registration_number_do_not_guess_customer_kind():
@@ -296,6 +347,42 @@ def test_provider_errors_are_rendered_as_chift_error(client):
     assert "hyperline.co 404" in body["detail"]
 
 
+def test_a_connector_bug_still_leaves_the_caller_a_chift_error():
+    """The last-resort handler, exercised over HTTP rather than by calling errors.py.
+
+    `raise_server_exceptions=False` is what a real ASGI server does: Starlette's
+    ServerErrorMiddleware calls the handler and sends its response, then re-raises so
+    the traceback reaches the log. TestClient's default re-raise hides the response.
+    """
+
+    class Broken:
+        def get_contact(self, _contact_id):
+            raise RuntimeError("a bug in a connector, not a provider failure")
+
+    CONNECTORS[CONSUMER] = Broken()
+    try:
+        with TestClient(app, raise_server_exceptions=False) as http:
+            r = http.get(f"/consumers/{CONSUMER}/invoicing/contacts/anything")
+    finally:
+        CONNECTORS.clear()
+
+    assert r.status_code == 400
+    body = r.json()
+    assert body["error_code"] == errors.PROVIDER_ERROR
+    # The traceback goes to the log; the caller gets Chift's shape and nothing internal.
+    assert "RuntimeError" not in r.text
+    assert set(body) == {"message", "status", "detail", "error_code"}
+
+
+def test_unknown_consumer_is_404_without_touching_a_connector():
+    with TestClient(app) as http:
+        r = http.get(
+            "/consumers/11111111-2222-3333-4444-555555555555/invoicing/invoices"
+        )
+    assert r.status_code == 404
+    assert r.json()["error_code"] == errors.NOT_FOUND
+
+
 def test_unknown_provider_failures_use_a_status_chift_documents():
     """Chift declares only 400/404/422 on these endpoints, so 503 upstream becomes 400."""
     request = httpx.Request("GET", "https://sandbox.api.hyperline.co/v2/customers")
@@ -314,7 +401,9 @@ def test_unknown_provider_failures_use_a_status_chift_documents():
 
 def test_provider_404_maps_to_chift_404():
     request = httpx.Request("GET", "https://sandbox.api.hyperline.co/v2/customers/x")
-    response = httpx.Response(404, json={"type": "NotFound", "message": "nope"}, request=request)
+    response = httpx.Response(
+        404, json={"type": "NotFound", "message": "nope"}, request=request
+    )
 
     err = errors.from_http_status_error(
         httpx.HTTPStatusError("boom", request=request, response=response)
