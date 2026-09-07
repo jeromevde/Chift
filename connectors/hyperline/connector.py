@@ -4,7 +4,7 @@ Chift invoicing connector against Hyperline.
 Generated client fetches Hyperline; this maps into chift.models.
 
 Provenance:
-  Skill: skills/add_connector.md v8
+  Skill: skills/add_connector.md v9
   Models: generated/hyperline via `python -m codegeneration.run hyperline`
 
 Written by an LLM from that skill + Hyperline models + Chift's contract, then
@@ -307,37 +307,43 @@ class HyperlineInvoicingConnector:
         self, *, name: str, email: str, external_id: str
     ) -> ContactItemOut:
         raw = self.client.create_customer(
-            hl.CreateCustomer(
-                name=name,
-                type="corporate",
-                currency="EUR",
-                country="BE",
-                external_id=external_id,
-                billing_email=email,
-                billing_address=hl.Address(
-                    line1="10 Rue de la Loi", city="Brussels", zip="1000"
-                ),
+            hl.CreateCustomer.model_validate(
+                {
+                    "name": name,
+                    "type": "corporate",
+                    "currency": "EUR",
+                    "country": "BE",
+                    "external_id": external_id,
+                    "billing_email": email,
+                    "billing_address": {
+                        "line1": "10 Rue de la Loi",
+                        "city": "Brussels",
+                        "zip": "1000",
+                    },
+                }
             )
         )
         return to_contact(raw)
 
     def create_invoice(self, *, customer_id: str, reference: str) -> InvoiceItemOut:
         raw = self.client.create_invoice(
-            hl.CreateInvoice(
-                customer_id=customer_id,
-                currency="EUR",
-                status="draft",
-                reference=reference,
-                # Mapping decision: use Hyperline's inline-item alternative (name + amount)
-                # rather than referencing a pre-existing product_id.
-                line_items=[
-                    hl.CreateInvoiceLineItem(
-                        name="POC consulting",
-                        unit_amount=100_000,
-                        units_count=1,
-                        tax_rate=21,
-                    )
-                ],
+            hl.CreateInvoice.model_validate(
+                {
+                    "customer_id": customer_id,
+                    "currency": "EUR",
+                    "status": "draft",
+                    "reference": reference,
+                    # Mapping decision: use Hyperline's inline-item alternative
+                    # (name + amount) rather than a pre-existing product_id.
+                    "line_items": [
+                        {
+                            "name": "POC consulting",
+                            "unit_amount": 100_000,
+                            "units_count": 1,
+                            "tax_rate": 21,
+                        }
+                    ],
+                }
             )
         )
         return to_invoice(raw)

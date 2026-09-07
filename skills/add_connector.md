@@ -1,7 +1,7 @@
 # Add a connector
 
 <!-- skill version: bump when the procedure or review rules change -->
-**version:** 8
+**version:** 9
 **applies to:** `connectors/<provider>/connector.py`
 
 How to onboard a new provider to Chift's unified invoicing API, end to end.
@@ -18,7 +18,7 @@ Everything mechanical belongs in half 1. Everything requiring judgement — what
 `generated/**`, you have put something in the wrong half.
 
 **Research the provider client path before generating anything.** An actively maintained official
-Python SDK often beats OpenAPI codegen: less schema repair, fewer anonymous-union nightmares,
+Python SDK often beats OpenAPI codegen: less schema repair, fewer difficult inline schemas,
 and the vendor already owns auth, pagination helpers, and drift. In that case half 1 is a pinned
 dependency and **only the mapper has to be written**. Codegen is the fallback when there is no
 usable official client.
@@ -197,24 +197,17 @@ rules cover the cases that broke every generator we tested:
 |---|---|
 | `$ref` wrapped only to add a description | `ref_metadata` |
 | Anonymous variants have distinct literal values | Preserve them; the generator infers their names |
-| Anonymous object variants produce numbered duplicate models | `anonymous_union` |
+| A nested union produces numbered classes | Keep the union; pass a dictionary through the stable top-level model |
 | Client method returns `None` because the response is an inline schema | `hoist` |
 
 If a new provider needs a rule, add it as a named function with a docstring showing exact input and
-output. Generic normalization must preserve which values the OpenAPI accepts unless the rule
-documents why widening is appropriate. Provider-specific or contract-changing corrections
-generally belong in `patch.py`, with evidence.
+output. Generic normalization must preserve which values the OpenAPI accepts. Provider-specific or
+contract-changing corrections belong in `patch.py`, with evidence.
 
-Preserve `$ref` unions, discriminators, complete collision-free provider titles, and unions whose
-branches have distinct const/single-enum values. The configured generator infers names for the
-literal variants. Only otherwise unidentified inline object unions are widened: collect every
-documented property, use property-level `anyOf` for conflicting definitions, leave properties
-absent from any branch unconstrained, and keep requirements shared by every branch. Never use
-first-branch-wins merging.
-
-The widened generated model accepts more combinations than the provider. When constructing a
-request, the mapper must still choose and document one valid provider alternative rather than
-treating optional generated fields as proof that any combination is valid.
+Preserve every union. The configured generator can infer readable names for literal variants, but
+some anonymous nested variants will still get numbered classes. Treat those classes as disposable:
+the mapper should depend on stable top-level operation models and pass nested dictionaries through
+`Model.model_validate({...})`. Do not add a lossy generic rewrite merely to improve generated names.
 
 ### When the spec is wrong about its own API
 
@@ -256,7 +249,7 @@ The split to hold on to:
 
 | | Lives in | Because |
 |---|---|---|
-| Generic rewrites, lossless except for explicit anonymous-union widening | `codegeneration/normalize.py` | true of any OpenAPI document |
+| Lossless generic rewrites | `codegeneration/normalize.py` | true of any OpenAPI document |
 | Spec corrections (this field is mislabelled) | `connectors/<name>/patch.py` | true only of this provider |
 
 ### Credentials

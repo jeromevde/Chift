@@ -141,23 +141,26 @@ datamodel-code-generator's `infer_union_variant_names` option derives contextual
 `CreateInvoiceAdditionalDisplayFieldsStandard` without a custom title-rewriting rule.
 
 The remaining inline object unions have no reusable identity. `CreateInvoiceLineItem`, for
-example, combines common fields with two identical property sets whose only difference is whether
-`name + unit_amount` or `product_id` is required. Preserving that structure generated redundant
-classes such as `CreateInvoiceLineItemCreateInvoiceLineItem3 | ...4`; both accepted the same values
-because provider fields are already generated as optional.
+example, combines alternatives selected by `name + unit_amount` or `product_id`. Preserving that
+structure generates mechanical nested classes such as
+`CreateInvoiceLineItemCreateInvoiceLineItem3`, but mapper code never needs to import them. It passes
+the nested value as a dictionary through the stable top-level model:
 
-`anonymous_union` therefore widens only those unidentified object variants into one stable model.
-It takes every documented property, keeps identical schemas once, turns conflicting property
-schemas into a property-level `anyOf`, and leaves a property unconstrained when it is absent from
-any branch. It retains requirements shared by every branch, preserves null, and allows additional
-provider fields. It never uses a first-branch-wins merge, which would reject valid later enum values
-such as `direct_debit`.
+```python
+hl.CreateInvoice.model_validate(
+    {
+        "customer_id": customer_id,
+        "line_items": [
+            {"name": "POC consulting", "unit_amount": 100_000, "units_count": 1}
+        ],
+    }
+)
+```
 
-This transformation is intentionally lossy: it forgets branch-specific required combinations and
-may accept a request the provider rejects. That is acceptable at the soft provider-intake boundary;
-request mappers must still construct a documented alternative. References, discriminators,
-complete collision-free titles, distinct literal identities, mixed scalar unions, and unions with
-sibling structural constraints are not flattened.
+Pydantic selects and validates a generated union branch internally. This keeps every union
+faithful to the provider specification, deletes the lossy custom merge rule, and makes ugly nested
+names harmless disposable output. The trade-off is a larger generated file, which is cheaper than
+maintaining semantic OpenAPI rewrites or weakening the provider contract.
 
 ### Anonymous objects and inline responses
 
@@ -194,9 +197,8 @@ discarded currencies, countries, and timezones from the provider contract. It wa
 - Keeping closed enums makes provider drift loud and reviewable.
 - A specific field can be relaxed later; a global destructive rewrite is difficult to audit.
 
-OpenAPI Overlay is useful for declarative literal patches, but cannot compute titles from schema
-paths or inspect union branches to derive safe names and property unions. These small contextual
-Python normalization rules therefore do not have a direct Overlay equivalent.
+OpenAPI Overlay is useful for declarative literal patches. The remaining generic rewrites are
+structural generation hygiene rather than corrections to the provider contract.
 
 ## Generator choices
 
@@ -205,7 +207,7 @@ options:
 
 - Pydantic v2 models targeting Python 3.11.
 - Standard collections and `X | None` unions.
-- Existing `title`-based class names, with path names only where titles are absent.
+- Existing `title`-based class names and parent-prefixed generated names.
 - Losslessly inferred titles for literal-tagged variants and parent-prefixed generated names.
 - Collapsed root models.
 - Enums as `Literal[...]`, avoiding enum-object comparisons in the mapper.

@@ -1,26 +1,16 @@
-"""Prepare OpenAPI for readable, permissive provider models.
+"""Prepare OpenAPI for readable provider models.
 
-Three transformations are maintained here:
+Two transformations are maintained here:
 
-1. Anonymous inline object unions are deliberately widened into one soft model.
-   Every documented property is retained, but branch-specific requirements are
-   forgotten. Referenced, titled, discriminated, and literal-identifiable unions
-   remain intact.
-2. Metadata-only ``allOf`` wrappers around ``$ref`` are unwrapped. This preserves
+1. Metadata-only ``allOf`` wrappers around ``$ref`` are unwrapped. This preserves
    validation and avoids artificial generated classes.
-3. Inline operation bodies/responses are hoisted and component names are converted
+2. Inline operation bodies/responses are hoisted and component names are converted
    to PascalCase so the client emitter can always refer to stable top-level models.
 
 Provider-specific corrections belong in ``connectors/<provider>/patch.py``.
-
-WARNING: the anonymous-union transformation is intentionally lossy. It accepts
-more field combinations than the provider documented so response intake remains
-soft; request mappers must still construct a documented provider alternative.
-
-
-Might be a bit overengineered, but it's a good way to ensure that the generated datamodels look nice
-Was stress-tested on other openapi specs.
-
+All unions remain faithful to the provider document. Generated nested class names
+are disposable: mappers validate nested dictionaries through stable top-level
+operation models instead of importing those implementation details.
 """
 
 from __future__ import annotations
@@ -45,119 +35,6 @@ def _pascal(*parts: str) -> str:
     """Convert path or schema fragments into one PascalCase model name."""
     words = [word for part in parts for word in re.findall(r"[A-Za-z0-9]+", part)]
     return "".join(word[:1].upper() + word[1:] for word in words)
-
-
-def anonymous_union(schema: dict) -> dict:
-    """WARNING: widen an unidentified inline object union into one permissive object.
-
-    Input::
-
-        anyOf:
-          - properties: {name: {type: string}}
-            required: [name]
-          - properties: {product_id: {type: string}}
-            required: [product_id]
-
-    Output::
-
-        type: object
-        properties: {name: {}, product_id: {}}
-        additionalProperties: true
-
-    This intentionally forgets branch relationships. Unions carrying reusable
-    references, titles, discriminators, scalar alternatives, sibling constraints,
-    or distinct literal identities remain untouched for the generator.
-    """
-    keywords = [key for key in ("anyOf", "oneOf") if len(schema.get(key, [])) >= 2]
-    if len(keywords) != 1 or "discriminator" in schema:
-        return schema
-
-    keyword = keywords[0]
-    if set(schema) - _METADATA_KEYS - {keyword, "type"}:
-        return schema
-    branches = schema[keyword]
-    if any(not isinstance(branch, dict) or "$ref" in branch for branch in branches):
-        return schema
-
-    objects = []
-    nullable = False
-    for branch in branches:
-        declared = branch.get("type")
-        types = {declared} if isinstance(declared, str) else set(declared or [])
-        if "object" in types or "properties" in branch:
-            objects.append(branch)
-            nullable |= "null" in types
-        elif types == {"null"}:
-            nullable = True
-        else:
-            return schema
-
-    titles = [
-        _pascal(str(branch["title"])) for branch in objects if branch.get("title")
-    ]
-    if len(titles) == len(objects) and all(titles) and len(set(titles)) == len(titles):
-        return schema
-
-    common = set(objects[0].get("properties", {}))
-    for branch in objects[1:]:
-        common &= set(branch.get("properties", {}))
-    for field in common:
-        values = []
-        for branch in objects:
-            field_schema = branch["properties"][field]
-            if "const" in field_schema:
-                values.append(field_schema["const"])
-            elif (
-                isinstance(field_schema.get("enum"), list)
-                and len(field_schema["enum"]) == 1
-            ):
-                values.append(field_schema["enum"][0])
-            else:
-                break
-        labels = [_pascal(str(value)) for value in values]
-        if (
-            len(labels) == len(objects)
-            and all(labels)
-            and len(set(labels)) == len(labels)
-        ):
-            return schema
-
-    property_names = dict.fromkeys(
-        field for branch in objects for field in branch.get("properties", {})
-    )
-    properties = {}
-    for field in property_names:
-        definitions = [
-            branch["properties"][field]
-            for branch in objects
-            if field in branch.get("properties", {})
-        ]
-        if len(definitions) != len(objects):
-            properties[field] = {}
-            continue
-        choices = []
-        for definition in definitions:
-            if definition not in choices:
-                choices.append(definition)
-        properties[field] = choices[0] if len(choices) == 1 else {"anyOf": choices}
-
-    required = [
-        field
-        for field in objects[0].get("required", [])
-        if all(field in branch.get("required", []) for branch in objects[1:])
-    ]
-    siblings = {
-        key: value
-        for key, value in schema.items()
-        if key not in ("anyOf", "oneOf", "type")
-    }
-    return {
-        **siblings,
-        "type": ["object", "null"] if nullable else "object",
-        **({"properties": properties} if properties else {}),
-        **({"required": required} if required else {}),
-        "additionalProperties": True,
-    }
 
 
 def ref_metadata(schema: dict) -> dict:
@@ -187,24 +64,12 @@ def ref_metadata(schema: dict) -> dict:
 
 
 def _walk(node):
-    """Apply the two node transformations recursively to a schema tree."""
+    """Apply reference-metadata normalization recursively to a schema tree."""
     if isinstance(node, list):
         return [_walk(item) for item in node]
     if not isinstance(node, dict):
         return node
-
-    schema = anonymous_union(dict(node))
-    if isinstance(schema.get("properties"), dict):
-        schema["properties"] = {
-            field: _walk(field_schema)
-            for field, field_schema in schema["properties"].items()
-        }
-    if "items" in schema:
-        schema["items"] = _walk(schema["items"])
-    for combiner in ("allOf", "anyOf", "oneOf"):
-        if combiner in schema:
-            schema[combiner] = [_walk(branch) for branch in schema[combiner]]
-    return ref_metadata(schema)
+    return ref_metadata({key: _walk(value) for key, value in node.items()})
 
 
 def _rewrite_refs(node, aliases: dict):
@@ -225,8 +90,41 @@ def _rewrite_refs(node, aliases: dict):
 def hoist(spec: dict) -> dict:
     """Hoist inline JSON operation I/O into stable named components.
 
-    An inline response for ``operationId: getCustomer`` becomes a component named
-    ``GetCustomerResponse`` and the operation receives a ``$ref`` to it.
+    Input::
+
+        paths:
+          /v2/customers/{id}:
+            get:
+              operationId: getCustomer
+              responses:
+                "200":
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        properties: {id: {type: string}}
+
+    Output::
+
+        paths:
+          /v2/customers/{id}:
+            get:
+              operationId: getCustomer
+              responses:
+                "200":
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/GetCustomerResponse"
+        components:
+          schemas:
+            GetCustomerResponse:
+              title: GetCustomerResponse
+              type: object
+              properties: {id: {type: string}}
+
+    The same rewrite applies to ``requestBody`` (suffix ``Body``). Schemas that
+    are already ``$ref``s are left alone.
     """
 
     def _json_schema(holder: dict | None) -> dict:
