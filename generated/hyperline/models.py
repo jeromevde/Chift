@@ -1331,6 +1331,30 @@ class PaymentMethodStripeLinkErrored(BaseModel):
     )
 
 
+class PaymentMethod(
+    RootModel[
+        PaymentMethodCard
+        | PaymentMethodCardErrored
+        | PaymentMethodDirectDebit
+        | PaymentMethodDirectDebitErrored
+        | PaymentMethodStripeLink
+        | PaymentMethodStripeLinkErrored
+        | None
+    ]
+):
+    root: (
+        PaymentMethodCard
+        | PaymentMethodCardErrored
+        | PaymentMethodDirectDebit
+        | PaymentMethodDirectDebitErrored
+        | PaymentMethodStripeLink
+        | PaymentMethodStripeLinkErrored
+        | None
+    ) = Field(
+        None, description="Payment method used for a card or direct debit transaction."
+    )
+
+
 class StandardBankAccountStandardBankAccountIbanBicSwift(BaseModel):
     format: Literal["iban_bic_swift"] | None = Field(
         None, description="Bank account details format.", examples=["iban_bic_swift"]
@@ -2138,7 +2162,79 @@ class TransactionIntegration(BaseModel):
     )
 
 
-class Transaction(BaseModel):
+class TransactionTransaction(BaseModel):
+    status: (
+        Literal["scheduled", "to_process", "pending", "settled", "cancelled"] | None
+    ) = Field(
+        None,
+        description="\nTransaction status.\n\n- `scheduled`: The transaction is scheduled to be processed in the future.\n- `to_process`: The transaction is waiting to be processed by our system.\n- `pending`: The transaction has been authorized by the related payment processor, but the banking transaction is not yet settled.\n- `settled`: The transaction has been cleared on the banking side, the money transfer is fully completed.\n- `cancelled`: The transaction has been cancelled and won't be processed again.\n  ",
+        examples=["settled"],
+    )
+
+
+class BankAccount2BankAccount2(BaseModel):
+    pass
+
+
+class BankAccount2BankAccount21(BankAccount2BankAccount2):
+    pass
+
+
+class BankAccount2(RootModel[BankAccount2BankAccount21]):
+    root: BankAccount2BankAccount21
+
+
+class TransactionTransaction1(BaseModel):
+    status: Literal["failed"] | None = Field(
+        None,
+        description="\nTransaction status.\n\n- `failed`: The transaction failed.\n  ",
+        examples=["failed"],
+    )
+    error_type: (
+        Literal[
+            "authentication_required",
+            "declined",
+            "fraud",
+            "insufficient_funds",
+            "mandate_invalid",
+            "payment_method_authorization_error",
+            "payment_method_declined",
+            "payment_method_expired",
+            "payment_method_invalid",
+            "payment_method_not_supported",
+            "processing_error",
+            "provider_error",
+            "unknown",
+        ]
+        | None
+    ) = Field(
+        None,
+        description="\nTransaction error type.\n\n- `authentication_required`: The card was declined as the transaction requires authentication (e.g. 3-D Secure). The customer should go to their portal page and authenticate their card. If the error happened on an already authenticated transaction, the customer needs to contact their card issuer for more information.\n- `payment_method_authorization_error`: A transaction authorization cannot be created for a variety of reasons such as the card issuer couldn't be reached, or the card requires a PIN.\n- `payment_method_declined`: The payment method was declined for a variety of reasons such as a card reported as lost or stolen, insufficient funds or reaching the limit available on the method to complete the purchase, a payment method on a known block list, etc.\n- `payment_method_expired`: The payment method is expired. The customer should go to their portal page and change their payment method.\n- `payment_method_invalid`: The payment method is invalid in most cases because of incorrect details (card/account number, CVC, expiration date, postal code).\n- `payment_method_not_supported`: The payment method doesn't support this type of purchase (e.g. currency, online payment).\n- `declined`: The payment was declined for a variety of reasons such as security violation, banking service not available, transaction not allowed, etc.\n- `fraud`: The payment provider suspected the transaction was fraudulent and has been blocked. Don't report more detailed information to your customer, and check on your provider account.\n- `processing_error`: The payment couldn't be processed by the issuer for an unknown reason.\n- `provider_error`: An error occurred when contacting the payment provider to initiate the transaction.\n- `unknown`: A generic error happened on the payment provider side.\n  ",
+        examples=[None],
+    )
+    error_message: str | None = Field(
+        None, description="Details of the error.", examples=[None]
+    )
+
+
+class TransactionTransaction2(BaseModel):
+    payment_method_type: Literal["wallet"] | None = Field(
+        None, description="Payment method type used for the transaction."
+    )
+    wallet_id: str | None = Field(
+        None,
+        description="ID of the wallet used for a wallet transaction.",
+        examples=["wal_PPpxP5d3uvgiTT"],
+    )
+
+
+class TransactionTransaction3(BaseModel):
+    payment_method_type: Literal["external"] | None = Field(
+        None, description="Payment method type used for the transaction."
+    )
+
+
+class TransactionTransaction4(BaseModel):
     id: str | None = Field(
         None, description="Transaction ID.", examples=["tra_2QdJDDUej969ev"]
     )
@@ -2362,28 +2458,30 @@ class Transaction(BaseModel):
         examples=[None],
     )
     integrations: list[TransactionIntegration] | None = None
-    payment_method_type: (
-        Literal[
-            "card",
-            "direct_debit",
-            "direct_debit_ach",
-            "direct_debit_bacs",
-            "transfer",
-            "transfer_automated",
-            "wallet",
-            "external",
-        ]
-        | None
-    ) = None
-    payment_method: Any | None = None
-    bank_account: Any | None = None
-    wallet_id: Any | None = None
-    status: (
-        Literal["scheduled", "to_process", "pending", "settled", "cancelled", "failed"]
-        | None
-    ) = None
-    error_type: Any | None = None
-    error_message: Any | None = None
+
+
+class TransactionTransaction5(TransactionTransaction, TransactionTransaction4):
+    pass
+
+
+class TransactionTransaction6(TransactionTransaction1, TransactionTransaction4):
+    pass
+
+
+class TransactionTransaction7(TransactionTransaction2, TransactionTransaction4):
+    pass
+
+
+class TransactionTransaction8(TransactionTransaction3, TransactionTransaction4):
+    pass
+
+
+class TransactionTransaction9(TransactionTransaction, TransactionTransaction4):
+    pass
+
+
+class TransactionTransaction10(TransactionTransaction1, TransactionTransaction4):
+    pass
 
 
 class Address(BaseModel):
@@ -2815,7 +2913,25 @@ class UpdateBankAccountUpdateBankAccount4(
     pass
 
 
-class CreateInvoiceLineItem(BaseModel):
+class CreateInvoiceLineItemCreateInvoiceLineItem(BaseModel):
+    product_id: str | None = Field(
+        None,
+        description="Product ID related to the invoice line item.",
+        examples=["itm_KbLcWt2qm5p1S2"],
+    )
+    name: str | None = Field(
+        None,
+        description="Name of the line item as it will appear on the invoice. Default to the product name.",
+        examples=["Platform access"],
+    )
+    unit_amount: float | None = Field(
+        None,
+        description="Amount of one unit of the product related to the invoice line item. Default to the product price amount. Expressed in currency's smallest unit.",
+        examples=[24000],
+    )
+
+
+class CreateInvoiceLineItemCreateInvoiceLineItem2(BaseModel):
     description: constr(max_length=5000) | None = Field(
         None,
         description="Description of the line item as it will appear on the invoice. Default to the product description.",
@@ -2849,21 +2965,20 @@ class CreateInvoiceLineItem(BaseModel):
         description="Whether the service period dates are displayed in the line item description on the invoice PDF. Defaults to true.",
         examples=[True],
     )
-    product_id: str | None = Field(
-        None,
-        description="Product ID related to the invoice line item.",
-        examples=["itm_KbLcWt2qm5p1S2"],
-    )
-    name: str | None = Field(
-        None,
-        description="Name of the line item as it will appear on the invoice. Default to the product name.",
-        examples=["Platform access"],
-    )
-    unit_amount: float | None = Field(
-        None,
-        description="Amount of one unit of the product related to the invoice line item. Default to the product price amount. Expressed in currency's smallest unit.",
-        examples=[24000],
-    )
+
+
+class CreateInvoiceLineItemCreateInvoiceLineItem3(
+    CreateInvoiceLineItemCreateInvoiceLineItem,
+    CreateInvoiceLineItemCreateInvoiceLineItem2,
+):
+    pass
+
+
+class CreateInvoiceLineItemCreateInvoiceLineItem4(
+    CreateInvoiceLineItemCreateInvoiceLineItem,
+    CreateInvoiceLineItemCreateInvoiceLineItem2,
+):
+    pass
 
 
 class InvoiceDeprecatedCustomer(BaseModel):
@@ -3179,7 +3294,79 @@ class Transaction1Integration(BaseModel):
     )
 
 
-class Transaction1(BaseModel):
+class Transaction1Transaction1(BaseModel):
+    status: (
+        Literal["scheduled", "to_process", "pending", "settled", "cancelled"] | None
+    ) = Field(
+        None,
+        description="\nTransaction status.\n\n- `scheduled`: The transaction is scheduled to be processed in the future.\n- `to_process`: The transaction is waiting to be processed by our system.\n- `pending`: The transaction has been authorized by the related payment processor, but the banking transaction is not yet settled.\n- `settled`: The transaction has been cleared on the banking side, the money transfer is fully completed.\n- `cancelled`: The transaction has been cancelled and won't be processed again.\n  ",
+        examples=["settled"],
+    )
+
+
+class BankAccount3BankAccount3(BaseModel):
+    pass
+
+
+class BankAccount3BankAccount31(BankAccount3BankAccount3):
+    pass
+
+
+class BankAccount3(RootModel[BankAccount3BankAccount31]):
+    root: BankAccount3BankAccount31
+
+
+class Transaction1Transaction11(BaseModel):
+    status: Literal["failed"] | None = Field(
+        None,
+        description="\nTransaction status.\n\n- `failed`: The transaction failed.\n  ",
+        examples=["failed"],
+    )
+    error_type: (
+        Literal[
+            "authentication_required",
+            "declined",
+            "fraud",
+            "insufficient_funds",
+            "mandate_invalid",
+            "payment_method_authorization_error",
+            "payment_method_declined",
+            "payment_method_expired",
+            "payment_method_invalid",
+            "payment_method_not_supported",
+            "processing_error",
+            "provider_error",
+            "unknown",
+        ]
+        | None
+    ) = Field(
+        None,
+        description="\nTransaction error type.\n\n- `authentication_required`: The card was declined as the transaction requires authentication (e.g. 3-D Secure). The customer should go to their portal page and authenticate their card. If the error happened on an already authenticated transaction, the customer needs to contact their card issuer for more information.\n- `payment_method_authorization_error`: A transaction authorization cannot be created for a variety of reasons such as the card issuer couldn't be reached, or the card requires a PIN.\n- `payment_method_declined`: The payment method was declined for a variety of reasons such as a card reported as lost or stolen, insufficient funds or reaching the limit available on the method to complete the purchase, a payment method on a known block list, etc.\n- `payment_method_expired`: The payment method is expired. The customer should go to their portal page and change their payment method.\n- `payment_method_invalid`: The payment method is invalid in most cases because of incorrect details (card/account number, CVC, expiration date, postal code).\n- `payment_method_not_supported`: The payment method doesn't support this type of purchase (e.g. currency, online payment).\n- `declined`: The payment was declined for a variety of reasons such as security violation, banking service not available, transaction not allowed, etc.\n- `fraud`: The payment provider suspected the transaction was fraudulent and has been blocked. Don't report more detailed information to your customer, and check on your provider account.\n- `processing_error`: The payment couldn't be processed by the issuer for an unknown reason.\n- `provider_error`: An error occurred when contacting the payment provider to initiate the transaction.\n- `unknown`: A generic error happened on the payment provider side.\n  ",
+        examples=[None],
+    )
+    error_message: str | None = Field(
+        None, description="Details of the error.", examples=[None]
+    )
+
+
+class Transaction1Transaction12(BaseModel):
+    payment_method_type: Literal["wallet"] | None = Field(
+        None, description="Payment method type used for the transaction."
+    )
+    wallet_id: str | None = Field(
+        None,
+        description="ID of the wallet used for a wallet transaction.",
+        examples=["wal_PPpxP5d3uvgiTT"],
+    )
+
+
+class Transaction1Transaction13(BaseModel):
+    payment_method_type: Literal["external"] | None = Field(
+        None, description="Payment method type used for the transaction."
+    )
+
+
+class Transaction1Transaction14(BaseModel):
     id: str | None = Field(
         None, description="Transaction ID.", examples=["tra_2QdJDDUej969ev"]
     )
@@ -3403,28 +3590,30 @@ class Transaction1(BaseModel):
         examples=[None],
     )
     integrations: list[Transaction1Integration] | None = None
-    payment_method_type: (
-        Literal[
-            "card",
-            "direct_debit",
-            "direct_debit_ach",
-            "direct_debit_bacs",
-            "transfer",
-            "transfer_automated",
-            "wallet",
-            "external",
-        ]
-        | None
-    ) = None
-    payment_method: Any | None = None
-    bank_account: Any | None = None
-    wallet_id: Any | None = None
-    status: (
-        Literal["scheduled", "to_process", "pending", "settled", "cancelled", "failed"]
-        | None
-    ) = None
-    error_type: Any | None = None
-    error_message: Any | None = None
+
+
+class Transaction1Transaction15(Transaction1Transaction1, Transaction1Transaction14):
+    pass
+
+
+class Transaction1Transaction16(Transaction1Transaction11, Transaction1Transaction14):
+    pass
+
+
+class Transaction1Transaction17(Transaction1Transaction12, Transaction1Transaction14):
+    pass
+
+
+class Transaction1Transaction18(Transaction1Transaction13, Transaction1Transaction14):
+    pass
+
+
+class Transaction1Transaction19(Transaction1Transaction1, Transaction1Transaction14):
+    pass
+
+
+class Transaction1Transaction110(Transaction1Transaction11, Transaction1Transaction14):
+    pass
 
 
 class InvoiceLineItem(BaseModel):
@@ -5704,7 +5893,13 @@ class CreateInvoice(BaseModel):
         description="Ordered additional fields displayed on the invoice PDF. Invoice and customer custom properties are referenced by slug.",
         max_length=20,
     )
-    line_items: list[CreateInvoiceLineItem] | None = Field(None, min_length=1)
+    line_items: (
+        list[
+            CreateInvoiceLineItemCreateInvoiceLineItem3
+            | CreateInvoiceLineItemCreateInvoiceLineItem4
+        ]
+        | None
+    ) = Field(None, min_length=1)
     transactions: (
         list[
             CreateInvoicePaymentMethod
@@ -7126,9 +7321,17 @@ class Invoice(BaseModel):
     coupons: list[InvoiceCoupon] | None = Field(
         None, description="List of coupons applied to the invoice."
     )
-    transactions: list[Transaction] | None = Field(
-        None, description="List of transactions related to the invoice."
-    )
+    transactions: (
+        list[
+            TransactionTransaction5
+            | TransactionTransaction6
+            | TransactionTransaction7
+            | TransactionTransaction8
+            | TransactionTransaction9
+            | TransactionTransaction10
+        ]
+        | None
+    ) = Field(None, description="List of transactions related to the invoice.")
     public_url: AnyUrl | None = Field(
         None,
         description="Public URL of the invoice page where the customer can pay the invoice.",
@@ -7565,9 +7768,17 @@ class InvoiceDeprecated(BaseModel):
     coupons: list[InvoiceCoupon] | None = Field(
         None, description="List of coupons applied to the invoice."
     )
-    transactions: list[Transaction1] | None = Field(
-        None, description="List of transactions related to the invoice."
-    )
+    transactions: (
+        list[
+            Transaction1Transaction15
+            | Transaction1Transaction16
+            | Transaction1Transaction17
+            | Transaction1Transaction18
+            | Transaction1Transaction19
+            | Transaction1Transaction110
+        ]
+        | None
+    ) = Field(None, description="List of transactions related to the invoice.")
     public_url: AnyUrl | None = Field(
         None,
         description="Public URL of the invoice page where the customer can pay the invoice.",

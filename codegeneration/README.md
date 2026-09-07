@@ -45,7 +45,7 @@ paths.yaml
 |---|---|
 | `run.py` | Discovery, orchestration, pinned model-generator options, output |
 | `prune.py` | Keep configured operations and every transitively referenced component |
-| `normalize.py` | Hoist inline operation I/O into components; schema rewrites for names and unions |
+| `normalize.py` | Hoist inline operation I/O, rename components, and unwrap metadata-only references |
 | `emit.py` | Emit one typed JSON/HTTP method per operation |
 | `check.py` | Validate generated models against values documented by the specification |
 
@@ -66,16 +66,11 @@ That makes it fail visibly when the provider fixes its document.
 
 Generic structural rewrites belong in `normalize.py` and should preserve what the schema accepts.
 Provider-specific or contract-changing corrections belong in `patch.py` and must carry their
-evidence. Existing union branch titles, `$ref` unions, discriminators, and variants identifiable by
-distinct literal values are preserved for datamodel-code-generator to name. Remaining inline object
-unions are deliberately widened into one permissive model: properties are combined, conflicting
-property schemas become `anyOf`, properties absent from a branch become unconstrained, and only
-universally required fields stay required. This is the normalizer's prominently documented lossy
-exception for soft provider intake.
-
-The permissive result gives request mappers stable generated nested models instead of synthetic
-numbered union classes. The mapper must still construct one valid provider alternative because the
-widened model intentionally does not enforce branch-specific required-field combinations.
+evidence. Every union is preserved for datamodel-code-generator. Anonymous nested variants may
+therefore produce mechanical numbered class names, but those names are disposable generator
+details. A mapper should instantiate the stable top-level operation model with
+`Model.model_validate({...})` and pass nested values as dictionaries instead of importing generated
+nested classes.
 
 ## Client scope
 

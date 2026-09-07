@@ -8765,41 +8765,69 @@ components:
               - provider_fee
               - chargeback
               - integrations
-            - type: object
-              properties:
-                payment_method_type:
-                  anyOf:
-                  - type: string
+            - oneOf:
+              - type: object
+                properties:
+                  payment_method_type:
+                    type: string
                     enum:
                     - card
                     - direct_debit
                     - direct_debit_ach
                     - direct_debit_bacs
                     description: Payment method type used for the transaction.
-                  - type: string
+                  payment_method:
+                    $ref: '#/components/schemas/PaymentMethod'
+                required:
+                - payment_method_type
+                - payment_method
+              - type: object
+                properties:
+                  payment_method_type:
+                    type: string
                     enum:
                     - transfer
                     - transfer_automated
                     description: Payment method type used for the transaction.
-                  - type: string
+                  bank_account:
+                    allOf:
+                    - $ref: '#/components/schemas/BankAccount'
+                    - anyOf:
+                      - $ref: '#/components/schemas/StandardBankAccount'
+                      - $ref: '#/components/schemas/ConnectedBankAccount'
+                      - type: 'null'
+                      description: Bank account used for a bank transfer transaction.
+                required:
+                - payment_method_type
+                - bank_account
+              - type: object
+                properties:
+                  payment_method_type:
+                    type: string
                     enum:
                     - wallet
                     description: Payment method type used for the transaction.
-                  - type: string
+                  wallet_id:
+                    type: string
+                    description: ID of the wallet used for a wallet transaction.
+                    example: wal_PPpxP5d3uvgiTT
+                required:
+                - payment_method_type
+                - wallet_id
+              - type: object
+                properties:
+                  payment_method_type:
+                    type: string
                     enum:
                     - external
                     description: Payment method type used for the transaction.
-                payment_method: {}
-                bank_account: {}
-                wallet_id: {}
-              required:
-              - payment_method_type
-              additionalProperties: true
-            - type: object
-              properties:
-                status:
-                  anyOf:
-                  - type: string
+                required:
+                - payment_method_type
+            - anyOf:
+              - type: object
+                properties:
+                  status:
+                    type: string
                     enum:
                     - scheduled
                     - to_process
@@ -8816,17 +8844,76 @@ components:
                       - `cancelled`: The transaction has been cancelled and won't\
                       \ be processed again.\n  "
                     example: settled
-                  - type: string
+                required:
+                - status
+              - type: object
+                properties:
+                  status:
+                    type: string
                     enum:
                     - failed
                     description: "\nTransaction status.\n\n- `failed`: The transaction\
                       \ failed.\n  "
                     example: failed
-                error_type: {}
-                error_message: {}
-              required:
-              - status
-              additionalProperties: true
+                  error_type:
+                    type:
+                    - string
+                    - 'null'
+                    enum:
+                    - authentication_required
+                    - declined
+                    - fraud
+                    - insufficient_funds
+                    - mandate_invalid
+                    - payment_method_authorization_error
+                    - payment_method_declined
+                    - payment_method_expired
+                    - payment_method_invalid
+                    - payment_method_not_supported
+                    - processing_error
+                    - provider_error
+                    - unknown
+                    description: "\nTransaction error type.\n\n- `authentication_required`:\
+                      \ The card was declined as the transaction requires authentication\
+                      \ (e.g. 3-D Secure). The customer should go to their portal\
+                      \ page and authenticate their card. If the error happened on\
+                      \ an already authenticated transaction, the customer needs to\
+                      \ contact their card issuer for more information.\n- `payment_method_authorization_error`:\
+                      \ A transaction authorization cannot be created for a variety\
+                      \ of reasons such as the card issuer couldn't be reached, or\
+                      \ the card requires a PIN.\n- `payment_method_declined`: The\
+                      \ payment method was declined for a variety of reasons such\
+                      \ as a card reported as lost or stolen, insufficient funds or\
+                      \ reaching the limit available on the method to complete the\
+                      \ purchase, a payment method on a known block list, etc.\n-\
+                      \ `payment_method_expired`: The payment method is expired. The\
+                      \ customer should go to their portal page and change their payment\
+                      \ method.\n- `payment_method_invalid`: The payment method is\
+                      \ invalid in most cases because of incorrect details (card/account\
+                      \ number, CVC, expiration date, postal code).\n- `payment_method_not_supported`:\
+                      \ The payment method doesn't support this type of purchase (e.g.\
+                      \ currency, online payment).\n- `declined`: The payment was\
+                      \ declined for a variety of reasons such as security violation,\
+                      \ banking service not available, transaction not allowed, etc.\n\
+                      - `fraud`: The payment provider suspected the transaction was\
+                      \ fraudulent and has been blocked. Don't report more detailed\
+                      \ information to your customer, and check on your provider account.\n\
+                      - `processing_error`: The payment couldn't be processed by the\
+                      \ issuer for an unknown reason.\n- `provider_error`: An error\
+                      \ occurred when contacting the payment provider to initiate\
+                      \ the transaction.\n- `unknown`: A generic error happened on\
+                      \ the payment provider side.\n  "
+                    example: null
+                  error_message:
+                    type:
+                    - string
+                    - 'null'
+                    description: Details of the error.
+                    example: null
+                required:
+                - status
+                - error_type
+                - error_message
           description: List of transactions related to the invoice.
         public_url:
           type: string
@@ -9391,24 +9478,46 @@ components:
             description: Whether the service period dates are displayed in the line
               item description on the invoice PDF. Defaults to true.
             example: true
-      - type: object
-        properties:
-          product_id:
-            type: string
-            description: Product ID related to the invoice line item.
-            example: itm_KbLcWt2qm5p1S2
-          name:
-            type: string
-            description: Name of the line item as it will appear on the invoice. Default
-              to the product name.
-            example: Platform access
-          unit_amount:
-            type: number
-            description: Amount of one unit of the product related to the invoice
-              line item. Default to the product price amount. Expressed in currency's
-              smallest unit.
-            example: 24000
-        additionalProperties: true
+      - anyOf:
+        - type: object
+          properties:
+            product_id:
+              type: string
+              description: Product ID related to the invoice line item.
+              example: itm_KbLcWt2qm5p1S2
+            name:
+              type: string
+              description: Name of the line item as it will appear on the invoice.
+                Default to the product name.
+              example: Platform access
+            unit_amount:
+              type: number
+              description: Amount of one unit of the product related to the invoice
+                line item. Default to the product price amount. Expressed in currency's
+                smallest unit.
+              example: 24000
+          required:
+          - name
+          - unit_amount
+        - type: object
+          properties:
+            product_id:
+              type: string
+              description: Product ID related to the invoice line item.
+              example: itm_KbLcWt2qm5p1S2
+            name:
+              type: string
+              description: Name of the line item as it will appear on the invoice.
+                Default to the product name.
+              example: Platform access
+            unit_amount:
+              type: number
+              description: Amount of one unit of the product related to the invoice
+                line item. Default to the product price amount. Expressed in currency's
+                smallest unit.
+              example: 24000
+          required:
+          - product_id
     InvoiceDeprecated:
       type: object
       properties:
@@ -10597,41 +10706,69 @@ components:
               - provider_fee
               - chargeback
               - integrations
-            - type: object
-              properties:
-                payment_method_type:
-                  anyOf:
-                  - type: string
+            - oneOf:
+              - type: object
+                properties:
+                  payment_method_type:
+                    type: string
                     enum:
                     - card
                     - direct_debit
                     - direct_debit_ach
                     - direct_debit_bacs
                     description: Payment method type used for the transaction.
-                  - type: string
+                  payment_method:
+                    $ref: '#/components/schemas/PaymentMethod'
+                required:
+                - payment_method_type
+                - payment_method
+              - type: object
+                properties:
+                  payment_method_type:
+                    type: string
                     enum:
                     - transfer
                     - transfer_automated
                     description: Payment method type used for the transaction.
-                  - type: string
+                  bank_account:
+                    allOf:
+                    - $ref: '#/components/schemas/BankAccount'
+                    - anyOf:
+                      - $ref: '#/components/schemas/StandardBankAccount'
+                      - $ref: '#/components/schemas/ConnectedBankAccount'
+                      - type: 'null'
+                      description: Bank account used for a bank transfer transaction.
+                required:
+                - payment_method_type
+                - bank_account
+              - type: object
+                properties:
+                  payment_method_type:
+                    type: string
                     enum:
                     - wallet
                     description: Payment method type used for the transaction.
-                  - type: string
+                  wallet_id:
+                    type: string
+                    description: ID of the wallet used for a wallet transaction.
+                    example: wal_PPpxP5d3uvgiTT
+                required:
+                - payment_method_type
+                - wallet_id
+              - type: object
+                properties:
+                  payment_method_type:
+                    type: string
                     enum:
                     - external
                     description: Payment method type used for the transaction.
-                payment_method: {}
-                bank_account: {}
-                wallet_id: {}
-              required:
-              - payment_method_type
-              additionalProperties: true
-            - type: object
-              properties:
-                status:
-                  anyOf:
-                  - type: string
+                required:
+                - payment_method_type
+            - anyOf:
+              - type: object
+                properties:
+                  status:
+                    type: string
                     enum:
                     - scheduled
                     - to_process
@@ -10648,17 +10785,76 @@ components:
                       - `cancelled`: The transaction has been cancelled and won't\
                       \ be processed again.\n  "
                     example: settled
-                  - type: string
+                required:
+                - status
+              - type: object
+                properties:
+                  status:
+                    type: string
                     enum:
                     - failed
                     description: "\nTransaction status.\n\n- `failed`: The transaction\
                       \ failed.\n  "
                     example: failed
-                error_type: {}
-                error_message: {}
-              required:
-              - status
-              additionalProperties: true
+                  error_type:
+                    type:
+                    - string
+                    - 'null'
+                    enum:
+                    - authentication_required
+                    - declined
+                    - fraud
+                    - insufficient_funds
+                    - mandate_invalid
+                    - payment_method_authorization_error
+                    - payment_method_declined
+                    - payment_method_expired
+                    - payment_method_invalid
+                    - payment_method_not_supported
+                    - processing_error
+                    - provider_error
+                    - unknown
+                    description: "\nTransaction error type.\n\n- `authentication_required`:\
+                      \ The card was declined as the transaction requires authentication\
+                      \ (e.g. 3-D Secure). The customer should go to their portal\
+                      \ page and authenticate their card. If the error happened on\
+                      \ an already authenticated transaction, the customer needs to\
+                      \ contact their card issuer for more information.\n- `payment_method_authorization_error`:\
+                      \ A transaction authorization cannot be created for a variety\
+                      \ of reasons such as the card issuer couldn't be reached, or\
+                      \ the card requires a PIN.\n- `payment_method_declined`: The\
+                      \ payment method was declined for a variety of reasons such\
+                      \ as a card reported as lost or stolen, insufficient funds or\
+                      \ reaching the limit available on the method to complete the\
+                      \ purchase, a payment method on a known block list, etc.\n-\
+                      \ `payment_method_expired`: The payment method is expired. The\
+                      \ customer should go to their portal page and change their payment\
+                      \ method.\n- `payment_method_invalid`: The payment method is\
+                      \ invalid in most cases because of incorrect details (card/account\
+                      \ number, CVC, expiration date, postal code).\n- `payment_method_not_supported`:\
+                      \ The payment method doesn't support this type of purchase (e.g.\
+                      \ currency, online payment).\n- `declined`: The payment was\
+                      \ declined for a variety of reasons such as security violation,\
+                      \ banking service not available, transaction not allowed, etc.\n\
+                      - `fraud`: The payment provider suspected the transaction was\
+                      \ fraudulent and has been blocked. Don't report more detailed\
+                      \ information to your customer, and check on your provider account.\n\
+                      - `processing_error`: The payment couldn't be processed by the\
+                      \ issuer for an unknown reason.\n- `provider_error`: An error\
+                      \ occurred when contacting the payment provider to initiate\
+                      \ the transaction.\n- `unknown`: A generic error happened on\
+                      \ the payment provider side.\n  "
+                    example: null
+                  error_message:
+                    type:
+                    - string
+                    - 'null'
+                    description: Details of the error.
+                    example: null
+                required:
+                - status
+                - error_type
+                - error_message
           description: List of transactions related to the invoice.
         public_url:
           type: string
