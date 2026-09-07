@@ -1,7 +1,7 @@
 # Add a connector
 
 <!-- skill version: bump when the procedure or review rules change -->
-**version:** 11
+**version:** 12
 **applies to:** `connectors/<provider>/connector.py`
 
 How to onboard a new provider to Chift's unified invoicing API, end to end.
@@ -286,6 +286,19 @@ Then review what comes back, against the checklist below, before it becomes `con
 differently: a bad `run` fails at generation time, while a bad mapper *runs fine* and quietly
 reports the wrong invoice status.
 
+Import each contract as a module namespace rather than importing every model individually:
+
+```python
+from chift import models as chift
+from generated.acme import models as acme
+```
+
+Use the provider's name as its namespace. Then make ownership visible at every mapping boundary:
+`acme.Customer` becomes
+`chift.ContactItemOut`. Do not use short aliases such as `cm`, `hm`, or `hl`; the small amount of
+qualification is cheaper than a long import block and makes similarly named source and target
+models unambiguous.
+
 ### What it must produce
 
 | Piece | Role |
@@ -530,6 +543,7 @@ Live tests need the provider key in `.env`, create fixtures, and must clean them
 - [ ] **If codegen:** `python -m codegeneration.run <name>` exits 0
 - [ ] **If codegen:** `connectors/<name>/config.py` reads credentials from `.env`; `.env.example` updated
 - [ ] Mapper written (by hand or by an LLM from the inputs in Step 4), then reviewed
+- [ ] Provider and Chift models imported as clear module namespaces, not individual model names
 - [ ] Mapper with explicit tables and no silent defaults
 - [ ] Mapper docstring cites this skill version + client provenance (SDK package/version, or
       `generated/<provider>` commit / regenerate and update)

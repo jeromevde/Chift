@@ -160,19 +160,6 @@ They are declared `format: date`, while their descriptions, examples, and live v
 date-times. Without the correction, one customer with a subscription can make the entire list
 response fail validation.
 
-### Rules deliberately rejected
-
-An earlier normalizer dropped enums with more than 20 values. That reduced generated lines but
-discarded currencies, countries, and timezones from the provider contract. It was reverted:
-
-- `Literal[...]` output means large enums do not create extra enum classes.
-- Generated file size is not a useful reason to lose information.
-- Keeping closed enums makes provider drift loud and reviewable.
-- A specific field can be relaxed later; a global destructive rewrite is difficult to audit.
-
-OpenAPI Overlay is useful for declarative literal patches. The remaining generic rewrites are
-structural generation hygiene rather than corrections to the provider contract.
-
 ## Generator choices
 
 The model generator uses a pinned `datamodel-code-generator` Python API with these important
@@ -310,20 +297,6 @@ Provider HTTP responses are translated into Chift errors; response-validation an
 errors are left to FastAPI's ordinary 500 handling instead of inventing a public error contract
 Chift does not document. The single translation handler is in [`chift/api.py`](chift/api.py).
 
-## Specification drift
-
-The vendored document was compared with Hyperline's live document on 2026-09-06. Both reported
-`info.version: 0.0.0`, but the live spec had added `settleable` to two invoice status filters.
-That change was harmless here because it affected query filters rather than response values, but
-the same additive change to a response enum would make strict Pydantic parsing fail.
-
-This is normal API evolution: providers version breaking changes, while new fields and enum
-values are usually considered additive. That definition assumes a lenient JSON consumer. A
-strict generated client sees a widened enum as breaking.
-
-The chosen trade-off is to preserve the published vocabulary and detect drift rather than
-silently discard it. A future CI job could compare the specification URL's ETag, re-vendor the
-document, regenerate, and surface the diff before customers encounter it.
 
 ## Validation evidence
 
@@ -354,18 +327,6 @@ Generation is deterministic: tool versions are pinned, timestamps are disabled, 
 collection preserves document order. Byte-identical regeneration makes generated diffs usable in
 review and CI.
 
-### Foreign specifications
-
-Hyperline is one document with one house style, so a rule that looks general may just be
-Hyperline-shaped. `pytest --robustness` runs the *whole* pipeline — prune, normalize, generate,
-emit, validate examples, import both modules — against Stripe, GitHub, Discord, and Petstore,
-which differ in OpenAPI version, size, and idiom. Stripe's 6.4 MB document yields roughly 880
-importable models and a two-method client from one `paths.yaml` entry.
-
-The test asserts that the emitted method is annotated with a model that exists, not merely that
-normalization returned a document. Every generator in the [appendix](#appendix-generator-experiments) returned *a* document too;
-what separates them is whether the result imports and validates. Nothing is committed — specs go
-to pytest's tmp dir and generated packages are deleted afterwards.
 
 ### Live sandbox
 
@@ -387,22 +348,6 @@ The automated suite covers:
 Live tests catch the document disagreeing with the API. Generation-time example checks catch the
 document disagreeing with itself. Both are needed. Without `HYPERLINE_API_KEY_TEST`, the offline
 edge cases still run and live tests are skipped.
-
-## Reuse conclusion
-
-Community tools cover individual stages—Spectral for linting, Redocly and generator filters for
-selection, OpenAPI Generator for client generation, and Overlay for declarative patches—but no
-tested combination replaced this pipeline while keeping exact endpoint selection, importable
-Pydantic models, a small client, deterministic output, and live validation.
-
-The current approach is intentionally replaceable. If a community generator later accepts the
-normalized slice and produces an equally small, validated client, it can replace
-`datamodel-code-generator` or `emit.py` without changing provider patches or semantic mappers.
-
-Only Hyperline is implemented because the assignment asks for one connector and reusable
-thinking, not a second speculative integration. Provider discovery, endpoint selection, patches,
-generation, and the onboarding skill are the reusable proof points; a second real provider would
-test them without requiring a redesign.
 
 ## Appendix: generator experiments
 

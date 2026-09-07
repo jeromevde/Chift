@@ -41,7 +41,15 @@ CONNECTORS: dict[str, InvoicingConnector] = {}
 
 @app.exception_handler(httpx.HTTPStatusError)
 async def provider_http_error(_request, exc: httpx.HTTPStatusError) -> JSONResponse:
-    """Expose a provider HTTP failure using Chift's documented error shape."""
+    """
+    Expose a provider HTTP failure using Chift's documented error shape.
+    This handles the tranlsation from connector (hyperline) error
+    to chift error !!
+    status_code=upstream means we just pass the error
+    This is a deliberate design choice for this poc,
+    But could be challenged since some of those erors might
+    be our fault, and not the client! (sending a 401 while our key is wrong for example)
+    """
     upstream = exc.response.status_code
     log.warning("provider %s %s", upstream, exc.request.url)
     error = ChiftError(
