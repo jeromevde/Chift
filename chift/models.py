@@ -57,6 +57,22 @@ class InvoiceStatus(str, Enum):
     cancelled = "cancelled"
 
 
+class InvoiceStatusIn(str, Enum):
+    """Chift accepts only these two on create; `paid` and `cancelled` are outcomes."""
+
+    draft = "draft"
+    posted = "posted"
+
+
+class InvoicingCreateInvoiceType(str, Enum):
+    """InvoicingInvoiceType without the `all` filter value."""
+
+    customer_invoice = "customer_invoice"
+    customer_refund = "customer_refund"
+    supplier_invoice = "supplier_invoice"
+    supplier_refund = "supplier_refund"
+
+
 class Ref(BaseModel):
     id: str | None = None
     model: str | None = None
@@ -146,6 +162,45 @@ class ContactItemIn(BaseModel):
     gender: ContactGender | None = None
     addresses: list[AddressItemInInvoicing] | None = Field(default_factory=list)
     external_reference: str | None = None
+
+
+class InvoiceLineItemIn(BaseModel):
+    """Chift's `InvoiceLineItem`, the line shape accepted on create."""
+
+    unit_price: float
+    quantity: float
+    tax_amount: float
+    untaxed_amount: float
+    total: float
+    description: str | None = None
+    discount_amount: float = 0.0
+    tax_rate: float | None = None
+    account_number: str | None = None
+    tax_id: str | None = None
+    unit_of_measure: str | None = None
+    product_id: str | None = None
+    product_code: str | None = None
+    product_name: str | None = None
+
+
+class InvoiceItemIn(BaseModel):
+    """Chift's published create-invoice body, transcribed from chift.openapi.yaml."""
+
+    currency: str
+    invoice_type: InvoicingCreateInvoiceType
+    status: InvoiceStatusIn
+    invoice_date: date
+    tax_amount: float
+    untaxed_amount: float
+    total: float
+    lines: list[InvoiceLineItemIn] = Field(default_factory=list)
+    partner_id: str | None = None
+    invoice_number: str | None = None
+    due_date: date | None = None
+    reference: str | None = None
+    payment_communication: str | None = None
+    customer_memo: str | None = None
+    journal_ref: str | None = None
 
 
 class ChiftPage(BaseModel, Generic[T]):
