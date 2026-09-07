@@ -14,9 +14,8 @@ import pytest
 from fastapi.testclient import TestClient
 from iso4217 import Currency
 
-from chift import errors
 from chift.api import CONNECTORS, app
-from chift.models import ChiftAPIError, InvoiceStatus
+from chift.models import InvoiceStatus
 from connectors.hyperline.config import get_settings
 from connectors.hyperline.connector import (
     INVOICE_STATUS,
@@ -86,17 +85,20 @@ def test_invoice_mapper_uses_currency_units_or_fails_loudly():
     assert to_invoice(_invoice(currency="JPY", total_amount=100)).total == 100.0
     assert to_invoice(_invoice(currency="KWD", total_amount=100)).total == 0.1
 
-    with pytest.raises(ChiftAPIError, match="published schema") as missing_amount:
+    with pytest.raises(
+        ValueError, match="Missing required provider field"
+    ) as missing_amount:
         to_invoice(_invoice(total_amount=None))
-    assert (
-        missing_amount.value.error.detail
-        == "missing required field: invoice.total_amount"
+    assert str(missing_amount.value) == (
+        "Missing required provider field: invoice.total_amount"
     )
 
-    with pytest.raises(ChiftAPIError, match="published schema") as missing_date:
+    with pytest.raises(
+        ValueError, match="Missing required provider field"
+    ) as missing_date:
         to_invoice(_invoice(issued_at=None))
     assert (
-        missing_date.value.error.detail == "missing required field: invoice.issue_date"
+        str(missing_date.value) == "Missing required provider field: invoice.issue_date"
     )
 
 
@@ -115,10 +117,9 @@ def test_currency_hyperline_documents_but_iso4217_dropped_names_the_value():
     ]
     assert "BGN" in retired, "expected Hyperline to still publish retired currencies"
 
-    with pytest.raises(ChiftAPIError, match="Unmapped provider currency") as error:
+    with pytest.raises(ValueError, match="Unmapped provider currency") as error:
         to_invoice(_invoice(currency="BGN", total_amount=1000))
-    assert error.value.error.error_code == errors.MAPPING_ERROR
-    assert error.value.error.detail == "currency=BGN"
+    assert str(error.value) == "Unmapped provider currency: BGN"
 
 
 def test_settlement_and_audit_fields_are_mapped_not_left_to_chift_defaults():
@@ -162,12 +163,13 @@ def test_import_source_and_registration_number_do_not_guess_customer_kind():
         )
     )
 
+    # Entity kind stays unknown, but the provider's name is preserved rather than dropped.
     assert imported_company.is_company is None
-    assert imported_company.company_name is None
+    assert imported_company.company_name == "Imported customer"
     assert imported_company.first_name is None
     assert imported_company.company_number == "BE0123456789"
     assert imported_unknown.is_company is None
-    assert imported_unknown.company_name is None
+    assert imported_unknown.company_name == "Unknown imported customer"
     assert imported_unknown.first_name is None
 
 
@@ -184,13 +186,14 @@ def test_invoice_line_maps_discount_or_fails_loudly_when_missing():
 
     assert to_invoice(_invoice(line_items=[line])).lines[0].discount_amount == 5.0
 
-    with pytest.raises(ChiftAPIError, match="published schema") as missing_discount:
+    with pytest.raises(
+        ValueError, match="Missing required provider field"
+    ) as missing_discount:
         to_invoice(
             _invoice(line_items=[line.model_copy(update={"discount_amount": None})])
         )
-    assert (
-        missing_discount.value.error.detail
-        == "missing required field: invoice.line_items[].discount_amount"
+    assert str(missing_discount.value) == (
+        "Missing required provider field: invoice.line_items[].discount_amount"
     )
 
 
@@ -220,9 +223,9 @@ def test_missing_provider_pagination_total_fails_loudly():
     def fetch(**_query):
         return SimpleNamespace(data=[], total=None, next_cursor=None)
 
-    with pytest.raises(ChiftAPIError, match="published schema") as error:
+    with pytest.raises(ValueError, match="Missing required provider field") as error:
         _page_via_cursor(fetch, page=1, size=50, map_item=lambda item: item)
-    assert error.value.error.detail == "missing required field: pagination.total"
+    assert str(error.value) == "Missing required provider field: pagination.total"
 
 
 def test_chift_rejects_page_sizes_over_100_before_calling_a_connector():
@@ -245,9 +248,20 @@ def test_create_two_contacts_and_get_them_back(client):
             r = http.post(
                 f"/consumers/{CONSUMER}/invoicing/contacts",
                 json={
-                    "name": f"Acme {label} {suffix}",
+                    "is_company": True,
+                    "company_name": f"Acme {label} {suffix}",
                     "email": f"{label.lower()}-{suffix}@example.com",
-                    "external_id": f"ext-{label.lower()}-{suffix}",
+                    "external_reference": f"ext-{label.lower()}-{suffix}",
+                    "currency": "EUR",
+                    "addresses": [
+                        {
+                            "address_type": "invoice",
+                            "street": "10 Rue de la Loi",
+                            "city": "Brussels",
+                            "postal_code": "1000",
+                            "country": "BE",
+                        }
+                    ],
                 },
             )
             assert r.status_code == 200, r.text
@@ -289,9 +303,11 @@ def test_create_two_invoices_and_get_them_back(client):
         created = http.post(
             f"/consumers/{CONSUMER}/invoicing/contacts",
             json={
-                "name": f"Invoice Co {suffix}",
+                "is_company": True,
+                "company_name": f"Invoice Co {suffix}",
                 "email": f"inv-{suffix}@example.com",
-                "external_id": f"ext-inv-{suffix}",
+                "external_reference": f"ext-inv-{suffix}",
+                "currency": "EUR",
             },
         )
         assert created.status_code == 200, created.text
@@ -335,43 +351,16 @@ def test_create_two_invoices_and_get_them_back(client):
 
 
 def test_provider_errors_are_rendered_as_chift_error(client):
-    """Connector raises ChiftAPIError; FastAPI returns the ChiftError JSON body."""
+    """The generated client raises HTTPStatusError; FastAPI returns ChiftError JSON."""
     http, _ = client
     r = http.get(f"/consumers/{CONSUMER}/invoicing/contacts/cus_does_not_exist")
     assert r.status_code == 404
     body = r.json()
     assert body["message"]
     assert body["status"] == "error"
-    assert body["error_code"] == errors.NOT_FOUND
+    assert body["error_code"] == "NotFound"
     # detail is diagnostic, not contract: it names the provider and its own error.
     assert "hyperline.co 404" in body["detail"]
-
-
-def test_a_connector_bug_still_leaves_the_caller_a_chift_error():
-    """The last-resort handler, exercised over HTTP rather than by calling errors.py.
-
-    `raise_server_exceptions=False` is what a real ASGI server does: Starlette's
-    ServerErrorMiddleware calls the handler and sends its response, then re-raises so
-    the traceback reaches the log. TestClient's default re-raise hides the response.
-    """
-
-    class Broken:
-        def get_contact(self, _contact_id):
-            raise RuntimeError("a bug in a connector, not a provider failure")
-
-    CONNECTORS[CONSUMER] = Broken()
-    try:
-        with TestClient(app, raise_server_exceptions=False) as http:
-            r = http.get(f"/consumers/{CONSUMER}/invoicing/contacts/anything")
-    finally:
-        CONNECTORS.clear()
-
-    assert r.status_code == 400
-    body = r.json()
-    assert body["error_code"] == errors.PROVIDER_ERROR
-    # The traceback goes to the log; the caller gets Chift's shape and nothing internal.
-    assert "RuntimeError" not in r.text
-    assert set(body) == {"message", "status", "detail", "error_code"}
 
 
 def test_unknown_consumer_is_404_without_touching_a_connector():
@@ -380,34 +369,33 @@ def test_unknown_consumer_is_404_without_touching_a_connector():
             "/consumers/11111111-2222-3333-4444-555555555555/invoicing/invoices"
         )
     assert r.status_code == 404
-    assert r.json()["error_code"] == errors.NOT_FOUND
+    assert r.json() == {"detail": "Unknown consumer"}
 
 
-def test_unknown_provider_failures_use_a_status_chift_documents():
-    """Chift declares only 400/404/422 on these endpoints, so 503 upstream becomes 400."""
+@pytest.mark.parametrize(
+    ("upstream", "expected_status", "expected_code"),
+    [(404, 404, "NotFound"), (503, 503, "ProviderError")],
+)
+def test_provider_http_errors_become_chift_errors(
+    upstream, expected_status, expected_code
+):
     request = httpx.Request("GET", "https://sandbox.api.hyperline.co/v2/customers")
-    response = httpx.Response(503, json={"message": "upstream down"}, request=request)
-
-    err = errors.from_http_status_error(
-        httpx.HTTPStatusError("boom", request=request, response=response)
-    )
-
-    assert err.status_code == 400
-    assert err.error.error_code == errors.PROVIDER_ERROR
-    # the provider's own words survive in detail, for debugging
-    assert "upstream down" in err.error.detail
-    assert "503" in err.error.detail
-
-
-def test_provider_404_maps_to_chift_404():
-    request = httpx.Request("GET", "https://sandbox.api.hyperline.co/v2/customers/x")
     response = httpx.Response(
-        404, json={"type": "NotFound", "message": "nope"}, request=request
+        upstream, json={"message": "provider explanation"}, request=request
     )
 
-    err = errors.from_http_status_error(
-        httpx.HTTPStatusError("boom", request=request, response=response)
-    )
+    class FailingConnector:
+        def get_contact(self, _contact_id):
+            raise httpx.HTTPStatusError("boom", request=request, response=response)
 
-    assert err.status_code == 404
-    assert err.error.error_code == errors.NOT_FOUND
+    CONNECTORS[CONSUMER] = FailingConnector()
+    try:
+        with TestClient(app) as http:
+            result = http.get(f"/consumers/{CONSUMER}/invoicing/contacts/anything")
+    finally:
+        CONNECTORS.clear()
+
+    assert result.status_code == expected_status
+    assert result.json()["error_code"] == expected_code
+    assert str(upstream) in result.json()["detail"]
+    assert "provider explanation" in result.json()["detail"]

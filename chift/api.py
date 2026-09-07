@@ -1,9 +1,9 @@
 """
 Minimal Chift invoicing API (FastAPI).
 
-Connectors map data; they never decide Chift's error contract. Provider failures
-reach this layer as their native exceptions and are translated here, once, by
-`chift.errors` — so every connector fails identically.
+Connectors map data; they never decide Chift's HTTP contract. Provider HTTP failures
+reach this layer as `httpx.HTTPStatusError` and are translated here once. FastAPI
+handles every other error normally.
 """
 
 from __future__ import annotations
@@ -12,14 +12,14 @@ import logging
 from typing import Any
 
 import httpx
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, EmailStr, ValidationError
+from pydantic import BaseModel
 
-from chift import errors
 from chift.models import (
-    ChiftAPIError,
+    ChiftError,
     ChiftPage,
+    ContactItemIn,
     ContactItemOut,
     InvoiceItemOut,
 )
@@ -32,46 +32,24 @@ app = FastAPI(title="Chift invoicing POC")
 CONNECTORS: dict[str, Any] = {}
 
 
-def _render(exc: ChiftAPIError) -> JSONResponse:
-    return JSONResponse(status_code=exc.status_code, content=exc.error.model_dump())
-
-
-@app.exception_handler(ChiftAPIError)
-async def chift_api_error(_request, exc: ChiftAPIError) -> JSONResponse:
-    """Raised deliberately by a connector — it already speaks Chift."""
-    return _render(exc)
-
-
 @app.exception_handler(httpx.HTTPStatusError)
 async def provider_http_error(_request, exc: httpx.HTTPStatusError) -> JSONResponse:
-    log.warning("provider %s %s", exc.response.status_code, exc.request.url)
-    return _render(errors.from_http_status_error(exc))
-
-
-@app.exception_handler(ValidationError)
-async def provider_schema_mismatch(_request, exc: ValidationError) -> JSONResponse:
-    log.warning("provider schema mismatch: %s", exc)
-    return _render(errors.from_validation_error(exc))
-
-
-@app.exception_handler(Exception)
-async def unexpected(_request, _exc: Exception) -> JSONResponse:
-    """Last resort: the caller still gets a ChiftError, the traceback stays here."""
-    log.exception("connector failure")
-    return _render(errors.unexpected())
+    """Expose a provider HTTP failure using Chift's documented error shape."""
+    upstream = exc.response.status_code
+    log.warning("provider %s %s", upstream, exc.request.url)
+    error = ChiftError(
+        message="Not found" if upstream == 404 else "Provider request failed",
+        error_code="NotFound" if upstream == 404 else "ProviderError",
+        detail=f"{exc.request.url.host} {upstream} {exc.response.text}".strip(),
+    )
+    return JSONResponse(status_code=upstream, content=error.model_dump())
 
 
 def _connector(consumer_id: str):
     try:
         return CONNECTORS[consumer_id]
     except KeyError as exc:
-        raise errors.unknown_consumer() from exc
-
-
-class CreateContactBody(BaseModel):
-    name: str
-    email: EmailStr
-    external_id: str
+        raise HTTPException(status_code=404, detail="Unknown consumer") from exc
 
 
 class CreateInvoiceBody(BaseModel):
@@ -92,10 +70,8 @@ def list_contacts(
 
 
 @app.post("/consumers/{consumer_id}/invoicing/contacts", response_model=ContactItemOut)
-def create_contact(consumer_id: str, body: CreateContactBody) -> ContactItemOut:
-    return _connector(consumer_id).create_contact(
-        name=body.name, email=body.email, external_id=body.external_id
-    )
+def create_contact(consumer_id: str, body: ContactItemIn) -> ContactItemOut:
+    return _connector(consumer_id).create_contact(body)
 
 
 @app.get(
