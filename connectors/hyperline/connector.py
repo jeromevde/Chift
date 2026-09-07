@@ -17,14 +17,13 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, TypeVar
 
-import httpx
 from iso4217 import Currency
 
-from chift import errors
 from chift.models import (
     AddressItemOutInvoicing,
     AddressTypeInvoicing,
     ChiftPage,
+    ContactItemIn,
     ContactItemOut,
     InvoiceItemOut,
     InvoiceLineItemOut,
@@ -83,7 +82,7 @@ INVOICE_TYPE = {
 
 def _require_map(table: dict, key: str | None, *, kind: str):
     if key is None or key not in table:
-        raise errors.unmappable(kind, key)
+        raise ValueError(f"Unmapped provider {kind}: {key}")
     return table[key]
 
 
@@ -92,7 +91,7 @@ def _required(value: T | None, field: str) -> T:
     # Mapping decision: generated provider intake is soft, but values required by Chift
     # fail here instead of being replaced with invented defaults.
     if value is None:
-        raise errors.missing_required(field)
+        raise ValueError(f"Missing required provider field: {field}")
     return value
 
 
@@ -105,7 +104,7 @@ def _amount(n: float, currency: str) -> float:
     try:
         exponent = Currency(currency).exponent
     except ValueError as exc:
-        raise errors.unmappable("currency", currency) from exc
+        raise ValueError(f"Unmapped provider currency: {currency}") from exc
     return float(n) / 10**exponent
 
 
@@ -178,8 +177,10 @@ def to_contact(
         is_prospect=False,
         is_supplier=False,
         is_company=company,
-        # Mapping decision: populate a name slot only when entity kind is known.
-        company_name=data.name if company is True else None,
+        # REVIEW: entity kind is unknown for `automatically_created`, but the name is not.
+        # `is_company=None` above already reports the unknown kind, so the name goes to
+        # company_name rather than being dropped entirely.
+        company_name=data.name if company is not False else None,
         first_name=data.name if company is False else None,
         email=data.billing_email,
         # REVIEW: first tax ID is the explicit but provider-undocumented selection above.
@@ -197,6 +198,55 @@ def to_contact(
             if a
         ],
         external_reference=data.external_id,
+    )
+
+
+# Mapping decision: Hyperline marks every CreateCustomer field optional, so the inverse
+# mapper sends only what the caller supplied. Nothing is defaulted on the caller's behalf:
+# an absent country stays absent rather than becoming the connector's own jurisdiction.
+# Unset fields stay None and the generated transport drops them (`exclude_none=True`).
+def _hl_address(addresses, kind: AddressTypeInvoicing) -> hl.Address | None:
+    match = next((a for a in addresses or [] if a.address_type == kind), None)
+    if match is None:
+        return None
+    # Mapping decision: Chift's postal fields map onto Hyperline's line1/zip names.
+    # Hyperline's `line2` has no Chift source, so it is left unset.
+    return hl.Address(
+        name=match.name,
+        line1=match.street,
+        city=match.city,
+        zip=match.postal_code,
+        country=match.country,
+    )
+
+
+def from_contact(body: ContactItemIn) -> hl.CreateCustomer:
+    """Chift ContactItemIn -> Hyperline CreateCustomer. Inverse of `to_contact`."""
+    # Mapping decision: mirror to_contact's classification. Chift's `is_company` carries the
+    # entity kind; `automatically_created` is provenance Hyperline rejects on create, so an
+    # unknown kind sends no type at all rather than guessing one.
+    hl_type = {True: "corporate", False: "person"}.get(body.is_company)
+    # Mapping decision: Chift splits person names across first/last and companies use
+    # company_name; Hyperline has one `name`. Prefer the slot the classification implies.
+    person_name = " ".join(x for x in (body.first_name, body.last_name) if x) or None
+    billing = _hl_address(body.addresses, AddressTypeInvoicing.invoice)
+    return hl.CreateCustomer(
+        name=_required(body.company_name or person_name, "contact.company_name|first_name"),
+        type=hl_type,
+        currency=body.currency,
+        # Mapping decision: Hyperline's top-level country is the billing country when the
+        # caller gave a billing address, and is otherwise left unset.
+        country=billing.country if billing else None,
+        registration_number=body.company_number,
+        # REVIEW: to_contact reads the *first* tax ID; this writes a single-element list, so
+        # the pair round-trips. Hyperline caps the list at one and documents no ordering, so a
+        # contact carrying several tax IDs cannot be represented faithfully in either direction.
+        tax_ids=[hl.CreateCustomerTaxId(value=body.vat)] if body.vat else None,
+        external_id=body.external_reference,
+        billing_email=body.email,
+        language=body.language,
+        billing_address=billing,
+        shipping_address=_hl_address(body.addresses, AddressTypeInvoicing.delivery),
     )
 
 
@@ -283,46 +333,20 @@ def _page_via_cursor(fetch, *, page: int, size: int, map_item, **query):
     )
 
 
-def _tolerate_404(call, *args):
-    """Deleting something already gone is success. Not expressible in OpenAPI."""
-    # Mapping decision: cleanup is idempotent; an already-absent sandbox fixture is success.
-    try:
-        return call(*args)
-    except httpx.HTTPStatusError as exc:
-        if exc.response.status_code != 404:
-            raise
-        return None
-
-
-# Provider failures propagate as-is; chift.errors translates them at the API boundary,
-# so this connector never decides Chift's error contract.
+# Provider HTTP failures propagate to the single translator in chift.api.
 class HyperlineInvoicingConnector:
     def __init__(self, client: HyperlineClient | None = None) -> None:
-        settings = get_settings()
-        self.client = client or HyperlineClient(
-            settings.hyperline_base_url, settings.hyperline_api_key
-        )
-
-    def create_contact(
-        self, *, name: str, email: str, external_id: str
-    ) -> ContactItemOut:
-        raw = self.client.create_customer(
-            hl.CreateCustomer.model_validate(
-                {
-                    "name": name,
-                    "type": "corporate",
-                    "currency": "EUR",
-                    "country": "BE",
-                    "external_id": external_id,
-                    "billing_email": email,
-                    "billing_address": {
-                        "line1": "10 Rue de la Loi",
-                        "city": "Brussels",
-                        "zip": "1000",
-                    },
-                }
+        # Credentials are read only when we have to build a client. An injected one
+        # (tests, a fake, a pre-authenticated session) must not require a .env.
+        if client is None:
+            settings = get_settings()
+            client = HyperlineClient(
+                settings.hyperline_base_url, settings.hyperline_api_key
             )
-        )
+        self.client = client
+
+    def create_contact(self, body: ContactItemIn) -> ContactItemOut:
+        raw = self.client.create_customer(from_contact(body))
         return to_contact(raw)
 
     def create_invoice(self, *, customer_id: str, reference: str) -> InvoiceItemOut:
@@ -350,12 +374,11 @@ class HyperlineInvoicingConnector:
 
     def delete_contact(self, contact_id: str) -> None:
         # Mapping decision: Hyperline requires archive before customer deletion.
-        # Both steps are already-gone tolerant; the spec has no way to say so.
-        _tolerate_404(self.client.archive_customer, contact_id)
-        _tolerate_404(self.client.delete_customer, contact_id)
+        self.client.archive_customer(contact_id)
+        self.client.delete_customer(contact_id)
 
     def delete_invoice(self, invoice_id: str) -> None:
-        _tolerate_404(self.client.delete_invoice, invoice_id)
+        self.client.delete_invoice(invoice_id)
 
     def get_contact(self, contact_id: str) -> ContactItemOut:
         return to_contact(self.client.get_customer(contact_id))

@@ -14,12 +14,12 @@ LLM-written mapper in `connectors/<provider>/connector.py`.
 - Prefer an actively maintained official provider Python SDK over codegen when it covers the
   needed operations; otherwise generate into `generated/<provider>/`.
 - Never hand-edit `generated/**`. Fix `codegeneration/normalize.py` and regenerate.
-- Provider workflows (archive-before-delete, 404 tolerance) live in the connector, not in
-  generated or third-party client code.
+- Required provider workflows such as archive-before-delete live in the connector. Provider HTTP
+  errors are never caught there; they propagate to the API boundary.
 - Never generate a Chift client. We *implement* Chift (`chift/models.py`, `chift/api.py`);
   we never call it.
-- Unknown provider values raise through `chift/errors.py`. No silent `.get(x, default)`
-  fallbacks, and no connector picks a status code.
+- Unknown provider values raise `ValueError`. No silent `.get(x, default)` fallbacks,
+  and no connector picks an HTTP status code.
 
 ## Verify
 

@@ -103,6 +103,51 @@ class ContactItemOut(BaseModel):
     external_reference: str | None = None
 
 
+class AddressItemInInvoicing(BaseModel):
+    """Transcribed from chift.openapi.yaml. Unlike the Out form, Chift requires a
+    full postal address here: a partial one is not accepted."""
+
+    address_type: AddressTypeInvoicing
+    street: str
+    city: str
+    postal_code: str
+    country: str
+    name: str | None = None
+    number: str | None = None
+    box: str | None = None
+    phone: str | None = None
+    mobile: str | None = None
+    email: str | None = None
+
+
+class ContactItemIn(BaseModel):
+    """Chift's published create-contact body. Every field is optional in the spec,
+    so the connector sends only what the caller actually supplied."""
+
+    is_prospect: bool | None = None
+    is_customer: bool | None = None
+    is_supplier: bool | None = None
+    is_company: bool | None = None
+    company_name: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    mobile: str | None = None
+    company_id: str | None = None
+    vat: str | None = None
+    company_number: str | None = None
+    currency: str | None = None
+    language: str | None = None
+    comment: str | None = None
+    customer_account_number: str | None = None
+    supplier_account_number: str | None = None
+    birthdate: date | None = None
+    gender: ContactGender | None = None
+    addresses: list[AddressItemInInvoicing] | None = Field(default_factory=list)
+    external_reference: str | None = None
+
+
 class ChiftPage(BaseModel, Generic[T]):
     items: list[T]
     total: int = Field(ge=0)
@@ -173,12 +218,3 @@ class HTTPValidationError(BaseModel):
     message: str = "Validation error"
     status: str = "error"
     detail: list[ValidationError] = Field(default_factory=list)
-
-
-class ChiftAPIError(Exception):
-    """What a Chift endpoint raises. The API layer renders it as `error`, with `status_code`."""
-
-    def __init__(self, status_code: int, error: ChiftError | HTTPValidationError):
-        super().__init__(error.message)
-        self.status_code = status_code
-        self.error = error

@@ -29,7 +29,7 @@ Three things to look at:
 | Where | Why it is the interesting part |
 |---|---|
 | [`connectors/hyperline/connector.py`](connectors/hyperline/connector.py) | Grep `# Mapping decision:` and `# REVIEW:`. Every semantic judgement is marked beside the code, so you can approve the lossy choices without reading the field renames. |
-| [`RESEARCH.md`](RESEARCH.md) § Generator experiments | Fifteen community generators tested against these same four endpoints, with what each produced and where each broke. It is why this pipeline exists rather than `openapi-generator`. |
+| [`RESEARCH.md`](RESEARCH.md) § Appendix: generator experiments | Fifteen community generators tested against these same four endpoints, with what each produced and where each broke. It is why this pipeline exists rather than `openapi-generator`. |
 | [`skills/add_connector.md`](skills/add_connector.md) § Review it against this checklist | Six checks, each one a defect an LLM draft actually produced here. This is the reusable artefact. |
 
 ## Supported surface
@@ -130,9 +130,9 @@ Generated code is disposable. Do not edit `generated/` by hand.
   is vendored as the reference a reviewer can diff the models against.
 - Retrieve-one-invoice returns Chift's list shape. `InvoiceItemOutSingle` adds a base64 `pdf`
   field, and Hyperline offers a `public_url` rather than document bytes.
-- A provider outage becomes **400**, not 502 — Chift's published spec declares 502 on exactly one
-  unrelated POS route, so returning it here would send callers a status Chift never documented.
-  The full argument is in [`chift/errors.py`](chift/errors.py)'s module docstring.
+- A provider HTTP error keeps the provider's status and receives Chift's documented error shape.
+  Unexpected bugs are not translated into Chift errors; FastAPI returns its ordinary 500.
+  The one provider-error translation lives in [`chift/api.py`](chift/api.py).
 - Nine currencies Hyperline still publishes (BGN, HRK, ANG, …) have been retired from ISO 4217, so
   they have no exponent to scale amounts by. Those invoices fail by name rather than guess.
 - Addresses drop Hyperline's `line2`; Chift has no equivalent slot.

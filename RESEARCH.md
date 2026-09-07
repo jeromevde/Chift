@@ -4,6 +4,27 @@ This is the single record of the experiments, architectural choices, semantic ma
 validation evidence behind the connector. For commands and code-generation configuration, see
 [`codegeneration/README.md`](codegeneration/README.md).
 
+## Summary
+
+Three findings, in the order they were reached. Each has a section below; the fifteen-generator
+bake-off that produced the first is in the [appendix](#appendix-generator-experiments).
+
+1. **No tested community generator handles the raw document, and the fix is not generator-specific.**
+   All fifteen produced *a* result; what separated them was whether it imported and validated.
+   openapi-python-client went from dropping the success models to 4/4 working calls when handed
+   the *normalized* form of the same slice — so normalization is a reusable boundary, not a
+   workaround wedged into one tool.
+2. **Generation must stop at the client, because the two halves fail differently.** A wrong client
+   does not compile, or fails the generated-model example check. A wrong mapper *works*: it
+   returns clean Python that drops a discount or reports a status Chift's four states do not mean.
+   That asymmetry, not squeamishness about LLMs, is why the mapper is reviewed code.
+3. **The hard problems are the ones OpenAPI cannot express at all** — cursor pagination vs.
+   `page`/`size`, amounts in a currency's smallest unit stated only in prose, eighteen provider
+   statuses collapsing into four, and a `type` field that mixes entity kind with creation
+   provenance. No generator can infer any of them. They are in
+   [§ What OpenAPI cannot decide for the mapper](#what-openapi-cannot-decide-for-the-mapper),
+   which is the section worth reading if you read only one.
+
 ## Decision
 
 No tested community generator produced a small, correct, runtime-validated Python client from
@@ -52,54 +73,6 @@ the skill, so the next mapper is measured against the last one's mistakes.
 
 Wrapping the prompt in a runner would be easy, and would not make the output correct: the durable
 artefact here is the procedure and that checklist, not a script that calls a model.
-
-## Generator experiments
-
-Fifteen candidates were tested against the same Hyperline operations:
-
-| # | Candidate | Output observed in experiment | Live result | Verdict |
-|---|---|---:|---|---|
-| 01 | openapi-python-client, raw 3.1 | 6,121 lines | success models dropped | fail |
-| 02 | openapi-python-client, converted to 3.0 | 6,121 lines | same models dropped | conversion did not fix it |
-| 03 | OpenAPI Generator, raw | 68 files / 17,390 lines | detail validation failed | too large and incorrect |
-| 04 | datamodel-code-generator + small client | 2,972 model lines | 3/4 calls | wrong detail model |
-| 05 | openapi-python-client, normalized | 21,804 lines | 4/4 calls | correct but large |
-| 06 | openapi-typescript + openapi-fetch | 2,053 + 35 lines | 4/4 calls | clean, but TypeScript and no runtime validation |
-| 07 | Explicit Pydantic projection | 125 lines | 4/4 calls | clean baseline, but handwritten |
-| 08 | openapi-python | 5 files / 938 lines | 4/4 calls | dictionaries; no runtime validation |
-| 09 | python-client-generator | none | generation failed | fail |
-| 10 | aiopenapi3 | dynamic models | schema load failed | fail |
-| 11 | UniHTTP, raw | 9 files / 3,940 lines | 3/4 calls | best raw Pydantic client, still incorrect |
-| 12 | UniHTTP, normalized | 9 files / 4,338 lines | 4/4 calls | viable alternative |
-| 13 | MetaEngine | 70 files / 2,183 lines | package did not import | fail |
-| 14 | dmcg with `--force-optional` | 3,407 lines | module did not import | failure was misdiagnosed; see below |
-| 15 | OpenAPI Generator built-in normalizer | 68 files / 15,647 lines | list validation failed | built-in rules insufficient |
-
-The current generated Hyperline package is two substantive files: a Pydantic model module and an
-114-line HTTP client. The model file is large because the provider's complete enum vocabulary is
-preserved; generated line count is less important than a small, stable source pipeline.
-
-### What the experiments established
-
-**Converting 3.1 to 3.0 is not enough.** The converter rewrote nullable type arrays but retained
-the `allOf` structure that caused openapi-python-client to drop the central success models.
-
-**Normalization is independent of the generator.** openapi-python-client went from broken to
-working when given the normalized form of the same endpoint slice. That makes the normalized
-specification a useful boundary rather than a workaround embedded in one tool.
-
-**Built-in normalizers do not solve naming.** OpenAPI Generator's normalization rules improved
-validity but still produced large mechanical names. A generator cannot infer a business name
-that the document never supplied.
-
-**`--force-optional` was not the import bug.** The failing experiment also enabled
-`--reuse-model`. In combination with union-operator output, that option emitted `Optional[...]`
-without importing it. Removing `--reuse-model` fixed the import while retaining soft provider
-parsing.
-
-**Commercial SDK generators solve a different problem.** Fern, Stainless, and Speakeasy target
-API producers shipping broad public SDKs. They are useful products, but their output and workflow
-are larger than a private consume-and-map connector needs.
 
 ## Why the raw specification needs help
 
@@ -288,8 +261,12 @@ Hyperline's `Customer.type` mixes two dimensions:
 It is incorrect to treat every non-corporate value as a person. Chift's `is_company` is derived
 only from Hyperline's explicit entity kind: `corporate` becomes `True`, `person` becomes `False`,
 and `automatically_created` remains `None`. A registration number is copied to Chift's
-`company_number`, but does not by itself classify the customer. Company and person name slots
-follow the classification rather than creating it.
+`company_number`, but does not by itself classify the customer.
+
+The name is a separate question. Not knowing the entity kind does not mean not knowing what the
+customer is called, and `is_company=None` already reports the unknown kind on its own. An explicit
+`person` sends the name to `first_name`; every other case sends it to `company_name`, so an
+imported customer keeps its name instead of arriving with all three name slots empty.
 
 ### Invoice status
 
@@ -327,9 +304,11 @@ Typed error generation from the published document would therefore be misleading
 
 Provider HTTP and response-schema failures must still be translated at the connector/API
 boundary so Hyperline internals do not leak through Chift's contract. That translation is
-separate from success-value mapping. Expected semantic mismatches should fail loudly; unexpected
-programming errors should retain their traceback in server logs and become generic 500s, not be
-mislabelled as provider drift.
+separate from success-value mapping, which is why no connector picks a status code.
+
+Provider HTTP responses are translated into Chift errors; response-validation and programming
+errors are left to FastAPI's ordinary 500 handling instead of inventing a public error contract
+Chift does not document. The single translation handler is in [`chift/api.py`](chift/api.py).
 
 ## Specification drift
 
@@ -384,7 +363,7 @@ which differ in OpenAPI version, size, and idiom. Stripe's 6.4 MB document yield
 models and a two-method client from one `paths.yaml` entry.
 
 The test asserts that the emitted method is annotated with a model that exists, not merely that
-normalization returned a document. Every generator in the table above returned *a* document too;
+normalization returned a document. Every generator in the [appendix](#appendix-generator-experiments) returned *a* document too;
 what separates them is whether the result imports and validates. Nothing is committed — specs go
 to pytest's tmp dir and generated packages are deleted afterwards.
 
@@ -424,6 +403,55 @@ Only Hyperline is implemented because the assignment asks for one connector and 
 thinking, not a second speculative integration. Provider discovery, endpoint selection, patches,
 generation, and the onboarding skill are the reusable proof points; a second real provider would
 test them without requiring a redesign.
+
+## Appendix: generator experiments
+
+The evidence for the decision at the top of this document. Fifteen candidates were
+tested against the same four Hyperline operations:
+
+| # | Candidate | Output observed in experiment | Live result | Verdict |
+|---|---|---:|---|---|
+| 01 | openapi-python-client, raw 3.1 | 6,121 lines | success models dropped | fail |
+| 02 | openapi-python-client, converted to 3.0 | 6,121 lines | same models dropped | conversion did not fix it |
+| 03 | OpenAPI Generator, raw | 68 files / 17,390 lines | detail validation failed | too large and incorrect |
+| 04 | datamodel-code-generator + small client | 2,972 model lines | 3/4 calls | wrong detail model |
+| 05 | openapi-python-client, normalized | 21,804 lines | 4/4 calls | correct but large |
+| 06 | openapi-typescript + openapi-fetch | 2,053 + 35 lines | 4/4 calls | clean, but TypeScript and no runtime validation |
+| 07 | Explicit Pydantic projection | 125 lines | 4/4 calls | clean baseline, but handwritten |
+| 08 | openapi-python | 5 files / 938 lines | 4/4 calls | dictionaries; no runtime validation |
+| 09 | python-client-generator | none | generation failed | fail |
+| 10 | aiopenapi3 | dynamic models | schema load failed | fail |
+| 11 | UniHTTP, raw | 9 files / 3,940 lines | 3/4 calls | best raw Pydantic client, still incorrect |
+| 12 | UniHTTP, normalized | 9 files / 4,338 lines | 4/4 calls | viable alternative |
+| 13 | MetaEngine | 70 files / 2,183 lines | package did not import | fail |
+| 14 | dmcg with `--force-optional` | 3,407 lines | module did not import | failure was misdiagnosed; see below |
+| 15 | OpenAPI Generator built-in normalizer | 68 files / 15,647 lines | list validation failed | built-in rules insufficient |
+
+The current generated Hyperline package is two substantive files: a Pydantic model module and an
+114-line HTTP client. The model file is large because the provider's complete enum vocabulary is
+preserved; generated line count is less important than a small, stable source pipeline.
+
+### What the experiments established
+
+**Converting 3.1 to 3.0 is not enough.** The converter rewrote nullable type arrays but retained
+the `allOf` structure that caused openapi-python-client to drop the central success models.
+
+**Normalization is independent of the generator.** openapi-python-client went from broken to
+working when given the normalized form of the same endpoint slice. That makes the normalized
+specification a useful boundary rather than a workaround embedded in one tool.
+
+**Built-in normalizers do not solve naming.** OpenAPI Generator's normalization rules improved
+validity but still produced large mechanical names. A generator cannot infer a business name
+that the document never supplied.
+
+**`--force-optional` was not the import bug.** The failing experiment also enabled
+`--reuse-model`. In combination with union-operator output, that option emitted `Optional[...]`
+without importing it. Removing `--reuse-model` fixed the import while retaining soft provider
+parsing.
+
+**Commercial SDK generators solve a different problem.** Fern, Stainless, and Speakeasy target
+API producers shipping broad public SDKs. They are useful products, but their output and workflow
+are larger than a private consume-and-map connector needs.
 
 ## Sources
 

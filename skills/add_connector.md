@@ -1,7 +1,7 @@
 # Add a connector
 
 <!-- skill version: bump when the procedure or review rules change -->
-**version:** 9
+**version:** 11
 **applies to:** `connectors/<provider>/connector.py`
 
 How to onboard a new provider to Chift's unified invoicing API, end to end.
@@ -292,17 +292,20 @@ reports the wrong invoice status.
 |---|---|
 | `to_contact` / `to_invoice` | provider model → `chift.models` |
 | Status/type tables | explicit dicts, **no `.get(x, default)`** — unknown values raise |
-| `_require_map` | the raiser: unmapped value → `errors.unmappable(...)` |
+| `_require_map` | the raiser: unmapped value → descriptive `ValueError` |
 | `_page_via_cursor` | provider cursor pagination → Chift `page`/`size` |
 | IDs | POC pass-through: Chift `id` == provider id, also in `source_ref.id` |
 | Decision comments | every non-obvious mapper choice, beside the code it affects |
 
-**No error translation.** Let provider exceptions propagate. `chift/api.py` registers one
-handler per exception type and `chift/errors.py` decides the status and `error_code`, so every
-connector fails identically. A mapper that catches `httpx.HTTPStatusError` itself is deciding
-Chift's error contract for one provider. The one thing the mapper *does* raise is
-`ChiftAPIError` for what only it can see: a value it cannot map (`_require_map`) or a field
-Chift needs that the provider omitted (`_required`).
+**No error translation.** Let provider HTTP exceptions propagate to the single handler in
+`chift/api.py`, so every connector fails identically. A mapper that catches
+`httpx.HTTPStatusError` itself would decide Chift's error contract for one provider. Values the
+mapper cannot map, or required fields the provider omitted, raise a descriptive `ValueError` and
+remain ordinary server errors.
+
+**Never catch provider HTTP errors in a mapper or connector.** This includes swallowing 404 to
+make delete or test cleanup look idempotent. Required call sequences such as
+archive-before-delete belong in the connector; the outcome of each call propagates unchanged.
 
 ### Make every mapper decision reviewable
 
@@ -378,7 +381,7 @@ collapse every other value into `False`.
 
 The draft wrote `INVOICE_STATUS.get(status, InvoiceStatus.posted)`. An unknown provider status
 would silently become `posted` — a wrong invoice state, delivered confidently, forever.
-→ `_require_map()` raises via `errors.unmappable()` instead, naming the value.
+→ `_require_map()` raises `ValueError` instead, naming the value.
 
 *Check:* grep the mapper for `.get(` with a second argument, and for `or <default>`. Each one is
 a silent wrong answer waiting for a value you have not seen.
@@ -405,13 +408,43 @@ shifts the day.
 **6. Does it fail loudly on anything it does not understand?**
 
 An unknown value needed for a required Chift concept, or a missing required source field, should
-raise a `ChiftAPIError` through `chift/errors.py`, never become a plausible default. A
-documented source value that answers a different question is not provider drift: if the Chift
-field is nullable, preserve `None` unless independent evidence answers it. **Never pick the
-status code in the mapper** — call `errors.unmappable()` / `errors.missing_required()` and let
-`chift/errors.py` own it. It currently returns 400, not the semantically obvious 502, because
-Chift's published spec declares 502 on exactly one unrelated POS route; that reasoning lives in
-one module docstring so it can be revisited in one place.
+raise a descriptive `ValueError`, never become a plausible default. A documented source value
+that answers a different question is not provider drift: if the Chift field is nullable,
+preserve `None` unless independent evidence answers it. The mapper never picks an HTTP status;
+its unexpected failure becomes FastAPI's ordinary 500.
+
+**7. Does the mapper invent any value the caller did not supply?**
+
+The worst defect in this connector was not a wrong conversion — it was a `create_contact` that
+took `name`, `email` and `external_id`, then hardcoded `type="corporate"`, `currency="EUR"`,
+`country="BE"` and a billing address at 10 Rue de la Loi, Brussels. It began as live-test fixture
+data, and it reached a public route. Every contact created through the API silently became a
+Belgian company. A German sole trader posting to it got back a Belgian corporate entity, and the
+response looked entirely valid.
+
+Two independent mistakes made it, and both generalise:
+
+- **Fixture data was written into the mapper instead of the test.** A value that exists so a
+  test has something to send belongs in the test. The moment it lives in the connector, it
+  applies to every caller.
+- **The inbound body was invented rather than transcribed.** `name`/`email`/`external_id` match
+  no Chift schema. Chift's published `ContactItemIn` carries `is_company`, `company_name`,
+  `currency`, `addresses` and more, all optional. Because the body could not express those
+  fields, the mapper had to supply them — so the invented contract *caused* the hardcoding.
+
+Check the provider side before assuming a constant is forced: Hyperline's `CreateCustomer`
+declares `required: None`. Nothing had to be sent. The fix was to send only what the caller
+supplied.
+
+*Check:* grep the mapper for string and numeric literals. Every one must be a name defined by
+the provider's schema (an enum member, a field name) — never a value standing in for caller
+data. Country codes, currencies, addresses, tax rates and entity kinds are caller data. If you
+cannot pass a field through, the inbound model is wrong; fix the model rather than filling the
+gap with a constant.
+
+*Rule:* write inbound mappers as the inverse of the outbound one, from the target's **published**
+schema. `to_contact` and `from_contact` should read as mirror images; a field that survives one
+direction but is invented in the other is the defect.
 
 Then run the live tests. Amount and date conversions are the ones that look right and are wrong.
 
@@ -428,9 +461,9 @@ runner is the easy part, and the part that does not make the output correct.
 
 ## Step 5 — Expose and test
 
-Wire the connector into `chift/api.py` only if it should be reachable over HTTP; the FastAPI
-layer dispatches on `CONNECTORS[consumer_id]` and renders `ChiftAPIError` as Chift's error
-JSON. It needs no changes for a new provider.
+Wire the connector into `chift/api.py` only if it should be reachable over HTTP. The FastAPI
+layer dispatches on `CONNECTORS[consumer_id]`; its single provider-error handler needs no changes
+for a new provider.
 
 ```bash
 pytest                    # live sandbox round-trip
@@ -447,18 +480,26 @@ Live tests need the provider key in `.env`, create fixtures, and must clean them
 - Skip Step 0. Do not default to codegen when an actively maintained official Python SDK
   already covers the needed operations.
 - Edit `generated/**` by hand. Fix the normalizer and regenerate.
-- Put provider workflows in generated or third-party client wrappers. Archive-before-delete,
-  404 tolerance and retries belong in the connector.
+- Put provider workflows in generated or third-party client wrappers. Required call sequences
+  such as archive-before-delete belong in the connector, but HTTP-error tolerance and retries do
+  not belong in the mapper.
 - Trust the spec's (or SDK's) declared error schemas blindly. Providers document `{message}` and
   return something else entirely — Hyperline's sandbox sends `statusCode`/`type`/`message`/`errors`.
-  Generating typed error models from the document would be misleading, which is why
-  `chift/errors.py` reads the real JSON defensively instead.
+  Generating typed error models from the document would be misleading; the API handler includes
+  the provider's actual response in a Chift error instead.
 - Generate a Chift client. We **implement** Chift (`chift/models.py`, `chift/api.py`); we never
   call it. A generated `ChiftClient` is dead code.
-- Default an unknown value to something plausible. Raise through `chift/errors.py` — provider
-  drift is a downstream failure, not a bad request from the caller.
-- Choose an HTTP status in a connector, or translate provider errors there. `chift/errors.py`
-  owns the whole error contract so every provider fails identically.
+- Default an unknown value to something plausible. Raise `ValueError` — provider drift is a
+  server failure, not a bad request from the caller.
+- Choose an HTTP status in a connector, or translate provider errors there. The single handler
+  in `chift/api.py` owns provider HTTP translation so every provider fails identically.
+- Hardcode a value the caller should supply — country, currency, address, tax rate, entity kind.
+  Send only what the caller gave. If the provider truly requires a field the caller omitted,
+  raise for it; do not invent one. See check 7.
+- Invent a request body. Transcribe the target's published input schema. An invented body cannot
+  express fields the caller needs, and the mapper then fills the gap with constants.
+- Let fixture data reach the mapper. Values that exist so a live test has something to create
+  belong in the test, not in code every caller runs.
 
 ---
 
