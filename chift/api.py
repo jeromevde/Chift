@@ -9,13 +9,14 @@ handles every other error normally.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 import httpx
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from chift import connector as registry
+from chift.connector import InvoicingConnector
 from chift.models import (
     ChiftError,
     ChiftPage,
@@ -28,8 +29,14 @@ log = logging.getLogger(__name__)
 
 app = FastAPI(title="Chift invoicing POC")
 
-# consumer_id → connector (set by tests / demo)
-CONNECTORS: dict[str, Any] = {}
+# consumer_id → provider slug. A consumer is a Chift customer who connected one
+# provider account; this is the registry a real deployment would read from its
+# database. Populated by the demo, by tests, or from CHIFT_CONSUMERS.
+CONSUMERS: dict[str, str] = {}
+
+# consumer_id → live connector. Cache for resolved consumers, and the injection
+# point for tests, which put a pre-built connector here and never reach `build`.
+CONNECTORS: dict[str, InvoicingConnector] = {}
 
 
 @app.exception_handler(httpx.HTTPStatusError)
@@ -45,11 +52,33 @@ async def provider_http_error(_request, exc: httpx.HTTPStatusError) -> JSONRespo
     return JSONResponse(status_code=upstream, content=error.model_dump())
 
 
-def _connector(consumer_id: str):
-    try:
+def _connector(consumer_id: str) -> InvoicingConnector:
+    """Resolve a consumer to its connector, building one on first use.
+
+    This layer never names a provider: the slug comes from the consumer record and
+    the class comes from the registry, so adding a provider touches no code here.
+    """
+    if consumer_id in CONNECTORS:
         return CONNECTORS[consumer_id]
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail="Unknown consumer") from exc
+
+    provider = CONSUMERS.get(consumer_id)
+    if provider is None:
+        raise HTTPException(status_code=404, detail="Unknown consumer")
+
+    try:
+        CONNECTORS[consumer_id] = registry.build(provider)
+    except LookupError as exc:
+        # The consumer names a provider nobody implements: our configuration is
+        # wrong, not the caller's request.
+        log.error("consumer %s: %s", consumer_id, exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except ValueError as exc:
+        # The provider is implemented but its credentials are missing.
+        log.error("consumer %s: %s", consumer_id, exc)
+        raise HTTPException(
+            status_code=500, detail=f"{provider} is not configured"
+        ) from exc
+    return CONNECTORS[consumer_id]
 
 
 class CreateInvoiceBody(BaseModel):

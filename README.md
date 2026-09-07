@@ -15,7 +15,7 @@ pip install -e ".[dev]" && python -m codegeneration.run hyperline
 # that is the point: generated diffs are reviewable.
 
 pytest
-# 29 tests. With HYPERLINE_API_KEY_TEST in .env, this creates real customers and
+# 31 tests. With HYPERLINE_API_KEY_TEST in .env, this creates real customers and
 # invoices in the Hyperline sandbox, reads them back through Chift's contract, and
 # deletes them. Without a key, the offline half still runs.
 
@@ -53,7 +53,8 @@ Hyperline OpenAPI
   → normalize codegen-hostile schemas
   → Pydantic models (datamodel-code-generator) + thin HTTP client (emit.py)
   → explicit Hyperline → Chift mapper
-  → Chift-shaped FastAPI
+  → InvoicingConnector contract (chift/connector.py)
+  → Chift-shaped FastAPI, which resolves consumer → provider → connector
 ```
 
 The boundary is intentional:
@@ -98,7 +99,7 @@ create temporary customers and invoices and clean them up afterward.
 
 | Path | Purpose |
 |---|---|
-| `chift/` | Chift models, error contract, and minimal FastAPI surface |
+| `chift/` | Chift models, the `InvoicingConnector` contract, and the FastAPI surface |
 | `connectors/hyperline/` | Vendored spec, endpoint selection, provider patch, configuration, mapper |
 | `codegeneration/` | Provider-agnostic prune, normalize, generate, emit, and validate pipeline |
 | `generated/hyperline/` | Disposable generated Pydantic models and HTTP client |
@@ -113,7 +114,12 @@ create temporary customers and invoices and clean them up afterward.
 3. Run `python -m codegeneration.run <provider>`.
 4. Write the provider → Chift mapper with the connector skill, then review it against that
    skill's checklist.
-5. Verify the four Chift reads against the provider sandbox.
+5. Subclass `InvoicingConnector`, set `provider = "<name>"`, implement `from_env`.
+6. Verify the four Chift reads against the provider sandbox.
+
+No file under `chift/` changes when a provider is added. The contract is five abstract methods
+with no shared behaviour, so a connector that omits one fails at construction rather than
+inheriting a plausible default — the same reason the mapper is reviewed rather than generated.
 
 Generated code is disposable. Do not edit `generated/` by hand.
 

@@ -19,6 +19,7 @@ from typing import Any, TypeVar
 
 from iso4217 import Currency
 
+from chift.connector import InvoicingConnector
 from chift.models import (
     AddressItemOutInvoicing,
     AddressTypeInvoicing,
@@ -334,7 +335,14 @@ def _page_via_cursor(fetch, *, page: int, size: int, map_item, **query):
 
 
 # Provider HTTP failures propagate to the single translator in chift.api.
-class HyperlineInvoicingConnector:
+class HyperlineInvoicingConnector(InvoicingConnector):
+    provider = "hyperline"
+
+    @classmethod
+    def from_env(cls) -> HyperlineInvoicingConnector:
+        """Hyperline's credentials live in connectors/hyperline/config.py."""
+        return cls()
+
     def __init__(self, client: HyperlineClient | None = None) -> None:
         # Credentials are read only when we have to build a client. An injected one
         # (tests, a fake, a pre-authenticated session) must not require a .env.

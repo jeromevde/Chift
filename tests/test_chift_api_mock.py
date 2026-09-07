@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from iso4217 import Currency
 
 from chift.api import CONNECTORS, app
+from chift.connector import InvoicingConnector
 from chift.models import InvoiceStatus
 from connectors.hyperline.config import get_settings
 from connectors.hyperline.connector import (
@@ -399,3 +400,68 @@ def test_provider_http_errors_become_chift_errors(
     assert result.json()["error_code"] == expected_code
     assert str(upstream) in result.json()["detail"]
     assert "provider explanation" in result.json()["detail"]
+
+
+def test_api_resolves_a_consumer_to_its_provider_without_naming_one():
+    """The dispatch layer learns providers from the registry, never from a list."""
+    from chift.api import CONSUMERS
+
+    calls: list[str] = []
+
+    class FakeConnector(HyperlineInvoicingConnector):
+        provider = "fake-provider"
+
+        @classmethod
+        def from_env(cls) -> FakeConnector:
+            calls.append("built")
+            return cls.__new__(cls)
+
+        def get_contact(self, contact_id: str):
+            return to_contact(hl.Customer(id=contact_id, name="Fake", type="corporate"))
+
+    consumer = "22222222-2222-2222-2222-222222222222"
+    CONSUMERS[consumer] = "fake-provider"
+    try:
+        with TestClient(app) as http:
+            got = http.get(f"/consumers/{consumer}/invoicing/contacts/cus_x")
+        assert got.status_code == 200, got.text
+        assert got.json()["company_name"] == "Fake"
+        # Built through the registry, then cached for the next request.
+        assert calls == ["built"]
+    finally:
+        CONSUMERS.pop(consumer, None)
+        CONNECTORS.pop(consumer, None)
+
+
+def test_a_connector_missing_a_contract_method_cannot_be_constructed():
+    """The seam that used to be duck-typed now fails at construction, not at request."""
+
+    class Incomplete(InvoicingConnector):
+        provider = "incomplete"
+
+        @classmethod
+        def from_env(cls):
+            return cls()
+
+        def get_contact(self, contact_id: str): ...
+        def list_contacts(self, *, page: int, size: int): ...
+        def get_invoice(self, invoice_id: str): ...
+        def create_contact(self, body): ...
+        # list_invoices deliberately absent.
+
+    with pytest.raises(TypeError, match="list_invoices"):
+        Incomplete.from_env()
+
+
+def test_an_unknown_provider_is_our_misconfiguration_not_a_bad_request():
+    from chift.api import CONSUMERS
+
+    consumer = "33333333-3333-3333-3333-333333333333"
+    CONSUMERS[consumer] = "not-implemented"
+    try:
+        with TestClient(app, raise_server_exceptions=False) as http:
+            got = http.get(f"/consumers/{consumer}/invoicing/contacts/x")
+        assert got.status_code == 500
+        assert "not-implemented" in got.text
+    finally:
+        CONSUMERS.pop(consumer, None)
