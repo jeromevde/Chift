@@ -7,6 +7,16 @@ Two transformations are maintained here:
 2. Inline operation bodies/responses are hoisted and component names are converted
    to PascalCase so the client emitter can always refer to stable top-level models.
 
+PascalCase component names are the shared contract between the generated models and
+the small client emitter. OpenAPI permits names such as ``customer_details`` and
+``full-repository``; datamodel-code-generator converts them into Python class names,
+while ``emit.py`` deliberately copies the final segment of each ``$ref`` verbatim.
+The generator produces models rather than an API client, and its public generation
+API does not return its final reference-to-class mapping. Rewriting names once in
+the normalized schema therefore keeps the generator, emitter, and checker aligned
+without depending on private generator internals or threading a separate name map
+through the pipeline.
+
 Provider-specific corrections belong in ``connectors/<provider>/patch.py``.
 All unions remain faithful to the provider document. Generated nested class names
 are disposable: mappers validate nested dictionaries through stable top-level
@@ -15,7 +25,6 @@ operation models instead of importing those implementation details.
 
 from __future__ import annotations
 
-import keyword
 import re
 
 _METADATA_KEYS = {
@@ -90,6 +99,9 @@ def _rewrite_refs(node, aliases: dict):
 def hoist(spec: dict) -> dict:
     """Hoist inline JSON operation I/O into stable named components.
 
+    This is important for the datamodels of the endpoints to be generated
+    Which can then be used by emit.py to generate the client.
+
     Input::
 
         paths:
@@ -132,13 +144,6 @@ def hoist(spec: dict) -> dict:
             "schema", {}
         )
 
-    def _operation_snake(name: str) -> str:
-        name = re.sub(r"(?<!^)(?=[A-Z])", "_", name)
-        name = re.sub(r"[^A-Za-z0-9_]+", "_", name).strip("_").lower()
-        if not name or name[0].isdigit():
-            name = f"operation_{name}"
-        return name + "_" if keyword.iskeyword(name) else name
-
     schemas = spec.setdefault("components", {}).setdefault("schemas", {})
     for operations in spec.get("paths", {}).values():
         for operation in operations.values():
@@ -160,7 +165,7 @@ def hoist(spec: dict) -> dict:
                 schema = (content or {}).get("schema", {})
                 if not schema or "$ref" in schema:
                     continue
-                name = _pascal(_operation_snake(operation["operationId"]), suffix)
+                name = _pascal(operation["operationId"], suffix)
                 if name in schemas:
                     raise ValueError(
                         f"cannot hoist {operation['operationId']}: "
