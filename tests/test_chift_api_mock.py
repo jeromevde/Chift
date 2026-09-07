@@ -20,6 +20,7 @@ from connectors.hyperline.connector import (
     INVOICE_STATUS,
     HyperlineInvoicingConnector,
     _page_via_cursor,
+    to_contact,
     to_error,
     to_invoice,
 )
@@ -49,7 +50,8 @@ def _invoice(**changes) -> hl.Invoice:
         "type": "invoice",
         "status": "draft",
         "currency": "EUR",
-        "period_starts_at": "2024-01-15T00:00:00Z",
+        "issued_at": "2024-01-15T00:00:00Z",
+        "period_starts_at": "2024-01-01T00:00:00Z",
         "total_amount": 12100,
         "amount_excluding_tax": 10000,
         "tax_amount": 2100,
@@ -67,12 +69,16 @@ def test_every_published_invoice_status_has_an_explicit_mapping():
     assert set(INVOICE_STATUS) == set(published)
     assert INVOICE_STATUS["closed"] is InvoiceStatus.cancelled
     assert INVOICE_STATUS["open"] is InvoiceStatus.draft
+    assert INVOICE_STATUS["grace_period"] is InvoiceStatus.posted
     assert INVOICE_STATUS["error"] is InvoiceStatus.posted
     assert INVOICE_STATUS["paid"] is InvoiceStatus.paid
 
 
-def test_invoice_mapper_uses_real_values_or_fails_loudly():
+def test_invoice_mapper_uses_currency_units_or_fails_loudly():
     assert to_invoice(_invoice()).invoice_date.isoformat() == "2024-01-15"
+    assert to_invoice(_invoice(currency="EUR", total_amount=100)).total == 1.0
+    assert to_invoice(_invoice(currency="JPY", total_amount=100)).total == 100.0
+    assert to_invoice(_invoice(currency="KWD", total_amount=100)).total == 0.1
 
     with pytest.raises(ChiftAPIError, match="published schema") as missing_amount:
         to_invoice(_invoice(total_amount=None))
@@ -82,9 +88,58 @@ def test_invoice_mapper_uses_real_values_or_fails_loudly():
     )
 
     with pytest.raises(ChiftAPIError, match="published schema") as missing_date:
-        to_invoice(_invoice(period_starts_at=None))
+        to_invoice(_invoice(issued_at=None))
     assert (
         missing_date.value.error.detail == "missing required field: invoice.issue_date"
+    )
+
+
+def test_import_source_and_registration_number_do_not_guess_customer_kind():
+    imported_company = to_contact(
+        hl.Customer(
+            id="cus_imported",
+            name="Imported customer",
+            type="automatically_created",
+            registration_number="BE0123456789",
+        )
+    )
+    imported_unknown = to_contact(
+        hl.Customer(
+            id="cus_unknown",
+            name="Unknown imported customer",
+            type="automatically_created",
+        )
+    )
+
+    assert imported_company.is_company is None
+    assert imported_company.company_name is None
+    assert imported_company.first_name is None
+    assert imported_company.company_number == "BE0123456789"
+    assert imported_unknown.is_company is None
+    assert imported_unknown.company_name is None
+    assert imported_unknown.first_name is None
+
+
+def test_invoice_line_maps_discount_or_fails_loudly_when_missing():
+    line = hl.InvoiceLineItem(
+        name="Discounted service",
+        unit_amount=10000,
+        units_count=1,
+        discount_amount=500,
+        tax_amount=1995,
+        amount_excluding_tax=9500,
+        amount=11495,
+    )
+
+    assert to_invoice(_invoice(line_items=[line])).lines[0].discount_amount == 5.0
+
+    with pytest.raises(ChiftAPIError, match="published schema") as missing_discount:
+        to_invoice(
+            _invoice(line_items=[line.model_copy(update={"discount_amount": None})])
+        )
+    assert (
+        missing_discount.value.error.detail
+        == "missing required field: invoice.line_items[].discount_amount"
     )
 
 

@@ -19,6 +19,10 @@ from pydantic import (
 )
 
 
+class BankAccount1(BaseModel):
+    pass
+
+
 class InvoiceDetailsIntegration(BaseModel):
     entity_id: str | None = Field(None, description="ID of the entity in the provider.")
     provider_name: (
@@ -67,350 +71,6 @@ class CreateCustomerTaxId(BaseModel):
     )
 
 
-class Address(BaseModel):
-    name: str | None = Field(None, description="Address name.", examples=["Acme"])
-    line1: str | None = Field(
-        None, description="Address first line.", examples=["5 rue de Paradis"]
-    )
-    line2: str | None = Field(
-        None, description="Address second line (optional).", examples=[None]
-    )
-    city: str | None = Field(None, description="Address city.", examples=["Paris"])
-    zip: str | None = Field(None, description="Address ZIP code.", examples=["75010"])
-    state: (
-        Literal[
-            "AA",
-            "AE",
-            "AK",
-            "AL",
-            "AP",
-            "AR",
-            "AS",
-            "AZ",
-            "CA",
-            "CO",
-            "CT",
-            "DC",
-            "DE",
-            "FL",
-            "GA",
-            "GU",
-            "HI",
-            "IA",
-            "ID",
-            "IL",
-            "IN",
-            "KS",
-            "KY",
-            "LA",
-            "MA",
-            "MD",
-            "ME",
-            "MI",
-            "MN",
-            "MO",
-            "MP",
-            "MS",
-            "MT",
-            "NC",
-            "ND",
-            "NE",
-            "NH",
-            "NJ",
-            "NM",
-            "NV",
-            "NY",
-            "OH",
-            "OK",
-            "OR",
-            "PA",
-            "PR",
-            "RI",
-            "SC",
-            "SD",
-            "TN",
-            "TX",
-            "UT",
-            "VA",
-            "VI",
-            "VT",
-            "WA",
-            "WI",
-            "WV",
-            "WY",
-        ]
-        | None
-    ) = Field(
-        None,
-        description="Only for US country. Second part of subdivision code in ISO format. See [ISO 3166-2:US](https://en.wikipedia.org/wiki/ISO_3166-2:US).",
-        examples=["CA"],
-    )
-    country: (
-        Literal[
-            "AD",
-            "AE",
-            "AF",
-            "AG",
-            "AI",
-            "AL",
-            "AM",
-            "AO",
-            "AQ",
-            "AR",
-            "AS",
-            "AT",
-            "AU",
-            "AW",
-            "AX",
-            "AZ",
-            "BA",
-            "BB",
-            "BD",
-            "BE",
-            "BG",
-            "BH",
-            "BI",
-            "BJ",
-            "BL",
-            "BM",
-            "BN",
-            "BO",
-            "BQ",
-            "BR",
-            "BS",
-            "BT",
-            "BF",
-            "BV",
-            "BW",
-            "BY",
-            "BZ",
-            "CA",
-            "CC",
-            "CD",
-            "CF",
-            "CG",
-            "CH",
-            "CI",
-            "CK",
-            "CL",
-            "CM",
-            "CN",
-            "CO",
-            "CR",
-            "CU",
-            "CV",
-            "CW",
-            "CX",
-            "CY",
-            "CZ",
-            "DE",
-            "DJ",
-            "DK",
-            "DM",
-            "DO",
-            "DZ",
-            "EC",
-            "EE",
-            "EG",
-            "EH",
-            "ER",
-            "ES",
-            "ES-CE",
-            "ES-ML",
-            "ET",
-            "FI",
-            "FJ",
-            "FK",
-            "FM",
-            "FO",
-            "FR",
-            "GA",
-            "GB",
-            "GD",
-            "GE",
-            "GF",
-            "GG",
-            "GH",
-            "GI",
-            "GL",
-            "GM",
-            "GN",
-            "GP",
-            "GQ",
-            "GR",
-            "GS",
-            "GT",
-            "GU",
-            "GW",
-            "GY",
-            "HK",
-            "HM",
-            "HN",
-            "HR",
-            "HT",
-            "HU",
-            "IC",
-            "ID",
-            "IE",
-            "IL",
-            "IM",
-            "IN",
-            "IO",
-            "IQ",
-            "IR",
-            "IS",
-            "IT",
-            "JE",
-            "JM",
-            "JO",
-            "JP",
-            "KE",
-            "KG",
-            "KH",
-            "KI",
-            "KM",
-            "KN",
-            "KP",
-            "KR",
-            "KW",
-            "KY",
-            "KZ",
-            "LA",
-            "LB",
-            "LC",
-            "LI",
-            "LK",
-            "LR",
-            "LS",
-            "LT",
-            "LU",
-            "LV",
-            "LY",
-            "MA",
-            "MC",
-            "MD",
-            "ME",
-            "MF",
-            "MG",
-            "MH",
-            "MK",
-            "ML",
-            "MM",
-            "MN",
-            "MO",
-            "MP",
-            "MQ",
-            "MR",
-            "MS",
-            "MT",
-            "MU",
-            "MV",
-            "MW",
-            "MX",
-            "MY",
-            "MZ",
-            "NA",
-            "NC",
-            "NE",
-            "NF",
-            "NG",
-            "NI",
-            "NL",
-            "NO",
-            "NP",
-            "NR",
-            "NU",
-            "NZ",
-            "OM",
-            "PA",
-            "PE",
-            "PF",
-            "PG",
-            "PH",
-            "PK",
-            "PL",
-            "PM",
-            "PN",
-            "PR",
-            "PS",
-            "PT",
-            "PT-20",
-            "PT-30",
-            "PW",
-            "PY",
-            "QA",
-            "RE",
-            "RO",
-            "RS",
-            "RU",
-            "RW",
-            "SA",
-            "SB",
-            "SC",
-            "SD",
-            "SE",
-            "SG",
-            "SH",
-            "SI",
-            "SJ",
-            "SK",
-            "SL",
-            "SM",
-            "SN",
-            "SO",
-            "SR",
-            "SS",
-            "ST",
-            "SV",
-            "SX",
-            "SY",
-            "SZ",
-            "TC",
-            "TD",
-            "TF",
-            "TG",
-            "TH",
-            "TJ",
-            "TK",
-            "TL",
-            "TM",
-            "TN",
-            "TO",
-            "TR",
-            "TT",
-            "TV",
-            "TW",
-            "TZ",
-            "UA",
-            "UG",
-            "UM",
-            "US",
-            "UY",
-            "UZ",
-            "VA",
-            "VC",
-            "VE",
-            "VG",
-            "VI",
-            "VN",
-            "VU",
-            "WF",
-            "WS",
-            "XK",
-            "YE",
-            "YT",
-            "ZA",
-            "ZM",
-            "ZW",
-        ]
-        | None
-    ) = Field(
-        None,
-        description="Two-letter country code in ISO format. See [ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).",
-        examples=["FR"],
-    )
-
-
 class CustomerDetailsV1Providers(BaseModel):
     adyen: str | None = None
     stripe: str | None = None
@@ -442,6 +102,10 @@ class CustomerDetailsV1Providers(BaseModel):
     gong: str | None = None
     jiminny: str | None = None
     posthog: str | None = None
+
+
+class BankAccount61(BaseModel):
+    pass
 
 
 class CustomerV1TaxId(BaseModel):
@@ -877,6 +541,3706 @@ class CustomerV1Integration(BaseModel):
     provider_account_id: str | None = Field(
         None, description="ID of the connected provider account."
     )
+
+
+class CreateInvoiceAdditionalDisplayField(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    type: Literal["standard"] | None = Field(
+        None, description="Display a standard invoice field."
+    )
+    field: Literal["customer_id", "subscription_id", "quote_id"] | None = Field(
+        None, description="Standard invoice field to display."
+    )
+    slug: str | None = Field(
+        None, description="Slug of the invoice or customer custom property to display."
+    )
+    label: constr(min_length=1, max_length=100) | None = Field(
+        None, description="Label displayed on the invoice."
+    )
+    value: constr(max_length=500) | None = Field(
+        None, description="Value displayed on the invoice."
+    )
+
+
+class CreateInvoiceTransaction(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    amount: confloat(ge=0.0) | None = Field(
+        None, description="Transaction amount.", examples=[31500]
+    )
+    process_at: AwareDatetime | None = Field(
+        None,
+        description="Date corresponding to the processing of the transaction. If in the future, the transaction is scheduled to be processed.",
+        examples=["2024-11-12T07:38:39.222Z"],
+    )
+    payment_method_id: str | None = Field(
+        None,
+        description="Payment method used to execute the transaction. Only applies to scheduled transactions with a process_at date in the future.",
+        examples=["pm_1xMpj5bwRqN7LM"],
+    )
+    payment_method_type: Literal["transfer"] | None = None
+    bank_account_id: str | None = Field(
+        None,
+        description="Bank account linked to the transaction.",
+        examples=["bac_KJyPrMA1toAqRG"],
+    )
+    provider_name: Literal["airwallex", "gocardless", "mollie", "stripe"] | None = (
+        Field(None, description="Provider name.")
+    )
+    provider_id: str | None = Field(
+        None,
+        description="Provider ID. Required if multiple instances of the same provider are connected in Hyperline.",
+    )
+    provider_transaction_id: str | None = Field(
+        None,
+        description="ID of the transaction on the provider's side. If the transaction is pending, Hyperline will automatically refresh it with the latest details until it is settled. Note that the `amount` and `process_at` fields may be overridden by the transaction data.",
+    )
+
+
+class CreateInvoiceCoupon(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    coupon_id: str | None = Field(
+        None, description="Coupon ID.", examples=["cou_1eTaiytfA0i2Vb"]
+    )
+    name: str | None = Field(
+        None, description="Name of the coupon.", examples=["Black Friday 2023"]
+    )
+    discount_amount: PositiveFloat | None = Field(
+        None,
+        description="Amount corresponding to the discounted part of the total amount.",
+        examples=[500],
+    )
+    line_item_indexes: list[float] | None = Field(
+        None,
+        description="Index of the line items to which the coupon applies. Null means all line items.",
+        examples=[[0, 1]],
+    )
+
+
+class InvoiceDetailsV1Integration(BaseModel):
+    entity_id: str | None = Field(None, description="ID of the entity in the provider.")
+    provider_name: (
+        Literal[
+            "adyen",
+            "stripe",
+            "mollie",
+            "gocardless",
+            "airwallex",
+            "salesforce",
+            "hubspot",
+            "attio",
+            "xero",
+            "pennylane",
+            "zoho-books",
+            "exact-online",
+            "quickbooks",
+            "netsuite",
+            "rillet",
+            "datev",
+            "anrok",
+            "chargebee",
+            "slack",
+            "plain",
+            "zendesk",
+            "pylon",
+            "intercom",
+            "front",
+            "helpscout",
+            "claap",
+            "grain",
+            "gong",
+            "jiminny",
+            "posthog",
+        ]
+        | None
+    ) = Field(None, description="Provider name.")
+    provider_account_id: str | None = Field(
+        None, description="ID of the connected provider account."
+    )
+
+
+class CustomerTaxId(BaseModel):
+    value: str | None = Field(
+        None, description="Value of the customer tax ID.", examples=["FR123456789"]
+    )
+    status: (
+        Literal["valid", "invalid", "mismatch", "unverified", "unsupported"] | None
+    ) = Field(
+        None,
+        description="\nVerification status of the customer tax ID.\n\n- `valid`: Tax ID has been verified and is valid.\n- `invalid`: Tax ID has been verified and is invalid.\n- `mismatch`: Tax ID is valid but is for a different country than the customer's country.\n- `unverified`: Tax ID has not been verified yet.\n- `unsupported`: Tax ID verification for this type not supported yet.\n ",
+        examples=["valid"],
+    )
+
+
+class CustomerShippingAddress(BaseModel):
+    name: str | None = Field(None, description="Address name.", examples=["Acme"])
+    line1: str | None = Field(
+        None, description="Address first line.", examples=["5 rue de Paradis"]
+    )
+    line2: str | None = Field(
+        None, description="Address second line (optional).", examples=[None]
+    )
+    city: str | None = Field(None, description="Address city.", examples=["Paris"])
+    zip: str | None = Field(None, description="Address ZIP code.", examples=["75010"])
+    state: (
+        Literal[
+            "AA",
+            "AE",
+            "AK",
+            "AL",
+            "AP",
+            "AR",
+            "AS",
+            "AZ",
+            "CA",
+            "CO",
+            "CT",
+            "DC",
+            "DE",
+            "FL",
+            "GA",
+            "GU",
+            "HI",
+            "IA",
+            "ID",
+            "IL",
+            "IN",
+            "KS",
+            "KY",
+            "LA",
+            "MA",
+            "MD",
+            "ME",
+            "MI",
+            "MN",
+            "MO",
+            "MP",
+            "MS",
+            "MT",
+            "NC",
+            "ND",
+            "NE",
+            "NH",
+            "NJ",
+            "NM",
+            "NV",
+            "NY",
+            "OH",
+            "OK",
+            "OR",
+            "PA",
+            "PR",
+            "RI",
+            "SC",
+            "SD",
+            "TN",
+            "TX",
+            "UT",
+            "VA",
+            "VI",
+            "VT",
+            "WA",
+            "WI",
+            "WV",
+            "WY",
+        ]
+        | None
+    ) = Field(
+        None,
+        description="Only for US country. Second part of subdivision code in ISO format. See [ISO 3166-2:US](https://en.wikipedia.org/wiki/ISO_3166-2:US).",
+        examples=["CA"],
+    )
+    country: (
+        Literal[
+            "AD",
+            "AE",
+            "AF",
+            "AG",
+            "AI",
+            "AL",
+            "AM",
+            "AO",
+            "AQ",
+            "AR",
+            "AS",
+            "AT",
+            "AU",
+            "AW",
+            "AX",
+            "AZ",
+            "BA",
+            "BB",
+            "BD",
+            "BE",
+            "BG",
+            "BH",
+            "BI",
+            "BJ",
+            "BL",
+            "BM",
+            "BN",
+            "BO",
+            "BQ",
+            "BR",
+            "BS",
+            "BT",
+            "BF",
+            "BV",
+            "BW",
+            "BY",
+            "BZ",
+            "CA",
+            "CC",
+            "CD",
+            "CF",
+            "CG",
+            "CH",
+            "CI",
+            "CK",
+            "CL",
+            "CM",
+            "CN",
+            "CO",
+            "CR",
+            "CU",
+            "CV",
+            "CW",
+            "CX",
+            "CY",
+            "CZ",
+            "DE",
+            "DJ",
+            "DK",
+            "DM",
+            "DO",
+            "DZ",
+            "EC",
+            "EE",
+            "EG",
+            "EH",
+            "ER",
+            "ES",
+            "ES-CE",
+            "ES-ML",
+            "ET",
+            "FI",
+            "FJ",
+            "FK",
+            "FM",
+            "FO",
+            "FR",
+            "GA",
+            "GB",
+            "GD",
+            "GE",
+            "GF",
+            "GG",
+            "GH",
+            "GI",
+            "GL",
+            "GM",
+            "GN",
+            "GP",
+            "GQ",
+            "GR",
+            "GS",
+            "GT",
+            "GU",
+            "GW",
+            "GY",
+            "HK",
+            "HM",
+            "HN",
+            "HR",
+            "HT",
+            "HU",
+            "IC",
+            "ID",
+            "IE",
+            "IL",
+            "IM",
+            "IN",
+            "IO",
+            "IQ",
+            "IR",
+            "IS",
+            "IT",
+            "JE",
+            "JM",
+            "JO",
+            "JP",
+            "KE",
+            "KG",
+            "KH",
+            "KI",
+            "KM",
+            "KN",
+            "KP",
+            "KR",
+            "KW",
+            "KY",
+            "KZ",
+            "LA",
+            "LB",
+            "LC",
+            "LI",
+            "LK",
+            "LR",
+            "LS",
+            "LT",
+            "LU",
+            "LV",
+            "LY",
+            "MA",
+            "MC",
+            "MD",
+            "ME",
+            "MF",
+            "MG",
+            "MH",
+            "MK",
+            "ML",
+            "MM",
+            "MN",
+            "MO",
+            "MP",
+            "MQ",
+            "MR",
+            "MS",
+            "MT",
+            "MU",
+            "MV",
+            "MW",
+            "MX",
+            "MY",
+            "MZ",
+            "NA",
+            "NC",
+            "NE",
+            "NF",
+            "NG",
+            "NI",
+            "NL",
+            "NO",
+            "NP",
+            "NR",
+            "NU",
+            "NZ",
+            "OM",
+            "PA",
+            "PE",
+            "PF",
+            "PG",
+            "PH",
+            "PK",
+            "PL",
+            "PM",
+            "PN",
+            "PR",
+            "PS",
+            "PT",
+            "PT-20",
+            "PT-30",
+            "PW",
+            "PY",
+            "QA",
+            "RE",
+            "RO",
+            "RS",
+            "RU",
+            "RW",
+            "SA",
+            "SB",
+            "SC",
+            "SD",
+            "SE",
+            "SG",
+            "SH",
+            "SI",
+            "SJ",
+            "SK",
+            "SL",
+            "SM",
+            "SN",
+            "SO",
+            "SR",
+            "SS",
+            "ST",
+            "SV",
+            "SX",
+            "SY",
+            "SZ",
+            "TC",
+            "TD",
+            "TF",
+            "TG",
+            "TH",
+            "TJ",
+            "TK",
+            "TL",
+            "TM",
+            "TN",
+            "TO",
+            "TR",
+            "TT",
+            "TV",
+            "TW",
+            "TZ",
+            "UA",
+            "UG",
+            "UM",
+            "US",
+            "UY",
+            "UZ",
+            "VA",
+            "VC",
+            "VE",
+            "VG",
+            "VI",
+            "VN",
+            "VU",
+            "WF",
+            "WS",
+            "XK",
+            "YE",
+            "YT",
+            "ZA",
+            "ZM",
+            "ZW",
+        ]
+        | None
+    ) = Field(
+        None,
+        description="Two-letter country code in ISO format. See [ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).",
+        examples=["FR"],
+    )
+
+
+class CustomerSubscription(BaseModel):
+    id: str | None = Field(
+        None, description="Subscription ID.", examples=["sub_0kIc7jrF7gV00V"]
+    )
+    status: (
+        Literal[
+            "draft",
+            "pending",
+            "trialing",
+            "active",
+            "paused",
+            "errored",
+            "cancelled",
+            "voided",
+            "archived",
+        ]
+        | None
+    ) = Field(None, description="Status of the subscription.", examples=["active"])
+    current_period_started_at: AwareDatetime | None = Field(
+        None,
+        description="Start date of the current period. UTC date time string in the [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) format.",
+        examples=["2024-10-12T07:00:01.860Z"],
+    )
+    current_period_ends_at: AwareDatetime | None = Field(
+        None,
+        description="End date of the current period. UTC date time string in the [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) format.",
+        examples=["2024-11-12T07:00:01.860Z"],
+    )
+    plan_id: str | None = Field(
+        None, deprecated=True, description="Plan ID.", examples=["plan_34hdd843hReh"]
+    )
+    checkout_session_id: str | None = Field(
+        None, description="Checkout session ID.", examples=["che_949djdj39RJj"]
+    )
+
+
+class CustomerIntegration(BaseModel):
+    entity_id: str | None = Field(None, description="ID of the entity in the provider.")
+    provider_name: (
+        Literal[
+            "adyen",
+            "stripe",
+            "mollie",
+            "gocardless",
+            "airwallex",
+            "salesforce",
+            "hubspot",
+            "attio",
+            "xero",
+            "pennylane",
+            "zoho-books",
+            "exact-online",
+            "quickbooks",
+            "netsuite",
+            "rillet",
+            "datev",
+            "anrok",
+            "chargebee",
+            "slack",
+            "plain",
+            "zendesk",
+            "pylon",
+            "intercom",
+            "front",
+            "helpscout",
+            "claap",
+            "grain",
+            "gong",
+            "jiminny",
+            "posthog",
+        ]
+        | None
+    ) = Field(None, description="Provider name.")
+    provider_account_id: str | None = Field(
+        None, description="ID of the connected provider account."
+    )
+
+
+class CustomerOwner(BaseModel):
+    id: str | None = Field(
+        None, description="Hyperline user ID.", examples=["usr_KMcxRWc1ZQwvJG"]
+    )
+    email: EmailStr | None = Field(
+        None, description="User email.", examples=["owner@acme.com"]
+    )
+    first_name: str | None = Field(
+        None, description="User first name.", examples=["Ada"]
+    )
+    last_name: str | None = Field(
+        None, description="User last name.", examples=["Lovelace"]
+    )
+    picture_url: str | None = Field(
+        None, description="User picture URL.", examples=[None]
+    )
+
+
+class CustomerFollower(BaseModel):
+    id: str | None = Field(
+        None, description="Hyperline user ID.", examples=["usr_KMcxRWc1ZQwvJG"]
+    )
+    email: EmailStr | None = Field(
+        None, description="User email.", examples=["owner@acme.com"]
+    )
+    first_name: str | None = Field(
+        None, description="User first name.", examples=["Ada"]
+    )
+    last_name: str | None = Field(
+        None, description="User last name.", examples=["Lovelace"]
+    )
+    picture_url: str | None = Field(
+        None, description="User picture URL.", examples=[None]
+    )
+
+
+class PaymentMethod(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    id: str | None = Field(
+        None, description="Payment method ID.", examples=["pm_1xMpj5bwRqN7LM"]
+    )
+    status: Literal["active", "pending", "expired", "errored"] | None = Field(
+        None,
+        description="\nPayment method status.\n\n- `active`: The payment method is ready to be used.\n- `pending`: The payment method is pending activation or being validated.\n  ",
+        examples=["active"],
+    )
+    type: Literal["card", "apple_pay", "google_pay"] | None = Field(
+        None,
+        description="\nPayment method type.\n\n- `card`: Credit or debit card\n- `apple_pay`: Apple Pay\n- `google_pay`: Google Pay\n- `direct_debit_sepa`: SEPA Direct Debit\n- `direct_debit_ach`: ACH Direct Debit\n- `direct_debit_bacs`: Bacs Direct Debit\n- `stripe_link`: Stripe Link\n  ",
+        examples=["card"],
+    )
+    last_4_digits: float | None = Field(
+        None, description="Last four digits of the card.", examples=[2718]
+    )
+    expiration_date: str | None = Field(
+        None,
+        description="Expiration date of the card using YYYY-MM format.",
+        examples=["2027-11"],
+    )
+    brand: str | None = Field(
+        None, description="Brand of the card.", examples=["visa", "mastercard", "amex"]
+    )
+    error_type: (
+        Literal[
+            "authentication_required",
+            "authorization_error",
+            "insufficient_funds",
+            "declined",
+            "expired",
+            "fraud",
+            "invalid",
+            "mandate_invalid",
+            "not_supported",
+            "unknown",
+        ]
+        | None
+    ) = Field(
+        None,
+        description="\nPayment method error type.\n\n- `authentication_required`: The card was declined as the transaction requires authentication (e.g. 3-D Secure). The customer should go to their portal page and authenticate their card. If the error happened on an already authenticated transaction, the customer needs to contact their card issuer for more information.\n- `authorization_error`: A transaction authorization cannot be created for a variety of reasons such as the card issuer couldn't be reached, or the card requires a PIN.\n- `declined`: The payment method was declined for a variety of reasons such as a card reported as lost or stolen, insufficient funds or reaching the limit available on the method to complete the purchase, a payment method on a known block list, etc.\n- `expired`: The payment method is expired. The customer should go to their portal page and change their payment method.\n- `fraud`: The payment provider suspected the payment method was fraudulent and has been blocked. Don't report more detailed information to your customer, and check on your provider account.\n- `invalid`: The payment method is invalid in most cases because of incorrect details (card/account number, CVC, expiration date, postal code).\n- `not_supported`: The payment method doesn't support this type of purchase (e.g. currency, online payment).\n- `unknown`: A generic error happened on the payment provider side.\n  ",
+        examples=["expired"],
+    )
+    account_number_ending: str | None = Field(
+        None, description="Last characters of the account number.", examples=["6789"]
+    )
+
+
+class StandardBankAccount(BaseModel):
+    type: Literal["standard"] | None = Field(
+        None,
+        description="Bank account type.\n\n- `standard`: Bank account not connected through open banking.\n- `connected`: Bank account connected through open banking.\n",
+        examples=["standard"],
+    )
+    id: str | None = Field(
+        None, description="Bank account ID.", examples=["bac_KJyPrMA1toAqRG"]
+    )
+    currency: (
+        Literal[
+            "EUR",
+            "AED",
+            "AFN",
+            "XCD",
+            "ALL",
+            "AMD",
+            "AOA",
+            "ARS",
+            "USD",
+            "AUD",
+            "AWG",
+            "AZN",
+            "BAM",
+            "BBD",
+            "BDT",
+            "BGN",
+            "BHD",
+            "BIF",
+            "XOF",
+            "BMD",
+            "BND",
+            "BOB",
+            "BRL",
+            "BSD",
+            "BTN",
+            "NOK",
+            "BWP",
+            "BYR",
+            "BZD",
+            "CAD",
+            "CDF",
+            "XAF",
+            "CHF",
+            "NZD",
+            "CLP",
+            "CNY",
+            "COP",
+            "CRC",
+            "CUP",
+            "CVE",
+            "ANG",
+            "CZK",
+            "DJF",
+            "DKK",
+            "DOP",
+            "DZD",
+            "EGP",
+            "MAD",
+            "ERN",
+            "ETB",
+            "FJD",
+            "FKP",
+            "GBP",
+            "GEL",
+            "GHS",
+            "GIP",
+            "GMD",
+            "GNF",
+            "GTQ",
+            "GYD",
+            "HKD",
+            "HNL",
+            "HRK",
+            "HTG",
+            "HUF",
+            "IDR",
+            "ILS",
+            "INR",
+            "IQD",
+            "IRR",
+            "ISK",
+            "JMD",
+            "JOD",
+            "JPY",
+            "KES",
+            "KGS",
+            "KHR",
+            "KMF",
+            "KPW",
+            "KRW",
+            "KWD",
+            "KYD",
+            "KZT",
+            "LAK",
+            "LBP",
+            "LKR",
+            "LRD",
+            "LSL",
+            "LYD",
+            "MDL",
+            "MGA",
+            "MKD",
+            "MMK",
+            "MNT",
+            "MOP",
+            "MRO",
+            "MUR",
+            "MVR",
+            "MWK",
+            "MXN",
+            "MYR",
+            "MZN",
+            "NAD",
+            "XPF",
+            "NGN",
+            "NIO",
+            "NPR",
+            "OMR",
+            "PAB",
+            "PEN",
+            "PGK",
+            "PHP",
+            "PKR",
+            "PLN",
+            "PYG",
+            "QAR",
+            "RON",
+            "RSD",
+            "RUB",
+            "RWF",
+            "SAR",
+            "SBD",
+            "SCR",
+            "SDG",
+            "SEK",
+            "SGD",
+            "SHP",
+            "SLL",
+            "SOS",
+            "SRD",
+            "SSP",
+            "STD",
+            "SYP",
+            "SZL",
+            "THB",
+            "TJS",
+            "TMT",
+            "TND",
+            "TOP",
+            "TRY",
+            "TTD",
+            "TWD",
+            "TZS",
+            "UAH",
+            "UGX",
+            "UYU",
+            "UZS",
+            "VEF",
+            "VND",
+            "VUV",
+            "WST",
+            "YER",
+            "ZAR",
+            "ZMW",
+            "ZWL",
+        ]
+        | None
+    ) = Field(None, description="Bank account currency.", examples=["EUR"])
+    bank_name: str | None = Field(
+        None, description="Bank name.", examples=["Fake bank"]
+    )
+    name: str | None = Field(
+        None, description="Bank account display name.", examples=["Main account"]
+    )
+    country: str | None = Field(
+        None, description="Bank account country.", examples=["FR"]
+    )
+    format: Literal["iban_bic_swift"] | None = Field(
+        None, description="Bank account details format.", examples=["iban_bic_swift"]
+    )
+    iban: str | None = Field(
+        None, description="IBAN.", examples=["FR7630006000011234567890189"]
+    )
+    bic_swift: str | None = Field(
+        None, description="BIC or SWIFT code.", examples=["BNPAFRPP"]
+    )
+    sort_code: str | None = Field(None, description="Sort code.", examples=["123456"])
+    account_number: str | None = Field(
+        None, description="Account number.", examples=["000123456789"]
+    )
+    routing_number: str | None = Field(
+        None, description="Routing number.", examples=["021000021"]
+    )
+
+
+class ConnectedBankAccount(BaseModel):
+    type: Literal["connected"] | None = Field(
+        None,
+        description="Bank account type.\n\n- `standard`: Bank account not connected through open banking.\n- `connected`: Bank account connected through open banking.\n",
+        examples=["connected"],
+    )
+    status: Literal["active", "error"] | None = Field(
+        None, description="Bank account connection status.", examples=["active"]
+    )
+    balance: float | None = Field(
+        None,
+        description="Latest known balance for connected bank accounts, expressed in the currency's smallest unit.",
+        examples=[120500],
+    )
+    last_refreshed_at: AwareDatetime | None = Field(
+        None,
+        description="Date when the connected bank account was last refreshed.",
+        examples=["2026-01-15T10:30:00.000Z"],
+    )
+    last_error_type: (
+        Literal["provider_error", "invalid_credentials", "unknown"] | None
+    ) = Field(
+        None,
+        description="Latest connection error type, when the account is errored.",
+        examples=[None],
+    )
+    id: str | None = Field(
+        None, description="Bank account ID.", examples=["bac_KJyPrMA1toAqRG"]
+    )
+    currency: (
+        Literal[
+            "EUR",
+            "AED",
+            "AFN",
+            "XCD",
+            "ALL",
+            "AMD",
+            "AOA",
+            "ARS",
+            "USD",
+            "AUD",
+            "AWG",
+            "AZN",
+            "BAM",
+            "BBD",
+            "BDT",
+            "BGN",
+            "BHD",
+            "BIF",
+            "XOF",
+            "BMD",
+            "BND",
+            "BOB",
+            "BRL",
+            "BSD",
+            "BTN",
+            "NOK",
+            "BWP",
+            "BYR",
+            "BZD",
+            "CAD",
+            "CDF",
+            "XAF",
+            "CHF",
+            "NZD",
+            "CLP",
+            "CNY",
+            "COP",
+            "CRC",
+            "CUP",
+            "CVE",
+            "ANG",
+            "CZK",
+            "DJF",
+            "DKK",
+            "DOP",
+            "DZD",
+            "EGP",
+            "MAD",
+            "ERN",
+            "ETB",
+            "FJD",
+            "FKP",
+            "GBP",
+            "GEL",
+            "GHS",
+            "GIP",
+            "GMD",
+            "GNF",
+            "GTQ",
+            "GYD",
+            "HKD",
+            "HNL",
+            "HRK",
+            "HTG",
+            "HUF",
+            "IDR",
+            "ILS",
+            "INR",
+            "IQD",
+            "IRR",
+            "ISK",
+            "JMD",
+            "JOD",
+            "JPY",
+            "KES",
+            "KGS",
+            "KHR",
+            "KMF",
+            "KPW",
+            "KRW",
+            "KWD",
+            "KYD",
+            "KZT",
+            "LAK",
+            "LBP",
+            "LKR",
+            "LRD",
+            "LSL",
+            "LYD",
+            "MDL",
+            "MGA",
+            "MKD",
+            "MMK",
+            "MNT",
+            "MOP",
+            "MRO",
+            "MUR",
+            "MVR",
+            "MWK",
+            "MXN",
+            "MYR",
+            "MZN",
+            "NAD",
+            "XPF",
+            "NGN",
+            "NIO",
+            "NPR",
+            "OMR",
+            "PAB",
+            "PEN",
+            "PGK",
+            "PHP",
+            "PKR",
+            "PLN",
+            "PYG",
+            "QAR",
+            "RON",
+            "RSD",
+            "RUB",
+            "RWF",
+            "SAR",
+            "SBD",
+            "SCR",
+            "SDG",
+            "SEK",
+            "SGD",
+            "SHP",
+            "SLL",
+            "SOS",
+            "SRD",
+            "SSP",
+            "STD",
+            "SYP",
+            "SZL",
+            "THB",
+            "TJS",
+            "TMT",
+            "TND",
+            "TOP",
+            "TRY",
+            "TTD",
+            "TWD",
+            "TZS",
+            "UAH",
+            "UGX",
+            "UYU",
+            "UZS",
+            "VEF",
+            "VND",
+            "VUV",
+            "WST",
+            "YER",
+            "ZAR",
+            "ZMW",
+            "ZWL",
+        ]
+        | None
+    ) = Field(None, description="Bank account currency.", examples=["EUR"])
+    bank_name: str | None = Field(
+        None, description="Bank name.", examples=["Fake bank"]
+    )
+    name: str | None = Field(
+        None, description="Bank account display name.", examples=["Main account"]
+    )
+    country: str | None = Field(
+        None, description="Bank account country.", examples=["FR"]
+    )
+    format: Literal["iban_bic_swift"] | None = Field(
+        None, description="Bank account details format.", examples=["iban_bic_swift"]
+    )
+    iban: str | None = Field(
+        None, description="IBAN.", examples=["FR7630006000011234567890189"]
+    )
+    bic_swift: str | None = Field(
+        None, description="BIC or SWIFT code.", examples=["BNPAFRPP"]
+    )
+    sort_code: str | None = Field(None, description="Sort code.", examples=["123456"])
+    account_number: str | None = Field(
+        None, description="Account number.", examples=["000123456789"]
+    )
+    routing_number: str | None = Field(
+        None, description="Routing number.", examples=["021000021"]
+    )
+
+
+class InvoiceAdditionalDisplayField(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    type: Literal["standard"] | None = Field(
+        None, description="Display a standard invoice field."
+    )
+    field: Literal["customer_id", "subscription_id", "quote_id"] | None = Field(
+        None, description="Standard invoice field to display."
+    )
+    slug: str | None = Field(
+        None, description="Slug of the invoice or customer custom property to display."
+    )
+    label: constr(min_length=1, max_length=100) | None = Field(
+        None, description="Label displayed on the invoice."
+    )
+    value: constr(max_length=500) | None = Field(
+        None, description="Value displayed on the invoice."
+    )
+
+
+class InvoiceAllocation(BaseModel):
+    invoice_id: str | None = Field(
+        None,
+        description="ID of the invoice receiving the credit.",
+        examples=["inv_2QdJDDUej969ev"],
+    )
+    amount: float | None = Field(
+        None,
+        description="Credit amount applied to the invoice, in the currency's smallest unit.",
+        examples=[780000],
+    )
+
+
+class InvoiceTransactionProviderFee(BaseModel):
+    amount: float | None = Field(
+        None, description="Monetary amount. Expressed in currency's smallest unit."
+    )
+    currency: (
+        Literal[
+            "EUR",
+            "AED",
+            "AFN",
+            "XCD",
+            "ALL",
+            "AMD",
+            "AOA",
+            "ARS",
+            "USD",
+            "AUD",
+            "AWG",
+            "AZN",
+            "BAM",
+            "BBD",
+            "BDT",
+            "BGN",
+            "BHD",
+            "BIF",
+            "XOF",
+            "BMD",
+            "BND",
+            "BOB",
+            "BRL",
+            "BSD",
+            "BTN",
+            "NOK",
+            "BWP",
+            "BYR",
+            "BZD",
+            "CAD",
+            "CDF",
+            "XAF",
+            "CHF",
+            "NZD",
+            "CLP",
+            "CNY",
+            "COP",
+            "CRC",
+            "CUP",
+            "CVE",
+            "ANG",
+            "CZK",
+            "DJF",
+            "DKK",
+            "DOP",
+            "DZD",
+            "EGP",
+            "MAD",
+            "ERN",
+            "ETB",
+            "FJD",
+            "FKP",
+            "GBP",
+            "GEL",
+            "GHS",
+            "GIP",
+            "GMD",
+            "GNF",
+            "GTQ",
+            "GYD",
+            "HKD",
+            "HNL",
+            "HRK",
+            "HTG",
+            "HUF",
+            "IDR",
+            "ILS",
+            "INR",
+            "IQD",
+            "IRR",
+            "ISK",
+            "JMD",
+            "JOD",
+            "JPY",
+            "KES",
+            "KGS",
+            "KHR",
+            "KMF",
+            "KPW",
+            "KRW",
+            "KWD",
+            "KYD",
+            "KZT",
+            "LAK",
+            "LBP",
+            "LKR",
+            "LRD",
+            "LSL",
+            "LYD",
+            "MDL",
+            "MGA",
+            "MKD",
+            "MMK",
+            "MNT",
+            "MOP",
+            "MRO",
+            "MUR",
+            "MVR",
+            "MWK",
+            "MXN",
+            "MYR",
+            "MZN",
+            "NAD",
+            "XPF",
+            "NGN",
+            "NIO",
+            "NPR",
+            "OMR",
+            "PAB",
+            "PEN",
+            "PGK",
+            "PHP",
+            "PKR",
+            "PLN",
+            "PYG",
+            "QAR",
+            "RON",
+            "RSD",
+            "RUB",
+            "RWF",
+            "SAR",
+            "SBD",
+            "SCR",
+            "SDG",
+            "SEK",
+            "SGD",
+            "SHP",
+            "SLL",
+            "SOS",
+            "SRD",
+            "SSP",
+            "STD",
+            "SYP",
+            "SZL",
+            "THB",
+            "TJS",
+            "TMT",
+            "TND",
+            "TOP",
+            "TRY",
+            "TTD",
+            "TWD",
+            "TZS",
+            "UAH",
+            "UGX",
+            "UYU",
+            "UZS",
+            "VEF",
+            "VND",
+            "VUV",
+            "WST",
+            "YER",
+            "ZAR",
+            "ZMW",
+            "ZWL",
+        ]
+        | None
+    ) = Field(
+        None,
+        description="Currency code. See [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes).",
+        examples=["EUR"],
+    )
+    exchange_rate: float | None = None
+
+
+class InvoiceTransactionChargeback(BaseModel):
+    amount: float | None = Field(
+        None, description="Total chargeback loss amount.", examples=[31500]
+    )
+    last_chargeback_at: AwareDatetime | None = Field(
+        None,
+        description="Date corresponding to the last chargeback loss event.",
+        examples=["2024-10-13T10:00:01.860Z"],
+    )
+
+
+class InvoiceTransactionIntegration(BaseModel):
+    entity_id: str | None = Field(None, description="ID of the entity in the provider.")
+    provider_name: (
+        Literal[
+            "adyen",
+            "stripe",
+            "mollie",
+            "gocardless",
+            "airwallex",
+            "salesforce",
+            "hubspot",
+            "attio",
+            "xero",
+            "pennylane",
+            "zoho-books",
+            "exact-online",
+            "quickbooks",
+            "netsuite",
+            "rillet",
+            "datev",
+            "anrok",
+            "chargebee",
+            "slack",
+            "plain",
+            "zendesk",
+            "pylon",
+            "intercom",
+            "front",
+            "helpscout",
+            "claap",
+            "grain",
+            "gong",
+            "jiminny",
+            "posthog",
+        ]
+        | None
+    ) = Field(None, description="Provider name.")
+    provider_account_id: str | None = Field(
+        None, description="ID of the connected provider account."
+    )
+
+
+class BankAccount71(BaseModel):
+    pass
+
+
+class BankAccount72(StandardBankAccount, BankAccount71):
+    pass
+
+
+class BankAccount73(ConnectedBankAccount, BankAccount71):
+    pass
+
+
+class BankAccount74(StandardBankAccount, BankAccount71):
+    pass
+
+
+class BankAccount75(ConnectedBankAccount, BankAccount71):
+    pass
+
+
+class Transaction(BaseModel):
+    id: str | None = Field(
+        None, description="Transaction ID.", examples=["tra_2QdJDDUej969ev"]
+    )
+    type: Literal["subscription", "one_time", "refund", "chargeback"] | None = Field(
+        None,
+        description="\nTransaction type.\n\n- `subscription`: The transaction is related to a subscription payment.\n- `one_time`: The transaction is related to a one-time payment.\n- `refund`: The transaction is related to a refund payment.\n- `chargeback`: The transaction records funds withdrawn after a payment dispute.\n  ",
+        examples=["subscription"],
+    )
+    amount: float | None = Field(
+        None, description="Transaction amount.", examples=[31500]
+    )
+    currency: (
+        Literal[
+            "EUR",
+            "AED",
+            "AFN",
+            "XCD",
+            "ALL",
+            "AMD",
+            "AOA",
+            "ARS",
+            "USD",
+            "AUD",
+            "AWG",
+            "AZN",
+            "BAM",
+            "BBD",
+            "BDT",
+            "BGN",
+            "BHD",
+            "BIF",
+            "XOF",
+            "BMD",
+            "BND",
+            "BOB",
+            "BRL",
+            "BSD",
+            "BTN",
+            "NOK",
+            "BWP",
+            "BYR",
+            "BZD",
+            "CAD",
+            "CDF",
+            "XAF",
+            "CHF",
+            "NZD",
+            "CLP",
+            "CNY",
+            "COP",
+            "CRC",
+            "CUP",
+            "CVE",
+            "ANG",
+            "CZK",
+            "DJF",
+            "DKK",
+            "DOP",
+            "DZD",
+            "EGP",
+            "MAD",
+            "ERN",
+            "ETB",
+            "FJD",
+            "FKP",
+            "GBP",
+            "GEL",
+            "GHS",
+            "GIP",
+            "GMD",
+            "GNF",
+            "GTQ",
+            "GYD",
+            "HKD",
+            "HNL",
+            "HRK",
+            "HTG",
+            "HUF",
+            "IDR",
+            "ILS",
+            "INR",
+            "IQD",
+            "IRR",
+            "ISK",
+            "JMD",
+            "JOD",
+            "JPY",
+            "KES",
+            "KGS",
+            "KHR",
+            "KMF",
+            "KPW",
+            "KRW",
+            "KWD",
+            "KYD",
+            "KZT",
+            "LAK",
+            "LBP",
+            "LKR",
+            "LRD",
+            "LSL",
+            "LYD",
+            "MDL",
+            "MGA",
+            "MKD",
+            "MMK",
+            "MNT",
+            "MOP",
+            "MRO",
+            "MUR",
+            "MVR",
+            "MWK",
+            "MXN",
+            "MYR",
+            "MZN",
+            "NAD",
+            "XPF",
+            "NGN",
+            "NIO",
+            "NPR",
+            "OMR",
+            "PAB",
+            "PEN",
+            "PGK",
+            "PHP",
+            "PKR",
+            "PLN",
+            "PYG",
+            "QAR",
+            "RON",
+            "RSD",
+            "RUB",
+            "RWF",
+            "SAR",
+            "SBD",
+            "SCR",
+            "SDG",
+            "SEK",
+            "SGD",
+            "SHP",
+            "SLL",
+            "SOS",
+            "SRD",
+            "SSP",
+            "STD",
+            "SYP",
+            "SZL",
+            "THB",
+            "TJS",
+            "TMT",
+            "TND",
+            "TOP",
+            "TRY",
+            "TTD",
+            "TWD",
+            "TZS",
+            "UAH",
+            "UGX",
+            "UYU",
+            "UZS",
+            "VEF",
+            "VND",
+            "VUV",
+            "WST",
+            "YER",
+            "ZAR",
+            "ZMW",
+            "ZWL",
+        ]
+        | None
+    ) = Field(None, description="Transaction currency.", examples=["EUR"])
+    customer_id: str | None = Field(
+        None,
+        description="ID of the customer linked to the transaction.",
+        examples=["cus_QalW2vTAdkR6IY"],
+    )
+    provider_id: str | None = Field(
+        None,
+        deprecated=True,
+        description="Deprecated field, please use `integrations[].entity_id`.",
+    )
+    process_at: AwareDatetime | None = Field(
+        None,
+        description="Date corresponding to the processing of the transaction. If in the future, the transaction is scheduled to be processed.",
+        examples=["2024-11-12T07:38:39.222Z"],
+    )
+    settled_at: AwareDatetime | None = Field(
+        None,
+        description="Date when the transaction was settled. For provider transactions, this is derived from provider settlement data when available.",
+        examples=["2024-11-12T07:38:39.222Z"],
+    )
+    refunded_at: AwareDatetime | None = Field(
+        None,
+        description="Date corresponding to the refund of the transaction.",
+        examples=[None],
+    )
+    original_transaction_id: str | None = Field(
+        None,
+        description="Original payment transaction ID for a refund or chargeback.",
+        examples=[None],
+    )
+    reversed_at: AwareDatetime | None = Field(
+        None,
+        description="Date when a chargeback withdrawal was reversed.",
+        examples=[None],
+    )
+    last_refreshed_at: AwareDatetime | None = Field(
+        None,
+        description="Date corresponding to the last synchronization of the details with the payment provider.",
+        examples=[None],
+    )
+    provider_fee: InvoiceTransactionProviderFee | None = Field(
+        None,
+        description="Fee applied by the Payment Service Provider. Only supported for Stripe.",
+        examples=[None],
+        title="InvoiceTransactionProviderFee",
+    )
+    chargeback: InvoiceTransactionChargeback | None = Field(
+        None,
+        deprecated=True,
+        description="Deprecated field. Use transactions where `type` is `chargeback`; `original_transaction_id` identifies the affected payment transaction.",
+        examples=[None],
+        title="InvoiceTransactionChargeback",
+    )
+    integrations: list[InvoiceTransactionIntegration] | None = None
+    payment_method_type: (
+        Literal["card", "direct_debit", "direct_debit_ach", "direct_debit_bacs"] | None
+    ) = Field(None, description="Payment method type used for the transaction.")
+    payment_method: PaymentMethod | None = None
+    bank_account: (
+        BankAccount72 | BankAccount73 | BankAccount74 | BankAccount75 | None
+    ) = None
+    wallet_id: str | None = Field(
+        None,
+        description="ID of the wallet used for a wallet transaction.",
+        examples=["wal_PPpxP5d3uvgiTT"],
+    )
+    status: (
+        Literal["scheduled", "to_process", "pending", "settled", "cancelled"] | None
+    ) = Field(
+        None,
+        description="\nTransaction status.\n\n- `scheduled`: The transaction is scheduled to be processed in the future.\n- `to_process`: The transaction is waiting to be processed by our system.\n- `pending`: The transaction has been authorized by the related payment processor, but the banking transaction is not yet settled.\n- `settled`: The transaction has been cleared on the banking side, the money transfer is fully completed.\n- `cancelled`: The transaction has been cancelled and won't be processed again.\n  ",
+        examples=["settled"],
+    )
+    error_type: (
+        Literal[
+            "authentication_required",
+            "declined",
+            "fraud",
+            "insufficient_funds",
+            "mandate_invalid",
+            "payment_method_authorization_error",
+            "payment_method_declined",
+            "payment_method_expired",
+            "payment_method_invalid",
+            "payment_method_not_supported",
+            "processing_error",
+            "provider_error",
+            "unknown",
+        ]
+        | None
+    ) = Field(
+        None,
+        description="\nTransaction error type.\n\n- `authentication_required`: The card was declined as the transaction requires authentication (e.g. 3-D Secure). The customer should go to their portal page and authenticate their card. If the error happened on an already authenticated transaction, the customer needs to contact their card issuer for more information.\n- `payment_method_authorization_error`: A transaction authorization cannot be created for a variety of reasons such as the card issuer couldn't be reached, or the card requires a PIN.\n- `payment_method_declined`: The payment method was declined for a variety of reasons such as a card reported as lost or stolen, insufficient funds or reaching the limit available on the method to complete the purchase, a payment method on a known block list, etc.\n- `payment_method_expired`: The payment method is expired. The customer should go to their portal page and change their payment method.\n- `payment_method_invalid`: The payment method is invalid in most cases because of incorrect details (card/account number, CVC, expiration date, postal code).\n- `payment_method_not_supported`: The payment method doesn't support this type of purchase (e.g. currency, online payment).\n- `declined`: The payment was declined for a variety of reasons such as security violation, banking service not available, transaction not allowed, etc.\n- `fraud`: The payment provider suspected the transaction was fraudulent and has been blocked. Don't report more detailed information to your customer, and check on your provider account.\n- `processing_error`: The payment couldn't be processed by the issuer for an unknown reason.\n- `provider_error`: An error occurred when contacting the payment provider to initiate the transaction.\n- `unknown`: A generic error happened on the payment provider side.\n  ",
+        examples=[None],
+    )
+    error_message: str | None = Field(
+        None, description="Details of the error.", examples=[None]
+    )
+
+
+class Address(BaseModel):
+    name: str | None = Field(None, description="Address name.", examples=["Acme"])
+    line1: str | None = Field(
+        None, description="Address first line.", examples=["5 rue de Paradis"]
+    )
+    line2: str | None = Field(
+        None, description="Address second line (optional).", examples=[None]
+    )
+    city: str | None = Field(None, description="Address city.", examples=["Paris"])
+    zip: str | None = Field(None, description="Address ZIP code.", examples=["75010"])
+    state: (
+        Literal[
+            "AA",
+            "AE",
+            "AK",
+            "AL",
+            "AP",
+            "AR",
+            "AS",
+            "AZ",
+            "CA",
+            "CO",
+            "CT",
+            "DC",
+            "DE",
+            "FL",
+            "GA",
+            "GU",
+            "HI",
+            "IA",
+            "ID",
+            "IL",
+            "IN",
+            "KS",
+            "KY",
+            "LA",
+            "MA",
+            "MD",
+            "ME",
+            "MI",
+            "MN",
+            "MO",
+            "MP",
+            "MS",
+            "MT",
+            "NC",
+            "ND",
+            "NE",
+            "NH",
+            "NJ",
+            "NM",
+            "NV",
+            "NY",
+            "OH",
+            "OK",
+            "OR",
+            "PA",
+            "PR",
+            "RI",
+            "SC",
+            "SD",
+            "TN",
+            "TX",
+            "UT",
+            "VA",
+            "VI",
+            "VT",
+            "WA",
+            "WI",
+            "WV",
+            "WY",
+        ]
+        | None
+    ) = Field(
+        None,
+        description="Only for US country. Second part of subdivision code in ISO format. See [ISO 3166-2:US](https://en.wikipedia.org/wiki/ISO_3166-2:US).",
+        examples=["CA"],
+    )
+    country: (
+        Literal[
+            "AD",
+            "AE",
+            "AF",
+            "AG",
+            "AI",
+            "AL",
+            "AM",
+            "AO",
+            "AQ",
+            "AR",
+            "AS",
+            "AT",
+            "AU",
+            "AW",
+            "AX",
+            "AZ",
+            "BA",
+            "BB",
+            "BD",
+            "BE",
+            "BG",
+            "BH",
+            "BI",
+            "BJ",
+            "BL",
+            "BM",
+            "BN",
+            "BO",
+            "BQ",
+            "BR",
+            "BS",
+            "BT",
+            "BF",
+            "BV",
+            "BW",
+            "BY",
+            "BZ",
+            "CA",
+            "CC",
+            "CD",
+            "CF",
+            "CG",
+            "CH",
+            "CI",
+            "CK",
+            "CL",
+            "CM",
+            "CN",
+            "CO",
+            "CR",
+            "CU",
+            "CV",
+            "CW",
+            "CX",
+            "CY",
+            "CZ",
+            "DE",
+            "DJ",
+            "DK",
+            "DM",
+            "DO",
+            "DZ",
+            "EC",
+            "EE",
+            "EG",
+            "EH",
+            "ER",
+            "ES",
+            "ES-CE",
+            "ES-ML",
+            "ET",
+            "FI",
+            "FJ",
+            "FK",
+            "FM",
+            "FO",
+            "FR",
+            "GA",
+            "GB",
+            "GD",
+            "GE",
+            "GF",
+            "GG",
+            "GH",
+            "GI",
+            "GL",
+            "GM",
+            "GN",
+            "GP",
+            "GQ",
+            "GR",
+            "GS",
+            "GT",
+            "GU",
+            "GW",
+            "GY",
+            "HK",
+            "HM",
+            "HN",
+            "HR",
+            "HT",
+            "HU",
+            "IC",
+            "ID",
+            "IE",
+            "IL",
+            "IM",
+            "IN",
+            "IO",
+            "IQ",
+            "IR",
+            "IS",
+            "IT",
+            "JE",
+            "JM",
+            "JO",
+            "JP",
+            "KE",
+            "KG",
+            "KH",
+            "KI",
+            "KM",
+            "KN",
+            "KP",
+            "KR",
+            "KW",
+            "KY",
+            "KZ",
+            "LA",
+            "LB",
+            "LC",
+            "LI",
+            "LK",
+            "LR",
+            "LS",
+            "LT",
+            "LU",
+            "LV",
+            "LY",
+            "MA",
+            "MC",
+            "MD",
+            "ME",
+            "MF",
+            "MG",
+            "MH",
+            "MK",
+            "ML",
+            "MM",
+            "MN",
+            "MO",
+            "MP",
+            "MQ",
+            "MR",
+            "MS",
+            "MT",
+            "MU",
+            "MV",
+            "MW",
+            "MX",
+            "MY",
+            "MZ",
+            "NA",
+            "NC",
+            "NE",
+            "NF",
+            "NG",
+            "NI",
+            "NL",
+            "NO",
+            "NP",
+            "NR",
+            "NU",
+            "NZ",
+            "OM",
+            "PA",
+            "PE",
+            "PF",
+            "PG",
+            "PH",
+            "PK",
+            "PL",
+            "PM",
+            "PN",
+            "PR",
+            "PS",
+            "PT",
+            "PT-20",
+            "PT-30",
+            "PW",
+            "PY",
+            "QA",
+            "RE",
+            "RO",
+            "RS",
+            "RU",
+            "RW",
+            "SA",
+            "SB",
+            "SC",
+            "SD",
+            "SE",
+            "SG",
+            "SH",
+            "SI",
+            "SJ",
+            "SK",
+            "SL",
+            "SM",
+            "SN",
+            "SO",
+            "SR",
+            "SS",
+            "ST",
+            "SV",
+            "SX",
+            "SY",
+            "SZ",
+            "TC",
+            "TD",
+            "TF",
+            "TG",
+            "TH",
+            "TJ",
+            "TK",
+            "TL",
+            "TM",
+            "TN",
+            "TO",
+            "TR",
+            "TT",
+            "TV",
+            "TW",
+            "TZ",
+            "UA",
+            "UG",
+            "UM",
+            "US",
+            "UY",
+            "UZ",
+            "VA",
+            "VC",
+            "VE",
+            "VG",
+            "VI",
+            "VN",
+            "VU",
+            "WF",
+            "WS",
+            "XK",
+            "YE",
+            "YT",
+            "ZA",
+            "ZM",
+            "ZW",
+        ]
+        | None
+    ) = Field(
+        None,
+        description="Two-letter country code in ISO format. See [ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).",
+        examples=["FR"],
+    )
+
+
+class UpdateBankAccount(BaseModel):
+    bank_name: str | None = Field(
+        None, description="Bank name.", examples=["Fake bank"]
+    )
+    format: Literal["iban_bic_swift"] | None = Field(
+        None, description="Bank account details format.", examples=["iban_bic_swift"]
+    )
+    iban: str | None = Field(
+        None, description="IBAN.", examples=["FR7630006000011234567890189"]
+    )
+    bic_swift: str | None = Field(
+        None, description="BIC or SWIFT code.", examples=["BNPAFRPP"]
+    )
+    sort_code: str | None = Field(None, description="Sort code.", examples=["123456"])
+    account_number: str | None = Field(
+        None, description="Account number.", examples=["000123456789"]
+    )
+    routing_number: str | None = Field(
+        None, description="Routing number.", examples=["021000021"]
+    )
+
+
+class CreateInvoiceLineItem(BaseModel):
+    description: constr(max_length=5000) | None = Field(
+        None,
+        description="Description of the line item as it will appear on the invoice. Default to the product description.",
+        examples=["Access fee for the period of November 2024"],
+    )
+    units_count: float | None = Field(
+        1,
+        description="Count of units of the product related to the invoice line item.",
+        examples=[1],
+    )
+    tax_rate: confloat(ge=0.0, le=100.0) | None = Field(
+        None, description="Tax rate of the invoice line item.", examples=[20]
+    )
+    period_start: AwareDatetime | None = Field(
+        None,
+        description="Start date of the period corresponding to the line item charge.",
+        examples=["2024-10-13T00:00:00.000Z"],
+    )
+    period_end: AwareDatetime | None = Field(
+        None,
+        description="End date of the period corresponding to the line item charge.",
+        examples=["2024-11-13T00:00:00.000Z"],
+    )
+    display_unit_amount: bool | None = Field(
+        None,
+        description="Whether the unit amount is displayed on the invoice PDF. Defaults to true.",
+        examples=[True],
+    )
+    display_service_period: bool | None = Field(
+        None,
+        description="Whether the service period dates are displayed in the line item description on the invoice PDF. Defaults to true.",
+        examples=[True],
+    )
+    product_id: str | None = Field(
+        None,
+        description="Product ID related to the invoice line item.",
+        examples=["itm_KbLcWt2qm5p1S2"],
+    )
+    name: str | None = Field(
+        None,
+        description="Name of the line item as it will appear on the invoice. Default to the product name.",
+        examples=["Platform access"],
+    )
+    unit_amount: float | None = Field(
+        None,
+        description="Amount of one unit of the product related to the invoice line item. Default to the product price amount. Expressed in currency's smallest unit.",
+        examples=[24000],
+    )
+
+
+class InvoiceDeprecatedCustomer(BaseModel):
+    id: str | None = Field(
+        None, description="Customer ID.", examples=["cus_Typ0px2W0aiEtl"]
+    )
+    name: str | None = Field(None, description="Customer name.", examples=["Acme"])
+    email: str | None = Field(
+        None,
+        description="Email to which all communications will be sent.",
+        examples=["billing@acme.com"],
+    )
+    external_id: str | None = Field(
+        None,
+        description="ID of the customer in your system. This helps matching your customer with the one on Hyperline.",
+        examples=[None],
+    )
+    vat_number: str | None = Field(
+        None, deprecated=True, description="Deprecated field, please use `tax_id`."
+    )
+    tax_id: str | None = Field(
+        None, description="Value of the customer tax ID.", examples=["FR123456789"]
+    )
+    local_tax_number: str | None = Field(
+        None, description="Customer local tax number.", examples=["12/345/67890"]
+    )
+    address: Address | None = None
+
+
+class InvoiceDeprecatedSeller(BaseModel):
+    id: str | None = Field(
+        None,
+        description="ID of the invoicing entity attached to the invoice.",
+        examples=["ive_47484fjdhy5"],
+    )
+    name: str | None = Field(
+        None,
+        description="Name of the invoicing entity",
+        examples=["Name of the invoicing entity"],
+    )
+    tax_id: str | None = Field(
+        None,
+        description="Tax identifier / VAT number of the invoicing entity",
+        examples=["FR5878986578"],
+    )
+    address: Address | None = None
+
+
+class InvoiceDeprecatedAdditionalDisplayField(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    type: Literal["standard"] | None = Field(
+        None, description="Display a standard invoice field."
+    )
+    field: Literal["customer_id", "subscription_id", "quote_id"] | None = Field(
+        None, description="Standard invoice field to display."
+    )
+    slug: str | None = Field(
+        None, description="Slug of the invoice or customer custom property to display."
+    )
+    label: constr(min_length=1, max_length=100) | None = Field(
+        None, description="Label displayed on the invoice."
+    )
+    value: constr(max_length=500) | None = Field(
+        None, description="Value displayed on the invoice."
+    )
+
+
+class InvoiceDeprecatedAllocation(BaseModel):
+    invoice_id: str | None = Field(
+        None,
+        description="ID of the invoice receiving the credit.",
+        examples=["inv_2QdJDDUej969ev"],
+    )
+    amount: float | None = Field(
+        None,
+        description="Credit amount applied to the invoice, in the currency's smallest unit.",
+        examples=[780000],
+    )
+
+
+class InvoiceDeprecatedTransactionProviderFee(BaseModel):
+    amount: float | None = Field(
+        None, description="Monetary amount. Expressed in currency's smallest unit."
+    )
+    currency: (
+        Literal[
+            "EUR",
+            "AED",
+            "AFN",
+            "XCD",
+            "ALL",
+            "AMD",
+            "AOA",
+            "ARS",
+            "USD",
+            "AUD",
+            "AWG",
+            "AZN",
+            "BAM",
+            "BBD",
+            "BDT",
+            "BGN",
+            "BHD",
+            "BIF",
+            "XOF",
+            "BMD",
+            "BND",
+            "BOB",
+            "BRL",
+            "BSD",
+            "BTN",
+            "NOK",
+            "BWP",
+            "BYR",
+            "BZD",
+            "CAD",
+            "CDF",
+            "XAF",
+            "CHF",
+            "NZD",
+            "CLP",
+            "CNY",
+            "COP",
+            "CRC",
+            "CUP",
+            "CVE",
+            "ANG",
+            "CZK",
+            "DJF",
+            "DKK",
+            "DOP",
+            "DZD",
+            "EGP",
+            "MAD",
+            "ERN",
+            "ETB",
+            "FJD",
+            "FKP",
+            "GBP",
+            "GEL",
+            "GHS",
+            "GIP",
+            "GMD",
+            "GNF",
+            "GTQ",
+            "GYD",
+            "HKD",
+            "HNL",
+            "HRK",
+            "HTG",
+            "HUF",
+            "IDR",
+            "ILS",
+            "INR",
+            "IQD",
+            "IRR",
+            "ISK",
+            "JMD",
+            "JOD",
+            "JPY",
+            "KES",
+            "KGS",
+            "KHR",
+            "KMF",
+            "KPW",
+            "KRW",
+            "KWD",
+            "KYD",
+            "KZT",
+            "LAK",
+            "LBP",
+            "LKR",
+            "LRD",
+            "LSL",
+            "LYD",
+            "MDL",
+            "MGA",
+            "MKD",
+            "MMK",
+            "MNT",
+            "MOP",
+            "MRO",
+            "MUR",
+            "MVR",
+            "MWK",
+            "MXN",
+            "MYR",
+            "MZN",
+            "NAD",
+            "XPF",
+            "NGN",
+            "NIO",
+            "NPR",
+            "OMR",
+            "PAB",
+            "PEN",
+            "PGK",
+            "PHP",
+            "PKR",
+            "PLN",
+            "PYG",
+            "QAR",
+            "RON",
+            "RSD",
+            "RUB",
+            "RWF",
+            "SAR",
+            "SBD",
+            "SCR",
+            "SDG",
+            "SEK",
+            "SGD",
+            "SHP",
+            "SLL",
+            "SOS",
+            "SRD",
+            "SSP",
+            "STD",
+            "SYP",
+            "SZL",
+            "THB",
+            "TJS",
+            "TMT",
+            "TND",
+            "TOP",
+            "TRY",
+            "TTD",
+            "TWD",
+            "TZS",
+            "UAH",
+            "UGX",
+            "UYU",
+            "UZS",
+            "VEF",
+            "VND",
+            "VUV",
+            "WST",
+            "YER",
+            "ZAR",
+            "ZMW",
+            "ZWL",
+        ]
+        | None
+    ) = Field(
+        None,
+        description="Currency code. See [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes).",
+        examples=["EUR"],
+    )
+    exchange_rate: float | None = None
+
+
+class InvoiceDeprecatedTransactionChargeback(BaseModel):
+    amount: float | None = Field(
+        None, description="Total chargeback loss amount.", examples=[31500]
+    )
+    last_chargeback_at: AwareDatetime | None = Field(
+        None,
+        description="Date corresponding to the last chargeback loss event.",
+        examples=["2024-10-13T10:00:01.860Z"],
+    )
+
+
+class InvoiceDeprecatedTransactionIntegration(BaseModel):
+    entity_id: str | None = Field(None, description="ID of the entity in the provider.")
+    provider_name: (
+        Literal[
+            "adyen",
+            "stripe",
+            "mollie",
+            "gocardless",
+            "airwallex",
+            "salesforce",
+            "hubspot",
+            "attio",
+            "xero",
+            "pennylane",
+            "zoho-books",
+            "exact-online",
+            "quickbooks",
+            "netsuite",
+            "rillet",
+            "datev",
+            "anrok",
+            "chargebee",
+            "slack",
+            "plain",
+            "zendesk",
+            "pylon",
+            "intercom",
+            "front",
+            "helpscout",
+            "claap",
+            "grain",
+            "gong",
+            "jiminny",
+            "posthog",
+        ]
+        | None
+    ) = Field(None, description="Provider name.")
+    provider_account_id: str | None = Field(
+        None, description="ID of the connected provider account."
+    )
+
+
+class BankAccount81(BaseModel):
+    pass
+
+
+class BankAccount82(StandardBankAccount, BankAccount81):
+    pass
+
+
+class BankAccount83(ConnectedBankAccount, BankAccount81):
+    pass
+
+
+class BankAccount84(StandardBankAccount, BankAccount81):
+    pass
+
+
+class BankAccount85(ConnectedBankAccount, BankAccount81):
+    pass
+
+
+class Transaction1(BaseModel):
+    id: str | None = Field(
+        None, description="Transaction ID.", examples=["tra_2QdJDDUej969ev"]
+    )
+    type: Literal["subscription", "one_time", "refund", "chargeback"] | None = Field(
+        None,
+        description="\nTransaction type.\n\n- `subscription`: The transaction is related to a subscription payment.\n- `one_time`: The transaction is related to a one-time payment.\n- `refund`: The transaction is related to a refund payment.\n- `chargeback`: The transaction records funds withdrawn after a payment dispute.\n  ",
+        examples=["subscription"],
+    )
+    amount: float | None = Field(
+        None, description="Transaction amount.", examples=[31500]
+    )
+    currency: (
+        Literal[
+            "EUR",
+            "AED",
+            "AFN",
+            "XCD",
+            "ALL",
+            "AMD",
+            "AOA",
+            "ARS",
+            "USD",
+            "AUD",
+            "AWG",
+            "AZN",
+            "BAM",
+            "BBD",
+            "BDT",
+            "BGN",
+            "BHD",
+            "BIF",
+            "XOF",
+            "BMD",
+            "BND",
+            "BOB",
+            "BRL",
+            "BSD",
+            "BTN",
+            "NOK",
+            "BWP",
+            "BYR",
+            "BZD",
+            "CAD",
+            "CDF",
+            "XAF",
+            "CHF",
+            "NZD",
+            "CLP",
+            "CNY",
+            "COP",
+            "CRC",
+            "CUP",
+            "CVE",
+            "ANG",
+            "CZK",
+            "DJF",
+            "DKK",
+            "DOP",
+            "DZD",
+            "EGP",
+            "MAD",
+            "ERN",
+            "ETB",
+            "FJD",
+            "FKP",
+            "GBP",
+            "GEL",
+            "GHS",
+            "GIP",
+            "GMD",
+            "GNF",
+            "GTQ",
+            "GYD",
+            "HKD",
+            "HNL",
+            "HRK",
+            "HTG",
+            "HUF",
+            "IDR",
+            "ILS",
+            "INR",
+            "IQD",
+            "IRR",
+            "ISK",
+            "JMD",
+            "JOD",
+            "JPY",
+            "KES",
+            "KGS",
+            "KHR",
+            "KMF",
+            "KPW",
+            "KRW",
+            "KWD",
+            "KYD",
+            "KZT",
+            "LAK",
+            "LBP",
+            "LKR",
+            "LRD",
+            "LSL",
+            "LYD",
+            "MDL",
+            "MGA",
+            "MKD",
+            "MMK",
+            "MNT",
+            "MOP",
+            "MRO",
+            "MUR",
+            "MVR",
+            "MWK",
+            "MXN",
+            "MYR",
+            "MZN",
+            "NAD",
+            "XPF",
+            "NGN",
+            "NIO",
+            "NPR",
+            "OMR",
+            "PAB",
+            "PEN",
+            "PGK",
+            "PHP",
+            "PKR",
+            "PLN",
+            "PYG",
+            "QAR",
+            "RON",
+            "RSD",
+            "RUB",
+            "RWF",
+            "SAR",
+            "SBD",
+            "SCR",
+            "SDG",
+            "SEK",
+            "SGD",
+            "SHP",
+            "SLL",
+            "SOS",
+            "SRD",
+            "SSP",
+            "STD",
+            "SYP",
+            "SZL",
+            "THB",
+            "TJS",
+            "TMT",
+            "TND",
+            "TOP",
+            "TRY",
+            "TTD",
+            "TWD",
+            "TZS",
+            "UAH",
+            "UGX",
+            "UYU",
+            "UZS",
+            "VEF",
+            "VND",
+            "VUV",
+            "WST",
+            "YER",
+            "ZAR",
+            "ZMW",
+            "ZWL",
+        ]
+        | None
+    ) = Field(None, description="Transaction currency.", examples=["EUR"])
+    customer_id: str | None = Field(
+        None,
+        description="ID of the customer linked to the transaction.",
+        examples=["cus_QalW2vTAdkR6IY"],
+    )
+    provider_id: str | None = Field(
+        None,
+        deprecated=True,
+        description="Deprecated field, please use `integrations[].entity_id`.",
+    )
+    process_at: AwareDatetime | None = Field(
+        None,
+        description="Date corresponding to the processing of the transaction. If in the future, the transaction is scheduled to be processed.",
+        examples=["2024-11-12T07:38:39.222Z"],
+    )
+    settled_at: AwareDatetime | None = Field(
+        None,
+        description="Date when the transaction was settled. For provider transactions, this is derived from provider settlement data when available.",
+        examples=["2024-11-12T07:38:39.222Z"],
+    )
+    refunded_at: AwareDatetime | None = Field(
+        None,
+        description="Date corresponding to the refund of the transaction.",
+        examples=[None],
+    )
+    original_transaction_id: str | None = Field(
+        None,
+        description="Original payment transaction ID for a refund or chargeback.",
+        examples=[None],
+    )
+    reversed_at: AwareDatetime | None = Field(
+        None,
+        description="Date when a chargeback withdrawal was reversed.",
+        examples=[None],
+    )
+    last_refreshed_at: AwareDatetime | None = Field(
+        None,
+        description="Date corresponding to the last synchronization of the details with the payment provider.",
+        examples=[None],
+    )
+    provider_fee: InvoiceDeprecatedTransactionProviderFee | None = Field(
+        None,
+        description="Fee applied by the Payment Service Provider. Only supported for Stripe.",
+        examples=[None],
+        title="InvoiceDeprecatedTransactionProviderFee",
+    )
+    chargeback: InvoiceDeprecatedTransactionChargeback | None = Field(
+        None,
+        deprecated=True,
+        description="Deprecated field. Use transactions where `type` is `chargeback`; `original_transaction_id` identifies the affected payment transaction.",
+        examples=[None],
+        title="InvoiceDeprecatedTransactionChargeback",
+    )
+    integrations: list[InvoiceDeprecatedTransactionIntegration] | None = None
+    payment_method_type: (
+        Literal["card", "direct_debit", "direct_debit_ach", "direct_debit_bacs"] | None
+    ) = Field(None, description="Payment method type used for the transaction.")
+    payment_method: PaymentMethod | None = None
+    bank_account: (
+        BankAccount82 | BankAccount83 | BankAccount84 | BankAccount85 | None
+    ) = None
+    wallet_id: str | None = Field(
+        None,
+        description="ID of the wallet used for a wallet transaction.",
+        examples=["wal_PPpxP5d3uvgiTT"],
+    )
+    status: (
+        Literal["scheduled", "to_process", "pending", "settled", "cancelled"] | None
+    ) = Field(
+        None,
+        description="\nTransaction status.\n\n- `scheduled`: The transaction is scheduled to be processed in the future.\n- `to_process`: The transaction is waiting to be processed by our system.\n- `pending`: The transaction has been authorized by the related payment processor, but the banking transaction is not yet settled.\n- `settled`: The transaction has been cleared on the banking side, the money transfer is fully completed.\n- `cancelled`: The transaction has been cancelled and won't be processed again.\n  ",
+        examples=["settled"],
+    )
+    error_type: (
+        Literal[
+            "authentication_required",
+            "declined",
+            "fraud",
+            "insufficient_funds",
+            "mandate_invalid",
+            "payment_method_authorization_error",
+            "payment_method_declined",
+            "payment_method_expired",
+            "payment_method_invalid",
+            "payment_method_not_supported",
+            "processing_error",
+            "provider_error",
+            "unknown",
+        ]
+        | None
+    ) = Field(
+        None,
+        description="\nTransaction error type.\n\n- `authentication_required`: The card was declined as the transaction requires authentication (e.g. 3-D Secure). The customer should go to their portal page and authenticate their card. If the error happened on an already authenticated transaction, the customer needs to contact their card issuer for more information.\n- `payment_method_authorization_error`: A transaction authorization cannot be created for a variety of reasons such as the card issuer couldn't be reached, or the card requires a PIN.\n- `payment_method_declined`: The payment method was declined for a variety of reasons such as a card reported as lost or stolen, insufficient funds or reaching the limit available on the method to complete the purchase, a payment method on a known block list, etc.\n- `payment_method_expired`: The payment method is expired. The customer should go to their portal page and change their payment method.\n- `payment_method_invalid`: The payment method is invalid in most cases because of incorrect details (card/account number, CVC, expiration date, postal code).\n- `payment_method_not_supported`: The payment method doesn't support this type of purchase (e.g. currency, online payment).\n- `declined`: The payment was declined for a variety of reasons such as security violation, banking service not available, transaction not allowed, etc.\n- `fraud`: The payment provider suspected the transaction was fraudulent and has been blocked. Don't report more detailed information to your customer, and check on your provider account.\n- `processing_error`: The payment couldn't be processed by the issuer for an unknown reason.\n- `provider_error`: An error occurred when contacting the payment provider to initiate the transaction.\n- `unknown`: A generic error happened on the payment provider side.\n  ",
+        examples=[None],
+    )
+    error_message: str | None = Field(
+        None, description="Details of the error.", examples=[None]
+    )
+
+
+class InvoiceLineItem(BaseModel):
+    id: str | None = Field(
+        None, description="Invoice line item ID.", examples=["ili_0FACNpeoEFkGu3"]
+    )
+    name: str | None = Field(
+        None,
+        description="Name of the line item, corresponding to the related product.",
+        examples=["Platform access"],
+    )
+    entry_type: Literal["debit", "credit"] | None = Field(
+        None,
+        description="Indicates whether the line item is a debit or credit.",
+        examples=["debit"],
+    )
+    product_id: str | None = Field(
+        None,
+        description="Product ID related to the invoice line item.",
+        examples=["itm_KbLcWt2qm5p1S2"],
+    )
+    product_type: Literal["flat_fee", "seat", "dynamic", "credit", "bundle"] | None = (
+        Field(
+            None,
+            description="Product type related to the invoice line item.",
+            examples=["flat_fee"],
+        )
+    )
+    units_count: float | None = Field(
+        None,
+        description="Count of units of the product related to the invoice line item.",
+        examples=[1],
+    )
+    unit_amount: float | None = Field(
+        None,
+        description="Amount of one unit of the product related to the invoice line item. Expressed in currency's smallest unit.",
+        examples=[24000],
+    )
+    amount: float | None = Field(
+        None,
+        description="Total amount of the invoice line item. Debit or credit can be distinguished using the `entry_type` field. Expressed in currency's smallest unit.",
+        examples=[24000],
+    )
+    amount_excluding_tax: float | None = Field(
+        None,
+        description="Total amount without the taxes amount of the invoice line item. Expressed in currency's smallest unit.",
+        examples=[20000],
+    )
+    tax_rate: float | None = Field(
+        None, description="Tax rate of the invoice line item.", examples=[20]
+    )
+    tax_rate_id: str | None = Field(
+        None,
+        description="Custom tax rate ID applied to the invoice line item.",
+        examples=[None],
+    )
+    tax_amount: float | None = Field(
+        None,
+        description="Tax amount of the invoice line item. Expressed in currency's smallest unit.",
+        examples=[4000],
+    )
+    discount_amount: float | None = Field(
+        None,
+        description="Amount corresponding to the discounted part of the total amount of the invoice line item. Expressed in currency's smallest unit.",
+        examples=[0],
+    )
+    discount_percent: float | None = Field(
+        None,
+        description="Percentage applied to compute the discounted part of the invoice line amount. Only if coupons applied are percentage based.",
+    )
+    period_starts_at: AwareDatetime | None = Field(
+        None,
+        description="Start date of the period corresponding to the line item charge.",
+        examples=["2024-10-13T00:00:00.000Z"],
+    )
+    period_ends_at: AwareDatetime | None = Field(
+        None,
+        description="End date of the period corresponding to the line item charge.",
+        examples=["2024-11-13T00:00:00.000Z"],
+    )
+    revenue_type: Literal["recurring", "variable", "one_off"] | None = Field(
+        None,
+        description="Revenue type classification of the line item.\n\n- `recurring`: Recurring revenue (MRR) from subscription products billed at regular intervals.\n- `variable`: Variable revenue from usage-based products.\n- `one_off`: One-time revenue from single charges or products billed once.",
+        examples=["recurring"],
+    )
+    revenue_interval_count: float | None = Field(
+        None,
+        description="For recurring revenue, the number of interval periods between billings (e.g., 1 for monthly, 12 for annual).",
+        examples=[1],
+    )
+    revenue_interval_period: (
+        Literal["days", "weeks", "months", "quarters", "years", "once", "all"] | None
+    ) = Field(
+        None,
+        description="For recurring revenue, the interval period (days, weeks, months, quarters, years).",
+        examples=["months"],
+    )
+    display_unit_amount: bool | None = Field(
+        None,
+        description="Whether the unit amount is displayed on the invoice PDF. Defaults to true.",
+        examples=[True],
+    )
+    display_service_period: bool | None = Field(
+        None,
+        description="Whether the service period dates are displayed in the line item description on the invoice PDF. Defaults to true.",
+        examples=[True],
+    )
+    original_line_item_id: str | None = Field(
+        None,
+        description="ID of the original line item this line item is linked to (used for organisation-based billing).",
+        examples=[None],
+    )
+
+
+class InvoiceCoupon(BaseModel):
+    id: str | None = Field(
+        None, description="Coupon ID.", examples=["cou_DKL4Xcb5VSa8CQ"]
+    )
+    name: str | None = Field(
+        None, description="Coupon name.", examples=["Partner discount"]
+    )
+    discount_amount: float | None = Field(
+        None,
+        description="Amount to apply as a discount on the total amount (excluding taxes) of a subscription. Expressed in the currency's smallest unit.",
+        examples=[2000],
+    )
+    discount_percent: float | None = Field(
+        None,
+        description="Percentage to apply as a discount on the amount (excluding taxes) of a product.",
+        examples=[None],
+    )
+    line_item_ids: list[str] | None = Field(
+        None,
+        description="IDs of the line items to which the coupon applies. Null means all line items.",
+        examples=[["ili_0FACNpeoEFkGu3"]],
+    )
+
+
+class BankAccount2(StandardBankAccount, BankAccount1):
+    pass
+
+
+class BankAccount3(ConnectedBankAccount, BankAccount1):
+    pass
+
+
+class BankAccount4(StandardBankAccount, BankAccount1):
+    pass
+
+
+class BankAccount5(ConnectedBankAccount, BankAccount1):
+    pass
+
+
+class CreateCustomer(BaseModel):
+    model_config = ConfigDict(
+        regex_engine="python-re",
+    )
+    name: str | None = Field(None, description="Customer name.", examples=["Acme"])
+    type: Literal["corporate", "person"] | None = Field(
+        None,
+        description="\nCustomer type.\n\n- `corporate`: The customer is a business entity.\n- `person`: The customer is a natural person.\n- `automatically_created`: The customer was automatically imported (e.g. from a data loader). This value cannot be used when creating/editing.\n ",
+        examples=["corporate"],
+    )
+    currency: (
+        Literal[
+            "EUR",
+            "AED",
+            "AFN",
+            "XCD",
+            "ALL",
+            "AMD",
+            "AOA",
+            "ARS",
+            "USD",
+            "AUD",
+            "AWG",
+            "AZN",
+            "BAM",
+            "BBD",
+            "BDT",
+            "BGN",
+            "BHD",
+            "BIF",
+            "XOF",
+            "BMD",
+            "BND",
+            "BOB",
+            "BRL",
+            "BSD",
+            "BTN",
+            "NOK",
+            "BWP",
+            "BYR",
+            "BZD",
+            "CAD",
+            "CDF",
+            "XAF",
+            "CHF",
+            "NZD",
+            "CLP",
+            "CNY",
+            "COP",
+            "CRC",
+            "CUP",
+            "CVE",
+            "ANG",
+            "CZK",
+            "DJF",
+            "DKK",
+            "DOP",
+            "DZD",
+            "EGP",
+            "MAD",
+            "ERN",
+            "ETB",
+            "FJD",
+            "FKP",
+            "GBP",
+            "GEL",
+            "GHS",
+            "GIP",
+            "GMD",
+            "GNF",
+            "GTQ",
+            "GYD",
+            "HKD",
+            "HNL",
+            "HRK",
+            "HTG",
+            "HUF",
+            "IDR",
+            "ILS",
+            "INR",
+            "IQD",
+            "IRR",
+            "ISK",
+            "JMD",
+            "JOD",
+            "JPY",
+            "KES",
+            "KGS",
+            "KHR",
+            "KMF",
+            "KPW",
+            "KRW",
+            "KWD",
+            "KYD",
+            "KZT",
+            "LAK",
+            "LBP",
+            "LKR",
+            "LRD",
+            "LSL",
+            "LYD",
+            "MDL",
+            "MGA",
+            "MKD",
+            "MMK",
+            "MNT",
+            "MOP",
+            "MRO",
+            "MUR",
+            "MVR",
+            "MWK",
+            "MXN",
+            "MYR",
+            "MZN",
+            "NAD",
+            "XPF",
+            "NGN",
+            "NIO",
+            "NPR",
+            "OMR",
+            "PAB",
+            "PEN",
+            "PGK",
+            "PHP",
+            "PKR",
+            "PLN",
+            "PYG",
+            "QAR",
+            "RON",
+            "RSD",
+            "RUB",
+            "RWF",
+            "SAR",
+            "SBD",
+            "SCR",
+            "SDG",
+            "SEK",
+            "SGD",
+            "SHP",
+            "SLL",
+            "SOS",
+            "SRD",
+            "SSP",
+            "STD",
+            "SYP",
+            "SZL",
+            "THB",
+            "TJS",
+            "TMT",
+            "TND",
+            "TOP",
+            "TRY",
+            "TTD",
+            "TWD",
+            "TZS",
+            "UAH",
+            "UGX",
+            "UYU",
+            "UZS",
+            "VEF",
+            "VND",
+            "VUV",
+            "WST",
+            "YER",
+            "ZAR",
+            "ZMW",
+            "ZWL",
+        ]
+        | None
+    ) = Field(
+        None,
+        description="Currency code. See [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes).",
+        examples=["EUR"],
+    )
+    country: (
+        Literal[
+            "AD",
+            "AE",
+            "AF",
+            "AG",
+            "AI",
+            "AL",
+            "AM",
+            "AO",
+            "AQ",
+            "AR",
+            "AS",
+            "AT",
+            "AU",
+            "AW",
+            "AX",
+            "AZ",
+            "BA",
+            "BB",
+            "BD",
+            "BE",
+            "BG",
+            "BH",
+            "BI",
+            "BJ",
+            "BL",
+            "BM",
+            "BN",
+            "BO",
+            "BQ",
+            "BR",
+            "BS",
+            "BT",
+            "BF",
+            "BV",
+            "BW",
+            "BY",
+            "BZ",
+            "CA",
+            "CC",
+            "CD",
+            "CF",
+            "CG",
+            "CH",
+            "CI",
+            "CK",
+            "CL",
+            "CM",
+            "CN",
+            "CO",
+            "CR",
+            "CU",
+            "CV",
+            "CW",
+            "CX",
+            "CY",
+            "CZ",
+            "DE",
+            "DJ",
+            "DK",
+            "DM",
+            "DO",
+            "DZ",
+            "EC",
+            "EE",
+            "EG",
+            "EH",
+            "ER",
+            "ES",
+            "ES-CE",
+            "ES-ML",
+            "ET",
+            "FI",
+            "FJ",
+            "FK",
+            "FM",
+            "FO",
+            "FR",
+            "GA",
+            "GB",
+            "GD",
+            "GE",
+            "GF",
+            "GG",
+            "GH",
+            "GI",
+            "GL",
+            "GM",
+            "GN",
+            "GP",
+            "GQ",
+            "GR",
+            "GS",
+            "GT",
+            "GU",
+            "GW",
+            "GY",
+            "HK",
+            "HM",
+            "HN",
+            "HR",
+            "HT",
+            "HU",
+            "IC",
+            "ID",
+            "IE",
+            "IL",
+            "IM",
+            "IN",
+            "IO",
+            "IQ",
+            "IR",
+            "IS",
+            "IT",
+            "JE",
+            "JM",
+            "JO",
+            "JP",
+            "KE",
+            "KG",
+            "KH",
+            "KI",
+            "KM",
+            "KN",
+            "KP",
+            "KR",
+            "KW",
+            "KY",
+            "KZ",
+            "LA",
+            "LB",
+            "LC",
+            "LI",
+            "LK",
+            "LR",
+            "LS",
+            "LT",
+            "LU",
+            "LV",
+            "LY",
+            "MA",
+            "MC",
+            "MD",
+            "ME",
+            "MF",
+            "MG",
+            "MH",
+            "MK",
+            "ML",
+            "MM",
+            "MN",
+            "MO",
+            "MP",
+            "MQ",
+            "MR",
+            "MS",
+            "MT",
+            "MU",
+            "MV",
+            "MW",
+            "MX",
+            "MY",
+            "MZ",
+            "NA",
+            "NC",
+            "NE",
+            "NF",
+            "NG",
+            "NI",
+            "NL",
+            "NO",
+            "NP",
+            "NR",
+            "NU",
+            "NZ",
+            "OM",
+            "PA",
+            "PE",
+            "PF",
+            "PG",
+            "PH",
+            "PK",
+            "PL",
+            "PM",
+            "PN",
+            "PR",
+            "PS",
+            "PT",
+            "PT-20",
+            "PT-30",
+            "PW",
+            "PY",
+            "QA",
+            "RE",
+            "RO",
+            "RS",
+            "RU",
+            "RW",
+            "SA",
+            "SB",
+            "SC",
+            "SD",
+            "SE",
+            "SG",
+            "SH",
+            "SI",
+            "SJ",
+            "SK",
+            "SL",
+            "SM",
+            "SN",
+            "SO",
+            "SR",
+            "SS",
+            "ST",
+            "SV",
+            "SX",
+            "SY",
+            "SZ",
+            "TC",
+            "TD",
+            "TF",
+            "TG",
+            "TH",
+            "TJ",
+            "TK",
+            "TL",
+            "TM",
+            "TN",
+            "TO",
+            "TR",
+            "TT",
+            "TV",
+            "TW",
+            "TZ",
+            "UA",
+            "UG",
+            "UM",
+            "US",
+            "UY",
+            "UZ",
+            "VA",
+            "VC",
+            "VE",
+            "VG",
+            "VI",
+            "VN",
+            "VU",
+            "WF",
+            "WS",
+            "XK",
+            "YE",
+            "YT",
+            "ZA",
+            "ZM",
+            "ZW",
+        ]
+        | None
+    ) = Field(
+        None,
+        deprecated=True,
+        description="Deprecated field, please use `billing_address.country`.",
+        examples=["FR"],
+    )
+    is_government_affiliated: bool | None = Field(
+        None,
+        description="Indicates if the customer is affiliated with a government entity.",
+        examples=[False],
+    )
+    vat_number: str | None = Field(
+        None, deprecated=True, description="Deprecated field, please use `tax_id`."
+    )
+    vat_rate_custom: confloat(ge=0.0, le=100.0) | None = Field(
+        None,
+        deprecated=True,
+        description="Deprecated field, please use `tax_rate_custom`.",
+    )
+    tax_ids: list[CreateCustomerTaxId] | None = Field(
+        None, description="Customer tax IDs.", max_length=1
+    )
+    local_tax_number: str | None = Field(
+        None, description="Customer local tax number.", examples=["12/345/67890"]
+    )
+    tax_rate_custom: confloat(ge=0.0, le=100.0) | None = Field(
+        None,
+        description="Customer custom tax rate. If not defined, the rate will be automatically determined based on the customer's country, your country, and applicable legal requirements.",
+    )
+    taxability: Literal["taxable", "exempt"] | None = Field(
+        None,
+        description="Customer taxability.\n\n- `taxable`: Taxes are automatically determined for the customer.\n- `exempt`: The customer is exempt from tax.\n ",
+        examples=["taxable"],
+    )
+    registration_number: str | None = Field(
+        None, description="Customer registration number.", examples=["36252187900034"]
+    )
+    external_id: str | None = Field(
+        None,
+        description="ID of the customer in your system. This helps matching your customer with the one on Hyperline.",
+    )
+    domain: (
+        constr(pattern=r"^(?!:\/\/)(?=.{1,253}$)(?!-)([a-z0-9-]{1,63}\.)+[a-z]{2,63}$")
+        | None
+    ) = Field(
+        None,
+        description="Customer domain. If not defined, it is inferred from the billing email.",
+        examples=["acme.com"],
+    )
+    invoicing_entity_id: str | None = Field(
+        None,
+        description="ID of the invoicing entity this customer will be attached to.",
+    )
+    billing_address: Address | None = None
+    shipping_address: Address | None = None
+    billing_email: EmailStr | None = Field(
+        None,
+        description="Email to which all communications will be sent.",
+        examples=["billing@acme.com"],
+    )
+    invoice_emails: list[EmailStr] | None = Field(
+        None,
+        description="Emails to which invoices will be sent (e.g. payer, finance team, accounting firm). If not defined, invoices will be sent to the `billing_email`; otherwise, they won't be sent to the `billing_email`.",
+        examples=[["accounting@acme.com"]],
+    )
+    language: Literal["fr", "en", "de", "it", "nl", "es", "pt", "pl"] | None = Field(
+        None,
+        description="Language used for invoices, emails, and hosted pages.",
+        examples=["fr"],
+    )
+    timezone: (
+        Literal[
+            "Pacific/Midway",
+            "Pacific/Pago_Pago",
+            "Pacific/Niue",
+            "Pacific/Rarotonga",
+            "Pacific/Honolulu",
+            "Pacific/Tahiti",
+            "Pacific/Marquesas",
+            "Pacific/Gambier",
+            "America/Adak",
+            "America/Anchorage",
+            "Pacific/Pitcairn",
+            "America/Hermosillo",
+            "America/Phoenix",
+            "America/Los_Angeles",
+            "America/Tijuana",
+            "America/Vancouver",
+            "America/Whitehorse",
+            "America/Belize",
+            "America/Guatemala",
+            "America/Managua",
+            "America/Mexico_City",
+            "America/Costa_Rica",
+            "America/El_Salvador",
+            "America/Regina",
+            "America/Tegucigalpa",
+            "Pacific/Easter",
+            "Pacific/Galapagos",
+            "America/Edmonton",
+            "America/Ciudad_Juarez",
+            "America/Denver",
+            "America/Rio_Branco",
+            "America/Chicago",
+            "America/Matamoros",
+            "America/Winnipeg",
+            "America/Bogota",
+            "America/Atikokan",
+            "America/Cancun",
+            "America/Cayman",
+            "America/Jamaica",
+            "America/Panama",
+            "America/Guayaquil",
+            "America/Lima",
+            "America/Manaus",
+            "America/St_Kitts",
+            "America/Blanc-Sablon",
+            "America/Montserrat",
+            "America/Barbados",
+            "America/Port_of_Spain",
+            "America/Martinique",
+            "America/St_Lucia",
+            "America/St_Barthelemy",
+            "America/St_Vincent",
+            "America/Kralendijk",
+            "America/Guadeloupe",
+            "America/Marigot",
+            "America/Aruba",
+            "America/Lower_Princes",
+            "America/Tortola",
+            "America/Dominica",
+            "America/St_Thomas",
+            "America/Grenada",
+            "America/Antigua",
+            "America/Puerto_Rico",
+            "America/Santo_Domingo",
+            "America/Anguilla",
+            "America/Curacao",
+            "America/La_Paz",
+            "America/Santiago",
+            "America/Havana",
+            "America/Nassau",
+            "America/New_York",
+            "America/Port-au-Prince",
+            "America/Grand_Turk",
+            "America/Toronto",
+            "America/Guyana",
+            "America/Caracas",
+            "America/Argentina/Buenos_Aires",
+            "America/Halifax",
+            "Atlantic/Bermuda",
+            "America/Thule",
+            "America/Sao_Paulo",
+            "Antarctica/Palmer",
+            "America/Punta_Arenas",
+            "Atlantic/Stanley",
+            "America/Cayenne",
+            "America/Asuncion",
+            "America/Paramaribo",
+            "America/Montevideo",
+            "America/St_Johns",
+            "America/Noronha",
+            "Atlantic/South_Georgia",
+            "America/Miquelon",
+            "Atlantic/Cape_Verde",
+            "America/Nuuk",
+            "Atlantic/Azores",
+            "Etc/UTC",
+            "Africa/Abidjan",
+            "Africa/Bamako",
+            "Africa/Bissau",
+            "Africa/Conakry",
+            "Africa/Dakar",
+            "America/Danmarkshavn",
+            "Africa/Freetown",
+            "Atlantic/St_Helena",
+            "Africa/Accra",
+            "Africa/Lome",
+            "Africa/Monrovia",
+            "Africa/Nouakchott",
+            "Africa/Ouagadougou",
+            "Atlantic/Reykjavik",
+            "Africa/Sao_Tome",
+            "Africa/Banjul",
+            "Africa/Algiers",
+            "Africa/Tunis",
+            "Europe/Isle_of_Man",
+            "Europe/Dublin",
+            "Europe/London",
+            "Europe/Jersey",
+            "Europe/Guernsey",
+            "Africa/Bangui",
+            "Africa/Malabo",
+            "Africa/Brazzaville",
+            "Africa/Porto-Novo",
+            "Africa/Douala",
+            "Africa/Kinshasa",
+            "Africa/Lagos",
+            "Africa/Libreville",
+            "Africa/Luanda",
+            "Africa/Ndjamena",
+            "Africa/Niamey",
+            "Africa/Casablanca",
+            "Africa/El_Aaiun",
+            "Atlantic/Canary",
+            "Europe/Lisbon",
+            "Atlantic/Faroe",
+            "Africa/Bujumbura",
+            "Africa/Gaborone",
+            "Africa/Harare",
+            "Africa/Juba",
+            "Africa/Khartoum",
+            "Africa/Kigali",
+            "Africa/Blantyre",
+            "Africa/Lubumbashi",
+            "Africa/Lusaka",
+            "Africa/Maputo",
+            "Africa/Windhoek",
+            "Europe/Andorra",
+            "Europe/Belgrade",
+            "Europe/Berlin",
+            "Europe/Bratislava",
+            "Europe/Brussels",
+            "Europe/Budapest",
+            "Europe/Copenhagen",
+            "Europe/Gibraltar",
+            "Europe/Ljubljana",
+            "Arctic/Longyearbyen",
+            "Europe/Luxembourg",
+            "Europe/Madrid",
+            "Europe/Monaco",
+            "Europe/Oslo",
+            "Europe/Paris",
+            "Europe/Podgorica",
+            "Europe/Prague",
+            "Europe/Rome",
+            "Europe/Amsterdam",
+            "Europe/San_Marino",
+            "Europe/Malta",
+            "Europe/Sarajevo",
+            "Europe/Skopje",
+            "Europe/Stockholm",
+            "Europe/Tirane",
+            "Europe/Vaduz",
+            "Europe/Vatican",
+            "Europe/Vienna",
+            "Europe/Warsaw",
+            "Europe/Zagreb",
+            "Europe/Zurich",
+            "Europe/Kaliningrad",
+            "Africa/Tripoli",
+            "Antarctica/Troll",
+            "Africa/Johannesburg",
+            "Africa/Mbabane",
+            "Africa/Maseru",
+            "Asia/Kuwait",
+            "Asia/Bahrain",
+            "Asia/Baghdad",
+            "Asia/Qatar",
+            "Asia/Riyadh",
+            "Asia/Aden",
+            "Asia/Amman",
+            "Asia/Damascus",
+            "Africa/Addis_Ababa",
+            "Indian/Antananarivo",
+            "Africa/Asmara",
+            "Africa/Dar_es_Salaam",
+            "Africa/Djibouti",
+            "Africa/Kampala",
+            "Indian/Mayotte",
+            "Africa/Mogadishu",
+            "Indian/Comoro",
+            "Africa/Nairobi",
+            "Europe/Athens",
+            "Asia/Beirut",
+            "Europe/Bucharest",
+            "Africa/Cairo",
+            "Europe/Chisinau",
+            "Asia/Hebron",
+            "Europe/Helsinki",
+            "Europe/Kyiv",
+            "Europe/Mariehamn",
+            "Asia/Nicosia",
+            "Europe/Riga",
+            "Europe/Sofia",
+            "Europe/Tallinn",
+            "Europe/Vilnius",
+            "Asia/Jerusalem",
+            "Europe/Minsk",
+            "Europe/Moscow",
+            "Europe/Simferopol",
+            "Antarctica/Syowa",
+            "Europe/Istanbul",
+            "Asia/Tehran",
+            "Asia/Yerevan",
+            "Asia/Baku",
+            "Asia/Tbilisi",
+            "Asia/Dubai",
+            "Asia/Muscat",
+            "Indian/Mauritius",
+            "Indian/Reunion",
+            "Europe/Samara",
+            "Indian/Mahe",
+            "Asia/Kabul",
+            "Indian/Kerguelen",
+            "Asia/Almaty",
+            "Indian/Maldives",
+            "Antarctica/Mawson",
+            "Asia/Karachi",
+            "Asia/Dushanbe",
+            "Asia/Ashgabat",
+            "Asia/Tashkent",
+            "Asia/Yekaterinburg",
+            "Asia/Colombo",
+            "Asia/Kolkata",
+            "Asia/Kathmandu",
+            "Asia/Dhaka",
+            "Asia/Thimphu",
+            "Asia/Urumqi",
+            "Indian/Chagos",
+            "Asia/Bishkek",
+            "Asia/Omsk",
+            "Indian/Cocos",
+            "Asia/Yangon",
+            "Indian/Christmas",
+            "Antarctica/Davis",
+            "Asia/Hovd",
+            "Asia/Bangkok",
+            "Asia/Ho_Chi_Minh",
+            "Asia/Phnom_Penh",
+            "Asia/Vientiane",
+            "Asia/Novosibirsk",
+            "Asia/Jakarta",
+            "Antarctica/Casey",
+            "Australia/Perth",
+            "Asia/Brunei",
+            "Asia/Makassar",
+            "Asia/Macau",
+            "Asia/Shanghai",
+            "Asia/Hong_Kong",
+            "Asia/Irkutsk",
+            "Asia/Kuala_Lumpur",
+            "Asia/Manila",
+            "Asia/Singapore",
+            "Asia/Taipei",
+            "Asia/Ulaanbaatar",
+            "Australia/Eucla",
+            "Asia/Jayapura",
+            "Asia/Tokyo",
+            "Asia/Pyongyang",
+            "Asia/Seoul",
+            "Pacific/Palau",
+            "Asia/Dili",
+            "Asia/Chita",
+            "Australia/Adelaide",
+            "Australia/Darwin",
+            "Australia/Brisbane",
+            "Australia/Sydney",
+            "Pacific/Guam",
+            "Pacific/Saipan",
+            "Pacific/Chuuk",
+            "Antarctica/DumontDUrville",
+            "Pacific/Port_Moresby",
+            "Asia/Vladivostok",
+            "Australia/Lord_Howe",
+            "Pacific/Bougainville",
+            "Pacific/Kosrae",
+            "Pacific/Noumea",
+            "Pacific/Norfolk",
+            "Asia/Sakhalin",
+            "Pacific/Guadalcanal",
+            "Pacific/Efate",
+            "Pacific/Fiji",
+            "Pacific/Tarawa",
+            "Asia/Kamchatka",
+            "Pacific/Majuro",
+            "Pacific/Nauru",
+            "Pacific/Auckland",
+            "Antarctica/McMurdo",
+            "Pacific/Funafuti",
+            "Pacific/Wake",
+            "Pacific/Wallis",
+            "Pacific/Chatham",
+            "Pacific/Kanton",
+            "Pacific/Apia",
+            "Pacific/Fakaofo",
+            "Pacific/Tongatapu",
+            "Pacific/Kiritimati",
+        ]
+        | None
+    ) = Field(None, description="Customer timezone.", examples=["Europe/Paris"])
+    available_payment_methods: (
+        list[
+            Literal[
+                "card",
+                "apple_pay",
+                "google_pay",
+                "direct_debit",
+                "direct_debit_ach",
+                "direct_debit_bacs",
+                "stripe_link",
+                "transfer",
+                "transfer_automated",
+            ]
+        ]
+        | None
+    ) = Field(
+        None,
+        description="List of payment methods you allow your customer to pay with. You customer will be able to select one of them in their portal page and those will be the default options when creating a checkout session.",
+        examples=[["card", "direct_debit"]],
+    )
+    payment_method_type: (
+        Literal[
+            "card",
+            "apple_pay",
+            "google_pay",
+            "direct_debit",
+            "direct_debit_ach",
+            "direct_debit_bacs",
+            "stripe_link",
+            "transfer",
+            "transfer_automated",
+            "external",
+        ]
+        | None
+    ) = Field(
+        None,
+        description="Default payment method type used to pay subscriptions and one-off invoices.",
+        examples=["card"],
+    )
+    bank_account: UpdateBankAccount | None = None
+    custom_payment_delay: float | None = Field(
+        None,
+        description="Custom payment terms in days. If not defined, the default one defined on the related invoicing entity will be used.",
+        examples=[30],
+    )
+    custom_payment_initiation_delay: float | None = Field(
+        None,
+        description="Custom initiation delay in days before triggering payment. If not defined, the default one defined on the related invoicing entity will be used.",
+        examples=[7],
+    )
+    organisation_id: str | None = Field(
+        None, description="Parent organization ID to which the client is attached."
+    )
+    organisation_invoicing: Literal["none", "every_invoice", "concat"] | None = Field(
+        "none",
+        description="\nHow customer invoices are issued from the parent organisation.\n\n- `none`: Invoices will keep being issued from this customer.\n- `every_invoice`: Customer invoices will be issued from the organisation individually.\n- `concat`: Customer invoices will be grouped into a global parent invoice at a regular schedule (configured on the organisation).\n ",
+    )
+    properties: (
+        dict[str, str | float | bool | list[str | float | bool | None] | None] | None
+    ) = Field(
+        None,
+        description="Key/value pairs to store any metadata useful in your context.",
+    )
+    custom_properties: (
+        dict[str, str | float | bool | AwareDatetime | list[str] | None] | None
+    ) = Field(
+        None,
+        description="A list of key value with the slug of the custom property as the key and the custom property value as value.",
+    )
+    invoice_reminders_enabled: bool | Literal["true", "false"] | None = Field(
+        None, description="Indicates if invoice reminders are enabled for the customer."
+    )
+    price_book_id: str | None = Field(
+        None,
+        description="Default price book ID assigned to the customer.",
+        examples=["prib_613_WbVIZ1329e"],
+    )
+    owner_id: str | None = Field(
+        None,
+        description="ID of the Hyperline user responsible for this customer and targeted by customer agent notifications.",
+        examples=["usr_KMcxRWc1ZQwvJG"],
+    )
+    follower_ids: list[str] | None = Field(
+        None,
+        description="IDs of Hyperline users following this customer.",
+        examples=[["usr_KMcxRWc1ZQwvJG"]],
+    )
+
+
+class BankAccount62(StandardBankAccount, BankAccount61):
+    pass
+
+
+class BankAccount63(ConnectedBankAccount, BankAccount61):
+    pass
+
+
+class BankAccount64(StandardBankAccount, BankAccount61):
+    pass
+
+
+class BankAccount65(ConnectedBankAccount, BankAccount61):
+    pass
 
 
 class CustomerV1(BaseModel):
@@ -1697,9 +5061,7 @@ class CustomerV1(BaseModel):
         None,
         description="A list of key value with the slug of the custom property as the key and the custom property value as value.",
     )
-    billing_address: Address | None = Field(
-        None, description="Customer billing address.", title="Address"
-    )
+    billing_address: Address | None = None
     shipping_address: CustomerV1ShippingAddress | None = Field(
         None,
         description="Customer shipping address.",
@@ -1806,596 +5168,290 @@ class CustomerV1(BaseModel):
     )
 
 
-class CreateInvoiceAdditionalDisplayField(BaseModel):
-    model_config = ConfigDict(
-        extra="allow",
+class CreateInvoice(BaseModel):
+    customer_id: str | None = Field(
+        None, description="Customer ID.", examples=["cus_Typ0px2W0aiEtl"]
     )
-    type: Literal["standard"] | None = Field(
-        None, description="Display a standard invoice field."
-    )
-    field: Literal["customer_id", "subscription_id", "quote_id"] | None = Field(
-        None, description="Standard invoice field to display."
-    )
-    slug: str | None = Field(
-        None, description="Slug of the invoice or customer custom property to display."
-    )
-    label: constr(min_length=1, max_length=100) | None = Field(
-        None, description="Label displayed on the invoice."
-    )
-    value: constr(max_length=500) | None = Field(
-        None, description="Value displayed on the invoice."
-    )
-
-
-class CreateInvoiceTransaction(BaseModel):
-    model_config = ConfigDict(
-        extra="allow",
-    )
-    amount: confloat(ge=0.0) | None = Field(
-        None, description="Transaction amount.", examples=[31500]
-    )
-    process_at: AwareDatetime | None = Field(
+    currency: (
+        Literal[
+            "EUR",
+            "AED",
+            "AFN",
+            "XCD",
+            "ALL",
+            "AMD",
+            "AOA",
+            "ARS",
+            "USD",
+            "AUD",
+            "AWG",
+            "AZN",
+            "BAM",
+            "BBD",
+            "BDT",
+            "BGN",
+            "BHD",
+            "BIF",
+            "XOF",
+            "BMD",
+            "BND",
+            "BOB",
+            "BRL",
+            "BSD",
+            "BTN",
+            "NOK",
+            "BWP",
+            "BYR",
+            "BZD",
+            "CAD",
+            "CDF",
+            "XAF",
+            "CHF",
+            "NZD",
+            "CLP",
+            "CNY",
+            "COP",
+            "CRC",
+            "CUP",
+            "CVE",
+            "ANG",
+            "CZK",
+            "DJF",
+            "DKK",
+            "DOP",
+            "DZD",
+            "EGP",
+            "MAD",
+            "ERN",
+            "ETB",
+            "FJD",
+            "FKP",
+            "GBP",
+            "GEL",
+            "GHS",
+            "GIP",
+            "GMD",
+            "GNF",
+            "GTQ",
+            "GYD",
+            "HKD",
+            "HNL",
+            "HRK",
+            "HTG",
+            "HUF",
+            "IDR",
+            "ILS",
+            "INR",
+            "IQD",
+            "IRR",
+            "ISK",
+            "JMD",
+            "JOD",
+            "JPY",
+            "KES",
+            "KGS",
+            "KHR",
+            "KMF",
+            "KPW",
+            "KRW",
+            "KWD",
+            "KYD",
+            "KZT",
+            "LAK",
+            "LBP",
+            "LKR",
+            "LRD",
+            "LSL",
+            "LYD",
+            "MDL",
+            "MGA",
+            "MKD",
+            "MMK",
+            "MNT",
+            "MOP",
+            "MRO",
+            "MUR",
+            "MVR",
+            "MWK",
+            "MXN",
+            "MYR",
+            "MZN",
+            "NAD",
+            "XPF",
+            "NGN",
+            "NIO",
+            "NPR",
+            "OMR",
+            "PAB",
+            "PEN",
+            "PGK",
+            "PHP",
+            "PKR",
+            "PLN",
+            "PYG",
+            "QAR",
+            "RON",
+            "RSD",
+            "RUB",
+            "RWF",
+            "SAR",
+            "SBD",
+            "SCR",
+            "SDG",
+            "SEK",
+            "SGD",
+            "SHP",
+            "SLL",
+            "SOS",
+            "SRD",
+            "SSP",
+            "STD",
+            "SYP",
+            "SZL",
+            "THB",
+            "TJS",
+            "TMT",
+            "TND",
+            "TOP",
+            "TRY",
+            "TTD",
+            "TWD",
+            "TZS",
+            "UAH",
+            "UGX",
+            "UYU",
+            "UZS",
+            "VEF",
+            "VND",
+            "VUV",
+            "WST",
+            "YER",
+            "ZAR",
+            "ZMW",
+            "ZWL",
+        ]
+        | None
+    ) = Field(
         None,
-        description="Date corresponding to the processing of the transaction. If in the future, the transaction is scheduled to be processed.",
-        examples=["2024-11-12T07:38:39.222Z"],
+        description="Currency code of the invoice. See [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes).",
+        examples=["EUR"],
+    )
+    status: Literal["to_pay", "paid", "draft"] | None = Field(
+        "paid",
+        description="Current invoice status.\n\n- `draft`: Invoice is in draft mode (not finalized yet).\n- `open`: Invoice for the current billing period, which will be issued at the end of the period (used for invoices with usage-based data).\n- `grace_period`: Invoice is in a review period after being issued for the billing period and before becoming due for payment.\n- `to_pay`: Invoice is awaiting payment.\n- `partially_paid`: Invoice is partially paid.\n- `paid`: Invoice is fully paid.\n- `voided`: Invoice has been voided and is no longer valid.\n- `closed`: Invoice was not issued and has been discarded.\n- `error`: Invoice failed to be paid.\n- `archived`: A previous version of an invoice.\n- `charged_on_parent`: Invoice is charged on the parent customer.\n- `pending_parent_concat`: Invoice is pending invoices concatenation on the parent customer to be grouped.\n- `uncollectible`: Invoice is uncollectible (bad debt). Only metadata (properties, custom_note, custom_properties) can be updated in this status.\n",
+        examples=["paid"],
+    )
+    invoicing_entity_id: str | None = Field(
+        None,
+        description="ID of the invoicing entity attached to the invoice.",
+        examples=["ive_47484fjdhy5"],
+    )
+    number: str | None = Field(
+        None,
+        description="Invoice number. If specified, the invoice will be considered as imported from an external source and the number will not be generated by Hyperline. You are responsible for avoiding duplicates and ensuring it does not impact the numbering sequence in Hyperline.",
+        examples=["INV-35"],
+    )
+    type: Literal["invoice", "credit_note", "document"] | None = Field(
+        None,
+        description="Type of the invoice.\n\n- `invoice`: Legal invoice to be paid by your customer.\n- `credit_note`: Legal credit note cancelling an invoice and refunding your customer.\n- `document`: Custom document with no legal value. Can be generated from a subscription to meet specific needs.\n  ",
+        examples=["invoice"],
+    )
+    document_name: str | None = Field(
+        None,
+        description="If the invoice is of type `document` you can give it a custom name (displayed on the final PDF).",
+    )
+    reference: str | None = Field(
+        None,
+        description="Unique identifier to ease reconciliation with payment. Useful for bank transfer.",
+        examples=["V0KAHOU6J3"],
+    )
+    purchase_order: str | None = Field(
+        None,
+        description="Reference to the purchase order linked to the invoice.",
+        examples=["PO-12345"],
+    )
+    custom_note: constr(max_length=20000) | None = Field(
+        None,
+        description="Custom note added to the invoice.",
+        examples=["Thank you for your purchase!"],
+    )
+    additional_info: constr(max_length=20000) | None = Field(
+        None,
+        description="Additional information added to the invoice. If not defined, it will be inherited from the invoicing entity's settings.",
+        examples=[
+            "This invoice must be paid within the payment delay indicated. After this period a late payment penalty of 10% will be applied."
+        ],
+    )
+    footer: constr(max_length=20000) | None = Field(
+        None,
+        description="Footer added to the invoice. If not defined, it will be inherited from the invoicing entity's settings.",
+        examples=["ACME (Acme SAS) is a company registered in France | SIREN N°123456"],
+    )
+    tax_rate: confloat(ge=0.0, le=100.0) | None = Field(
+        None,
+        deprecated=True,
+        description="Deprecated field, please use `line_items[].tax_rate`.",
+    )
+    tax_scheme: Literal["auto", "not_eligible"] | None = Field(
+        "auto",
+        description="Tax scheme of the invoice.\n\n- `auto`: Tax is automatically computed and applied.\n- `not_eligible`: Tax collection is disabled for the invoice.\n  ",
+        examples=["auto"],
+    )
+    payment_method_strategy: Literal["current", "external"] | None = Field(
+        None,
+        description="\nPayment method strategy used to charge the invoice. Only applies to `to_pay` status.\n\n- `current`: Use the current default payment method of the customer.\n- `external`: Manage the payment of the invoice outside of Hyperline.\n",
+        examples=["external"],
     )
     payment_method_id: str | None = Field(
         None,
-        description="Payment method used to execute the transaction. Only applies to scheduled transactions with a process_at date in the future.",
-        examples=["pm_1xMpj5bwRqN7LM"],
+        description="ID of the default payment method used to pay the invoice. Transactions related to the invoice may use different payment methods.",
+        examples=["pm_1ryTrMj4TTAT1N"],
     )
-    payment_method_type: Literal["transfer"] | None = None
     bank_account_id: str | None = Field(
         None,
-        description="Bank account linked to the transaction.",
+        description="ID of the bank account displayed on the invoice. Transactions related to the invoice may use different bank accounts.",
         examples=["bac_KJyPrMA1toAqRG"],
     )
-    provider_name: Literal["airwallex", "gocardless", "mollie", "stripe"] | None = (
-        Field(None, description="Provider name.")
-    )
-    provider_id: str | None = Field(
+    subscription_id: str | None = Field(
         None,
-        description="Provider ID. Required if multiple instances of the same provider are connected in Hyperline.",
+        description="ID of the subscription related to the invoice.",
+        examples=["sub_amiaWZ3lzDIWaoT"],
     )
-    provider_transaction_id: str | None = Field(
+    emitted_at: AwareDatetime | None = Field(
         None,
-        description="ID of the transaction on the provider's side. If the transaction is pending, Hyperline will automatically refresh it with the latest details until it is settled. Note that the `amount` and `process_at` fields may be overridden by the transaction data.",
+        description="Issue date of the invoice.",
+        examples=["2024-10-13T00:00:00.000Z"],
     )
-
-
-class CreateInvoiceCoupon(BaseModel):
-    model_config = ConfigDict(
-        extra="allow",
-    )
-    coupon_id: str | None = Field(
-        None, description="Coupon ID.", examples=["cou_1eTaiytfA0i2Vb"]
-    )
-    name: str | None = Field(
-        None, description="Name of the coupon.", examples=["Black Friday 2023"]
-    )
-    discount_amount: PositiveFloat | None = Field(
+    due_at: AwareDatetime | None = Field(
         None,
-        description="Amount corresponding to the discounted part of the total amount.",
-        examples=[500],
+        description="Due date of the invoice. Computed from the issue date and the payment delay configured in your settings.",
+        examples=["2024-11-12T00:00:00.000Z"],
     )
-    line_item_indexes: list[float] | None = Field(
+    settled_at: AwareDatetime | None = Field(
         None,
-        description="Index of the line items to which the coupon applies. Null means all line items.",
-        examples=[[0, 1]],
+        description="Date the invoice was fully paid.",
+        examples=["2024-10-15T14:01:56.000Z"],
     )
-
-
-class InvoiceDetailsV1Integration(BaseModel):
-    entity_id: str | None = Field(None, description="ID of the entity in the provider.")
-    provider_name: (
-        Literal[
-            "adyen",
-            "stripe",
-            "mollie",
-            "gocardless",
-            "airwallex",
-            "salesforce",
-            "hubspot",
-            "attio",
-            "xero",
-            "pennylane",
-            "zoho-books",
-            "exact-online",
-            "quickbooks",
-            "netsuite",
-            "rillet",
-            "datev",
-            "anrok",
-            "chargebee",
-            "slack",
-            "plain",
-            "zendesk",
-            "pylon",
-            "intercom",
-            "front",
-            "helpscout",
-            "claap",
-            "grain",
-            "gong",
-            "jiminny",
-            "posthog",
-        ]
-        | None
-    ) = Field(None, description="Provider name.")
-    provider_account_id: str | None = Field(
-        None, description="ID of the connected provider account."
-    )
-
-
-class CustomerTaxId(BaseModel):
-    value: str | None = Field(
-        None, description="Value of the customer tax ID.", examples=["FR123456789"]
-    )
-    status: (
-        Literal["valid", "invalid", "mismatch", "unverified", "unsupported"] | None
+    properties: (
+        dict[str, str | float | bool | list[str | float | bool | None] | None] | None
     ) = Field(
         None,
-        description="\nVerification status of the customer tax ID.\n\n- `valid`: Tax ID has been verified and is valid.\n- `invalid`: Tax ID has been verified and is invalid.\n- `mismatch`: Tax ID is valid but is for a different country than the customer's country.\n- `unverified`: Tax ID has not been verified yet.\n- `unsupported`: Tax ID verification for this type not supported yet.\n ",
-        examples=["valid"],
+        description="Key/value pairs to store any metadata useful in your context.",
     )
-
-
-class CustomerShippingAddress(BaseModel):
-    name: str | None = Field(None, description="Address name.", examples=["Acme"])
-    line1: str | None = Field(
-        None, description="Address first line.", examples=["5 rue de Paradis"]
-    )
-    line2: str | None = Field(
-        None, description="Address second line (optional).", examples=[None]
-    )
-    city: str | None = Field(None, description="Address city.", examples=["Paris"])
-    zip: str | None = Field(None, description="Address ZIP code.", examples=["75010"])
-    state: (
-        Literal[
-            "AA",
-            "AE",
-            "AK",
-            "AL",
-            "AP",
-            "AR",
-            "AS",
-            "AZ",
-            "CA",
-            "CO",
-            "CT",
-            "DC",
-            "DE",
-            "FL",
-            "GA",
-            "GU",
-            "HI",
-            "IA",
-            "ID",
-            "IL",
-            "IN",
-            "KS",
-            "KY",
-            "LA",
-            "MA",
-            "MD",
-            "ME",
-            "MI",
-            "MN",
-            "MO",
-            "MP",
-            "MS",
-            "MT",
-            "NC",
-            "ND",
-            "NE",
-            "NH",
-            "NJ",
-            "NM",
-            "NV",
-            "NY",
-            "OH",
-            "OK",
-            "OR",
-            "PA",
-            "PR",
-            "RI",
-            "SC",
-            "SD",
-            "TN",
-            "TX",
-            "UT",
-            "VA",
-            "VI",
-            "VT",
-            "WA",
-            "WI",
-            "WV",
-            "WY",
-        ]
-        | None
+    custom_properties: (
+        dict[str, str | float | bool | AwareDatetime | list[str] | None] | None
     ) = Field(
         None,
-        description="Only for US country. Second part of subdivision code in ISO format. See [ISO 3166-2:US](https://en.wikipedia.org/wiki/ISO_3166-2:US).",
-        examples=["CA"],
+        description="Values for custom properties defined for the `invoice` entity, keyed by slug.",
     )
-    country: (
-        Literal[
-            "AD",
-            "AE",
-            "AF",
-            "AG",
-            "AI",
-            "AL",
-            "AM",
-            "AO",
-            "AQ",
-            "AR",
-            "AS",
-            "AT",
-            "AU",
-            "AW",
-            "AX",
-            "AZ",
-            "BA",
-            "BB",
-            "BD",
-            "BE",
-            "BG",
-            "BH",
-            "BI",
-            "BJ",
-            "BL",
-            "BM",
-            "BN",
-            "BO",
-            "BQ",
-            "BR",
-            "BS",
-            "BT",
-            "BF",
-            "BV",
-            "BW",
-            "BY",
-            "BZ",
-            "CA",
-            "CC",
-            "CD",
-            "CF",
-            "CG",
-            "CH",
-            "CI",
-            "CK",
-            "CL",
-            "CM",
-            "CN",
-            "CO",
-            "CR",
-            "CU",
-            "CV",
-            "CW",
-            "CX",
-            "CY",
-            "CZ",
-            "DE",
-            "DJ",
-            "DK",
-            "DM",
-            "DO",
-            "DZ",
-            "EC",
-            "EE",
-            "EG",
-            "EH",
-            "ER",
-            "ES",
-            "ES-CE",
-            "ES-ML",
-            "ET",
-            "FI",
-            "FJ",
-            "FK",
-            "FM",
-            "FO",
-            "FR",
-            "GA",
-            "GB",
-            "GD",
-            "GE",
-            "GF",
-            "GG",
-            "GH",
-            "GI",
-            "GL",
-            "GM",
-            "GN",
-            "GP",
-            "GQ",
-            "GR",
-            "GS",
-            "GT",
-            "GU",
-            "GW",
-            "GY",
-            "HK",
-            "HM",
-            "HN",
-            "HR",
-            "HT",
-            "HU",
-            "IC",
-            "ID",
-            "IE",
-            "IL",
-            "IM",
-            "IN",
-            "IO",
-            "IQ",
-            "IR",
-            "IS",
-            "IT",
-            "JE",
-            "JM",
-            "JO",
-            "JP",
-            "KE",
-            "KG",
-            "KH",
-            "KI",
-            "KM",
-            "KN",
-            "KP",
-            "KR",
-            "KW",
-            "KY",
-            "KZ",
-            "LA",
-            "LB",
-            "LC",
-            "LI",
-            "LK",
-            "LR",
-            "LS",
-            "LT",
-            "LU",
-            "LV",
-            "LY",
-            "MA",
-            "MC",
-            "MD",
-            "ME",
-            "MF",
-            "MG",
-            "MH",
-            "MK",
-            "ML",
-            "MM",
-            "MN",
-            "MO",
-            "MP",
-            "MQ",
-            "MR",
-            "MS",
-            "MT",
-            "MU",
-            "MV",
-            "MW",
-            "MX",
-            "MY",
-            "MZ",
-            "NA",
-            "NC",
-            "NE",
-            "NF",
-            "NG",
-            "NI",
-            "NL",
-            "NO",
-            "NP",
-            "NR",
-            "NU",
-            "NZ",
-            "OM",
-            "PA",
-            "PE",
-            "PF",
-            "PG",
-            "PH",
-            "PK",
-            "PL",
-            "PM",
-            "PN",
-            "PR",
-            "PS",
-            "PT",
-            "PT-20",
-            "PT-30",
-            "PW",
-            "PY",
-            "QA",
-            "RE",
-            "RO",
-            "RS",
-            "RU",
-            "RW",
-            "SA",
-            "SB",
-            "SC",
-            "SD",
-            "SE",
-            "SG",
-            "SH",
-            "SI",
-            "SJ",
-            "SK",
-            "SL",
-            "SM",
-            "SN",
-            "SO",
-            "SR",
-            "SS",
-            "ST",
-            "SV",
-            "SX",
-            "SY",
-            "SZ",
-            "TC",
-            "TD",
-            "TF",
-            "TG",
-            "TH",
-            "TJ",
-            "TK",
-            "TL",
-            "TM",
-            "TN",
-            "TO",
-            "TR",
-            "TT",
-            "TV",
-            "TW",
-            "TZ",
-            "UA",
-            "UG",
-            "UM",
-            "US",
-            "UY",
-            "UZ",
-            "VA",
-            "VC",
-            "VE",
-            "VG",
-            "VI",
-            "VN",
-            "VU",
-            "WF",
-            "WS",
-            "XK",
-            "YE",
-            "YT",
-            "ZA",
-            "ZM",
-            "ZW",
-        ]
-        | None
-    ) = Field(
+    additional_display_fields: list[CreateInvoiceAdditionalDisplayField] | None = Field(
         None,
-        description="Two-letter country code in ISO format. See [ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).",
-        examples=["FR"],
+        description="Ordered additional fields displayed on the invoice PDF. Invoice and customer custom properties are referenced by slug.",
+        max_length=20,
     )
-
-
-class CustomerSubscription(BaseModel):
-    id: str | None = Field(
-        None, description="Subscription ID.", examples=["sub_0kIc7jrF7gV00V"]
-    )
-    status: (
-        Literal[
-            "draft",
-            "pending",
-            "trialing",
-            "active",
-            "paused",
-            "errored",
-            "cancelled",
-            "voided",
-            "archived",
-        ]
-        | None
-    ) = Field(None, description="Status of the subscription.", examples=["active"])
-    current_period_started_at: AwareDatetime | None = Field(
-        None,
-        description="Start date of the current period. UTC date time string in the [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) format.",
-        examples=["2024-10-12T07:00:01.860Z"],
-    )
-    current_period_ends_at: AwareDatetime | None = Field(
-        None,
-        description="End date of the current period. UTC date time string in the [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) format.",
-        examples=["2024-11-12T07:00:01.860Z"],
-    )
-    plan_id: str | None = Field(
-        None, deprecated=True, description="Plan ID.", examples=["plan_34hdd843hReh"]
-    )
-    checkout_session_id: str | None = Field(
-        None, description="Checkout session ID.", examples=["che_949djdj39RJj"]
-    )
-
-
-class CustomerIntegration(BaseModel):
-    entity_id: str | None = Field(None, description="ID of the entity in the provider.")
-    provider_name: (
-        Literal[
-            "adyen",
-            "stripe",
-            "mollie",
-            "gocardless",
-            "airwallex",
-            "salesforce",
-            "hubspot",
-            "attio",
-            "xero",
-            "pennylane",
-            "zoho-books",
-            "exact-online",
-            "quickbooks",
-            "netsuite",
-            "rillet",
-            "datev",
-            "anrok",
-            "chargebee",
-            "slack",
-            "plain",
-            "zendesk",
-            "pylon",
-            "intercom",
-            "front",
-            "helpscout",
-            "claap",
-            "grain",
-            "gong",
-            "jiminny",
-            "posthog",
-        ]
-        | None
-    ) = Field(None, description="Provider name.")
-    provider_account_id: str | None = Field(
-        None, description="ID of the connected provider account."
-    )
-
-
-class CustomerOwner(BaseModel):
-    id: str | None = Field(
-        None, description="Hyperline user ID.", examples=["usr_KMcxRWc1ZQwvJG"]
-    )
-    email: EmailStr | None = Field(
-        None, description="User email.", examples=["owner@acme.com"]
-    )
-    first_name: str | None = Field(
-        None, description="User first name.", examples=["Ada"]
-    )
-    last_name: str | None = Field(
-        None, description="User last name.", examples=["Lovelace"]
-    )
-    picture_url: str | None = Field(
-        None, description="User picture URL.", examples=[None]
-    )
-
-
-class CustomerFollower(BaseModel):
-    id: str | None = Field(
-        None, description="Hyperline user ID.", examples=["usr_KMcxRWc1ZQwvJG"]
-    )
-    email: EmailStr | None = Field(
-        None, description="User email.", examples=["owner@acme.com"]
-    )
-    first_name: str | None = Field(
-        None, description="User first name.", examples=["Ada"]
-    )
-    last_name: str | None = Field(
-        None, description="User last name.", examples=["Lovelace"]
-    )
-    picture_url: str | None = Field(
-        None, description="User picture URL.", examples=[None]
-    )
+    line_items: list[CreateInvoiceLineItem] | None = Field(None, min_length=1)
+    transactions: list[CreateInvoiceTransaction] | None = None
+    coupons: list[CreateInvoiceCoupon] | None = None
 
 
 class Customer(BaseModel):
@@ -3205,9 +6261,7 @@ class Customer(BaseModel):
         None,
         description="A list of key value with the slug of the custom property as the key and the custom property value as value.",
     )
-    billing_address: Address | None = Field(
-        None, description="Customer billing address.", title="Address"
-    )
+    billing_address: Address | None = None
     shipping_address: CustomerShippingAddress | None = Field(
         None, description="Customer shipping address.", title="CustomerShippingAddress"
     )
@@ -3326,3056 +6380,7 @@ class Customer(BaseModel):
     )
 
 
-class PaymentMethod(BaseModel):
-    model_config = ConfigDict(
-        extra="allow",
-    )
-    id: str | None = Field(
-        None, description="Payment method ID.", examples=["pm_1xMpj5bwRqN7LM"]
-    )
-    status: Literal["active", "pending", "expired", "errored"] | None = Field(
-        None,
-        description="\nPayment method status.\n\n- `active`: The payment method is ready to be used.\n- `pending`: The payment method is pending activation or being validated.\n  ",
-        examples=["active"],
-    )
-    type: Literal["card", "apple_pay", "google_pay"] | None = Field(
-        None,
-        description="\nPayment method type.\n\n- `card`: Credit or debit card\n- `apple_pay`: Apple Pay\n- `google_pay`: Google Pay\n- `direct_debit_sepa`: SEPA Direct Debit\n- `direct_debit_ach`: ACH Direct Debit\n- `direct_debit_bacs`: Bacs Direct Debit\n- `stripe_link`: Stripe Link\n  ",
-        examples=["card"],
-    )
-    last_4_digits: float | None = Field(
-        None, description="Last four digits of the card.", examples=[2718]
-    )
-    expiration_date: str | None = Field(
-        None,
-        description="Expiration date of the card using YYYY-MM format.",
-        examples=["2027-11"],
-    )
-    brand: str | None = Field(
-        None, description="Brand of the card.", examples=["visa", "mastercard", "amex"]
-    )
-    error_type: (
-        Literal[
-            "authentication_required",
-            "authorization_error",
-            "insufficient_funds",
-            "declined",
-            "expired",
-            "fraud",
-            "invalid",
-            "mandate_invalid",
-            "not_supported",
-            "unknown",
-        ]
-        | None
-    ) = Field(
-        None,
-        description="\nPayment method error type.\n\n- `authentication_required`: The card was declined as the transaction requires authentication (e.g. 3-D Secure). The customer should go to their portal page and authenticate their card. If the error happened on an already authenticated transaction, the customer needs to contact their card issuer for more information.\n- `authorization_error`: A transaction authorization cannot be created for a variety of reasons such as the card issuer couldn't be reached, or the card requires a PIN.\n- `declined`: The payment method was declined for a variety of reasons such as a card reported as lost or stolen, insufficient funds or reaching the limit available on the method to complete the purchase, a payment method on a known block list, etc.\n- `expired`: The payment method is expired. The customer should go to their portal page and change their payment method.\n- `fraud`: The payment provider suspected the payment method was fraudulent and has been blocked. Don't report more detailed information to your customer, and check on your provider account.\n- `invalid`: The payment method is invalid in most cases because of incorrect details (card/account number, CVC, expiration date, postal code).\n- `not_supported`: The payment method doesn't support this type of purchase (e.g. currency, online payment).\n- `unknown`: A generic error happened on the payment provider side.\n  ",
-        examples=["expired"],
-    )
-    account_number_ending: str | None = Field(
-        None, description="Last characters of the account number.", examples=["6789"]
-    )
-
-
-class StandardBankAccount(BaseModel):
-    type: Literal["standard"] | None = Field(
-        None,
-        description="Bank account type.\n\n- `standard`: Bank account not connected through open banking.\n- `connected`: Bank account connected through open banking.\n",
-        examples=["standard"],
-    )
-    id: str | None = Field(
-        None, description="Bank account ID.", examples=["bac_KJyPrMA1toAqRG"]
-    )
-    currency: (
-        Literal[
-            "EUR",
-            "AED",
-            "AFN",
-            "XCD",
-            "ALL",
-            "AMD",
-            "AOA",
-            "ARS",
-            "USD",
-            "AUD",
-            "AWG",
-            "AZN",
-            "BAM",
-            "BBD",
-            "BDT",
-            "BGN",
-            "BHD",
-            "BIF",
-            "XOF",
-            "BMD",
-            "BND",
-            "BOB",
-            "BRL",
-            "BSD",
-            "BTN",
-            "NOK",
-            "BWP",
-            "BYR",
-            "BZD",
-            "CAD",
-            "CDF",
-            "XAF",
-            "CHF",
-            "NZD",
-            "CLP",
-            "CNY",
-            "COP",
-            "CRC",
-            "CUP",
-            "CVE",
-            "ANG",
-            "CZK",
-            "DJF",
-            "DKK",
-            "DOP",
-            "DZD",
-            "EGP",
-            "MAD",
-            "ERN",
-            "ETB",
-            "FJD",
-            "FKP",
-            "GBP",
-            "GEL",
-            "GHS",
-            "GIP",
-            "GMD",
-            "GNF",
-            "GTQ",
-            "GYD",
-            "HKD",
-            "HNL",
-            "HRK",
-            "HTG",
-            "HUF",
-            "IDR",
-            "ILS",
-            "INR",
-            "IQD",
-            "IRR",
-            "ISK",
-            "JMD",
-            "JOD",
-            "JPY",
-            "KES",
-            "KGS",
-            "KHR",
-            "KMF",
-            "KPW",
-            "KRW",
-            "KWD",
-            "KYD",
-            "KZT",
-            "LAK",
-            "LBP",
-            "LKR",
-            "LRD",
-            "LSL",
-            "LYD",
-            "MDL",
-            "MGA",
-            "MKD",
-            "MMK",
-            "MNT",
-            "MOP",
-            "MRO",
-            "MUR",
-            "MVR",
-            "MWK",
-            "MXN",
-            "MYR",
-            "MZN",
-            "NAD",
-            "XPF",
-            "NGN",
-            "NIO",
-            "NPR",
-            "OMR",
-            "PAB",
-            "PEN",
-            "PGK",
-            "PHP",
-            "PKR",
-            "PLN",
-            "PYG",
-            "QAR",
-            "RON",
-            "RSD",
-            "RUB",
-            "RWF",
-            "SAR",
-            "SBD",
-            "SCR",
-            "SDG",
-            "SEK",
-            "SGD",
-            "SHP",
-            "SLL",
-            "SOS",
-            "SRD",
-            "SSP",
-            "STD",
-            "SYP",
-            "SZL",
-            "THB",
-            "TJS",
-            "TMT",
-            "TND",
-            "TOP",
-            "TRY",
-            "TTD",
-            "TWD",
-            "TZS",
-            "UAH",
-            "UGX",
-            "UYU",
-            "UZS",
-            "VEF",
-            "VND",
-            "VUV",
-            "WST",
-            "YER",
-            "ZAR",
-            "ZMW",
-            "ZWL",
-        ]
-        | None
-    ) = Field(None, description="Bank account currency.", examples=["EUR"])
-    bank_name: str | None = Field(
-        None, description="Bank name.", examples=["Fake bank"]
-    )
-    name: str | None = Field(
-        None, description="Bank account display name.", examples=["Main account"]
-    )
-    country: str | None = Field(
-        None, description="Bank account country.", examples=["FR"]
-    )
-    format: Literal["iban_bic_swift"] | None = Field(
-        None, description="Bank account details format.", examples=["iban_bic_swift"]
-    )
-    iban: str | None = Field(
-        None, description="IBAN.", examples=["FR7630006000011234567890189"]
-    )
-    bic_swift: str | None = Field(
-        None, description="BIC or SWIFT code.", examples=["BNPAFRPP"]
-    )
-    sort_code: str | None = Field(None, description="Sort code.", examples=["123456"])
-    account_number: str | None = Field(
-        None, description="Account number.", examples=["000123456789"]
-    )
-    routing_number: str | None = Field(
-        None, description="Routing number.", examples=["021000021"]
-    )
-
-
-class ConnectedBankAccount(BaseModel):
-    type: Literal["connected"] | None = Field(
-        None,
-        description="Bank account type.\n\n- `standard`: Bank account not connected through open banking.\n- `connected`: Bank account connected through open banking.\n",
-        examples=["connected"],
-    )
-    status: Literal["active", "error"] | None = Field(
-        None, description="Bank account connection status.", examples=["active"]
-    )
-    balance: float | None = Field(
-        None,
-        description="Latest known balance for connected bank accounts, expressed in the currency's smallest unit.",
-        examples=[120500],
-    )
-    last_refreshed_at: AwareDatetime | None = Field(
-        None,
-        description="Date when the connected bank account was last refreshed.",
-        examples=["2026-01-15T10:30:00.000Z"],
-    )
-    last_error_type: (
-        Literal["provider_error", "invalid_credentials", "unknown"] | None
-    ) = Field(
-        None,
-        description="Latest connection error type, when the account is errored.",
-        examples=[None],
-    )
-    id: str | None = Field(
-        None, description="Bank account ID.", examples=["bac_KJyPrMA1toAqRG"]
-    )
-    currency: (
-        Literal[
-            "EUR",
-            "AED",
-            "AFN",
-            "XCD",
-            "ALL",
-            "AMD",
-            "AOA",
-            "ARS",
-            "USD",
-            "AUD",
-            "AWG",
-            "AZN",
-            "BAM",
-            "BBD",
-            "BDT",
-            "BGN",
-            "BHD",
-            "BIF",
-            "XOF",
-            "BMD",
-            "BND",
-            "BOB",
-            "BRL",
-            "BSD",
-            "BTN",
-            "NOK",
-            "BWP",
-            "BYR",
-            "BZD",
-            "CAD",
-            "CDF",
-            "XAF",
-            "CHF",
-            "NZD",
-            "CLP",
-            "CNY",
-            "COP",
-            "CRC",
-            "CUP",
-            "CVE",
-            "ANG",
-            "CZK",
-            "DJF",
-            "DKK",
-            "DOP",
-            "DZD",
-            "EGP",
-            "MAD",
-            "ERN",
-            "ETB",
-            "FJD",
-            "FKP",
-            "GBP",
-            "GEL",
-            "GHS",
-            "GIP",
-            "GMD",
-            "GNF",
-            "GTQ",
-            "GYD",
-            "HKD",
-            "HNL",
-            "HRK",
-            "HTG",
-            "HUF",
-            "IDR",
-            "ILS",
-            "INR",
-            "IQD",
-            "IRR",
-            "ISK",
-            "JMD",
-            "JOD",
-            "JPY",
-            "KES",
-            "KGS",
-            "KHR",
-            "KMF",
-            "KPW",
-            "KRW",
-            "KWD",
-            "KYD",
-            "KZT",
-            "LAK",
-            "LBP",
-            "LKR",
-            "LRD",
-            "LSL",
-            "LYD",
-            "MDL",
-            "MGA",
-            "MKD",
-            "MMK",
-            "MNT",
-            "MOP",
-            "MRO",
-            "MUR",
-            "MVR",
-            "MWK",
-            "MXN",
-            "MYR",
-            "MZN",
-            "NAD",
-            "XPF",
-            "NGN",
-            "NIO",
-            "NPR",
-            "OMR",
-            "PAB",
-            "PEN",
-            "PGK",
-            "PHP",
-            "PKR",
-            "PLN",
-            "PYG",
-            "QAR",
-            "RON",
-            "RSD",
-            "RUB",
-            "RWF",
-            "SAR",
-            "SBD",
-            "SCR",
-            "SDG",
-            "SEK",
-            "SGD",
-            "SHP",
-            "SLL",
-            "SOS",
-            "SRD",
-            "SSP",
-            "STD",
-            "SYP",
-            "SZL",
-            "THB",
-            "TJS",
-            "TMT",
-            "TND",
-            "TOP",
-            "TRY",
-            "TTD",
-            "TWD",
-            "TZS",
-            "UAH",
-            "UGX",
-            "UYU",
-            "UZS",
-            "VEF",
-            "VND",
-            "VUV",
-            "WST",
-            "YER",
-            "ZAR",
-            "ZMW",
-            "ZWL",
-        ]
-        | None
-    ) = Field(None, description="Bank account currency.", examples=["EUR"])
-    bank_name: str | None = Field(
-        None, description="Bank name.", examples=["Fake bank"]
-    )
-    name: str | None = Field(
-        None, description="Bank account display name.", examples=["Main account"]
-    )
-    country: str | None = Field(
-        None, description="Bank account country.", examples=["FR"]
-    )
-    format: Literal["iban_bic_swift"] | None = Field(
-        None, description="Bank account details format.", examples=["iban_bic_swift"]
-    )
-    iban: str | None = Field(
-        None, description="IBAN.", examples=["FR7630006000011234567890189"]
-    )
-    bic_swift: str | None = Field(
-        None, description="BIC or SWIFT code.", examples=["BNPAFRPP"]
-    )
-    sort_code: str | None = Field(None, description="Sort code.", examples=["123456"])
-    account_number: str | None = Field(
-        None, description="Account number.", examples=["000123456789"]
-    )
-    routing_number: str | None = Field(
-        None, description="Routing number.", examples=["021000021"]
-    )
-
-
-class InvoiceAdditionalDisplayField(BaseModel):
-    model_config = ConfigDict(
-        extra="allow",
-    )
-    type: Literal["standard"] | None = Field(
-        None, description="Display a standard invoice field."
-    )
-    field: Literal["customer_id", "subscription_id", "quote_id"] | None = Field(
-        None, description="Standard invoice field to display."
-    )
-    slug: str | None = Field(
-        None, description="Slug of the invoice or customer custom property to display."
-    )
-    label: constr(min_length=1, max_length=100) | None = Field(
-        None, description="Label displayed on the invoice."
-    )
-    value: constr(max_length=500) | None = Field(
-        None, description="Value displayed on the invoice."
-    )
-
-
-class InvoiceAllocation(BaseModel):
-    invoice_id: str | None = Field(
-        None,
-        description="ID of the invoice receiving the credit.",
-        examples=["inv_2QdJDDUej969ev"],
-    )
-    amount: float | None = Field(
-        None,
-        description="Credit amount applied to the invoice, in the currency's smallest unit.",
-        examples=[780000],
-    )
-
-
-class InvoiceTransactionProviderFee(BaseModel):
-    amount: float | None = Field(
-        None, description="Monetary amount. Expressed in currency's smallest unit."
-    )
-    currency: (
-        Literal[
-            "EUR",
-            "AED",
-            "AFN",
-            "XCD",
-            "ALL",
-            "AMD",
-            "AOA",
-            "ARS",
-            "USD",
-            "AUD",
-            "AWG",
-            "AZN",
-            "BAM",
-            "BBD",
-            "BDT",
-            "BGN",
-            "BHD",
-            "BIF",
-            "XOF",
-            "BMD",
-            "BND",
-            "BOB",
-            "BRL",
-            "BSD",
-            "BTN",
-            "NOK",
-            "BWP",
-            "BYR",
-            "BZD",
-            "CAD",
-            "CDF",
-            "XAF",
-            "CHF",
-            "NZD",
-            "CLP",
-            "CNY",
-            "COP",
-            "CRC",
-            "CUP",
-            "CVE",
-            "ANG",
-            "CZK",
-            "DJF",
-            "DKK",
-            "DOP",
-            "DZD",
-            "EGP",
-            "MAD",
-            "ERN",
-            "ETB",
-            "FJD",
-            "FKP",
-            "GBP",
-            "GEL",
-            "GHS",
-            "GIP",
-            "GMD",
-            "GNF",
-            "GTQ",
-            "GYD",
-            "HKD",
-            "HNL",
-            "HRK",
-            "HTG",
-            "HUF",
-            "IDR",
-            "ILS",
-            "INR",
-            "IQD",
-            "IRR",
-            "ISK",
-            "JMD",
-            "JOD",
-            "JPY",
-            "KES",
-            "KGS",
-            "KHR",
-            "KMF",
-            "KPW",
-            "KRW",
-            "KWD",
-            "KYD",
-            "KZT",
-            "LAK",
-            "LBP",
-            "LKR",
-            "LRD",
-            "LSL",
-            "LYD",
-            "MDL",
-            "MGA",
-            "MKD",
-            "MMK",
-            "MNT",
-            "MOP",
-            "MRO",
-            "MUR",
-            "MVR",
-            "MWK",
-            "MXN",
-            "MYR",
-            "MZN",
-            "NAD",
-            "XPF",
-            "NGN",
-            "NIO",
-            "NPR",
-            "OMR",
-            "PAB",
-            "PEN",
-            "PGK",
-            "PHP",
-            "PKR",
-            "PLN",
-            "PYG",
-            "QAR",
-            "RON",
-            "RSD",
-            "RUB",
-            "RWF",
-            "SAR",
-            "SBD",
-            "SCR",
-            "SDG",
-            "SEK",
-            "SGD",
-            "SHP",
-            "SLL",
-            "SOS",
-            "SRD",
-            "SSP",
-            "STD",
-            "SYP",
-            "SZL",
-            "THB",
-            "TJS",
-            "TMT",
-            "TND",
-            "TOP",
-            "TRY",
-            "TTD",
-            "TWD",
-            "TZS",
-            "UAH",
-            "UGX",
-            "UYU",
-            "UZS",
-            "VEF",
-            "VND",
-            "VUV",
-            "WST",
-            "YER",
-            "ZAR",
-            "ZMW",
-            "ZWL",
-        ]
-        | None
-    ) = Field(
-        None,
-        description="Currency code. See [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes).",
-        examples=["EUR"],
-    )
-    exchange_rate: float | None = None
-
-
-class InvoiceTransactionChargeback(BaseModel):
-    amount: float | None = Field(
-        None, description="Total chargeback loss amount.", examples=[31500]
-    )
-    last_chargeback_at: AwareDatetime | None = Field(
-        None,
-        description="Date corresponding to the last chargeback loss event.",
-        examples=["2024-10-13T10:00:01.860Z"],
-    )
-
-
-class InvoiceTransactionIntegration(BaseModel):
-    entity_id: str | None = Field(None, description="ID of the entity in the provider.")
-    provider_name: (
-        Literal[
-            "adyen",
-            "stripe",
-            "mollie",
-            "gocardless",
-            "airwallex",
-            "salesforce",
-            "hubspot",
-            "attio",
-            "xero",
-            "pennylane",
-            "zoho-books",
-            "exact-online",
-            "quickbooks",
-            "netsuite",
-            "rillet",
-            "datev",
-            "anrok",
-            "chargebee",
-            "slack",
-            "plain",
-            "zendesk",
-            "pylon",
-            "intercom",
-            "front",
-            "helpscout",
-            "claap",
-            "grain",
-            "gong",
-            "jiminny",
-            "posthog",
-        ]
-        | None
-    ) = Field(None, description="Provider name.")
-    provider_account_id: str | None = Field(
-        None, description="ID of the connected provider account."
-    )
-
-
-class Transaction(BaseModel):
-    id: str | None = Field(
-        None, description="Transaction ID.", examples=["tra_2QdJDDUej969ev"]
-    )
-    type: Literal["subscription", "one_time", "refund", "chargeback"] | None = Field(
-        None,
-        description="\nTransaction type.\n\n- `subscription`: The transaction is related to a subscription payment.\n- `one_time`: The transaction is related to a one-time payment.\n- `refund`: The transaction is related to a refund payment.\n- `chargeback`: The transaction records funds withdrawn after a payment dispute.\n  ",
-        examples=["subscription"],
-    )
-    amount: float | None = Field(
-        None, description="Transaction amount.", examples=[31500]
-    )
-    currency: (
-        Literal[
-            "EUR",
-            "AED",
-            "AFN",
-            "XCD",
-            "ALL",
-            "AMD",
-            "AOA",
-            "ARS",
-            "USD",
-            "AUD",
-            "AWG",
-            "AZN",
-            "BAM",
-            "BBD",
-            "BDT",
-            "BGN",
-            "BHD",
-            "BIF",
-            "XOF",
-            "BMD",
-            "BND",
-            "BOB",
-            "BRL",
-            "BSD",
-            "BTN",
-            "NOK",
-            "BWP",
-            "BYR",
-            "BZD",
-            "CAD",
-            "CDF",
-            "XAF",
-            "CHF",
-            "NZD",
-            "CLP",
-            "CNY",
-            "COP",
-            "CRC",
-            "CUP",
-            "CVE",
-            "ANG",
-            "CZK",
-            "DJF",
-            "DKK",
-            "DOP",
-            "DZD",
-            "EGP",
-            "MAD",
-            "ERN",
-            "ETB",
-            "FJD",
-            "FKP",
-            "GBP",
-            "GEL",
-            "GHS",
-            "GIP",
-            "GMD",
-            "GNF",
-            "GTQ",
-            "GYD",
-            "HKD",
-            "HNL",
-            "HRK",
-            "HTG",
-            "HUF",
-            "IDR",
-            "ILS",
-            "INR",
-            "IQD",
-            "IRR",
-            "ISK",
-            "JMD",
-            "JOD",
-            "JPY",
-            "KES",
-            "KGS",
-            "KHR",
-            "KMF",
-            "KPW",
-            "KRW",
-            "KWD",
-            "KYD",
-            "KZT",
-            "LAK",
-            "LBP",
-            "LKR",
-            "LRD",
-            "LSL",
-            "LYD",
-            "MDL",
-            "MGA",
-            "MKD",
-            "MMK",
-            "MNT",
-            "MOP",
-            "MRO",
-            "MUR",
-            "MVR",
-            "MWK",
-            "MXN",
-            "MYR",
-            "MZN",
-            "NAD",
-            "XPF",
-            "NGN",
-            "NIO",
-            "NPR",
-            "OMR",
-            "PAB",
-            "PEN",
-            "PGK",
-            "PHP",
-            "PKR",
-            "PLN",
-            "PYG",
-            "QAR",
-            "RON",
-            "RSD",
-            "RUB",
-            "RWF",
-            "SAR",
-            "SBD",
-            "SCR",
-            "SDG",
-            "SEK",
-            "SGD",
-            "SHP",
-            "SLL",
-            "SOS",
-            "SRD",
-            "SSP",
-            "STD",
-            "SYP",
-            "SZL",
-            "THB",
-            "TJS",
-            "TMT",
-            "TND",
-            "TOP",
-            "TRY",
-            "TTD",
-            "TWD",
-            "TZS",
-            "UAH",
-            "UGX",
-            "UYU",
-            "UZS",
-            "VEF",
-            "VND",
-            "VUV",
-            "WST",
-            "YER",
-            "ZAR",
-            "ZMW",
-            "ZWL",
-        ]
-        | None
-    ) = Field(None, description="Transaction currency.", examples=["EUR"])
-    customer_id: str | None = Field(
-        None,
-        description="ID of the customer linked to the transaction.",
-        examples=["cus_QalW2vTAdkR6IY"],
-    )
-    provider_id: str | None = Field(
-        None,
-        deprecated=True,
-        description="Deprecated field, please use `integrations[].entity_id`.",
-    )
-    process_at: AwareDatetime | None = Field(
-        None,
-        description="Date corresponding to the processing of the transaction. If in the future, the transaction is scheduled to be processed.",
-        examples=["2024-11-12T07:38:39.222Z"],
-    )
-    settled_at: AwareDatetime | None = Field(
-        None,
-        description="Date when the transaction was settled. For provider transactions, this is derived from provider settlement data when available.",
-        examples=["2024-11-12T07:38:39.222Z"],
-    )
-    refunded_at: AwareDatetime | None = Field(
-        None,
-        description="Date corresponding to the refund of the transaction.",
-        examples=[None],
-    )
-    original_transaction_id: str | None = Field(
-        None,
-        description="Original payment transaction ID for a refund or chargeback.",
-        examples=[None],
-    )
-    reversed_at: AwareDatetime | None = Field(
-        None,
-        description="Date when a chargeback withdrawal was reversed.",
-        examples=[None],
-    )
-    last_refreshed_at: AwareDatetime | None = Field(
-        None,
-        description="Date corresponding to the last synchronization of the details with the payment provider.",
-        examples=[None],
-    )
-    provider_fee: InvoiceTransactionProviderFee | None = Field(
-        None,
-        description="Fee applied by the Payment Service Provider. Only supported for Stripe.",
-        examples=[None],
-        title="InvoiceTransactionProviderFee",
-    )
-    chargeback: InvoiceTransactionChargeback | None = Field(
-        None,
-        deprecated=True,
-        description="Deprecated field. Use transactions where `type` is `chargeback`; `original_transaction_id` identifies the affected payment transaction.",
-        examples=[None],
-        title="InvoiceTransactionChargeback",
-    )
-    integrations: list[InvoiceTransactionIntegration] | None = None
-    payment_method_type: (
-        Literal["card", "direct_debit", "direct_debit_ach", "direct_debit_bacs"] | None
-    ) = Field(None, description="Payment method type used for the transaction.")
-    payment_method: PaymentMethod | None = None
-    bank_account: StandardBankAccount | ConnectedBankAccount | None = Field(
-        None, description="Bank account used for a bank transfer transaction."
-    )
-    wallet_id: str | None = Field(
-        None,
-        description="ID of the wallet used for a wallet transaction.",
-        examples=["wal_PPpxP5d3uvgiTT"],
-    )
-    status: (
-        Literal["scheduled", "to_process", "pending", "settled", "cancelled"] | None
-    ) = Field(
-        None,
-        description="\nTransaction status.\n\n- `scheduled`: The transaction is scheduled to be processed in the future.\n- `to_process`: The transaction is waiting to be processed by our system.\n- `pending`: The transaction has been authorized by the related payment processor, but the banking transaction is not yet settled.\n- `settled`: The transaction has been cleared on the banking side, the money transfer is fully completed.\n- `cancelled`: The transaction has been cancelled and won't be processed again.\n  ",
-        examples=["settled"],
-    )
-    error_type: (
-        Literal[
-            "authentication_required",
-            "declined",
-            "fraud",
-            "insufficient_funds",
-            "mandate_invalid",
-            "payment_method_authorization_error",
-            "payment_method_declined",
-            "payment_method_expired",
-            "payment_method_invalid",
-            "payment_method_not_supported",
-            "processing_error",
-            "provider_error",
-            "unknown",
-        ]
-        | None
-    ) = Field(
-        None,
-        description="\nTransaction error type.\n\n- `authentication_required`: The card was declined as the transaction requires authentication (e.g. 3-D Secure). The customer should go to their portal page and authenticate their card. If the error happened on an already authenticated transaction, the customer needs to contact their card issuer for more information.\n- `payment_method_authorization_error`: A transaction authorization cannot be created for a variety of reasons such as the card issuer couldn't be reached, or the card requires a PIN.\n- `payment_method_declined`: The payment method was declined for a variety of reasons such as a card reported as lost or stolen, insufficient funds or reaching the limit available on the method to complete the purchase, a payment method on a known block list, etc.\n- `payment_method_expired`: The payment method is expired. The customer should go to their portal page and change their payment method.\n- `payment_method_invalid`: The payment method is invalid in most cases because of incorrect details (card/account number, CVC, expiration date, postal code).\n- `payment_method_not_supported`: The payment method doesn't support this type of purchase (e.g. currency, online payment).\n- `declined`: The payment was declined for a variety of reasons such as security violation, banking service not available, transaction not allowed, etc.\n- `fraud`: The payment provider suspected the transaction was fraudulent and has been blocked. Don't report more detailed information to your customer, and check on your provider account.\n- `processing_error`: The payment couldn't be processed by the issuer for an unknown reason.\n- `provider_error`: An error occurred when contacting the payment provider to initiate the transaction.\n- `unknown`: A generic error happened on the payment provider side.\n  ",
-        examples=[None],
-    )
-    error_message: str | None = Field(
-        None, description="Details of the error.", examples=[None]
-    )
-
-
-class UpdateBankAccount(BaseModel):
-    bank_name: str | None = Field(
-        None, description="Bank name.", examples=["Fake bank"]
-    )
-    format: Literal["iban_bic_swift"] | None = Field(
-        None, description="Bank account details format.", examples=["iban_bic_swift"]
-    )
-    iban: str | None = Field(
-        None, description="IBAN.", examples=["FR7630006000011234567890189"]
-    )
-    bic_swift: str | None = Field(
-        None, description="BIC or SWIFT code.", examples=["BNPAFRPP"]
-    )
-    sort_code: str | None = Field(None, description="Sort code.", examples=["123456"])
-    account_number: str | None = Field(
-        None, description="Account number.", examples=["000123456789"]
-    )
-    routing_number: str | None = Field(
-        None, description="Routing number.", examples=["021000021"]
-    )
-
-
-class CreateInvoiceLineItem(BaseModel):
-    description: constr(max_length=5000) | None = Field(
-        None,
-        description="Description of the line item as it will appear on the invoice. Default to the product description.",
-        examples=["Access fee for the period of November 2024"],
-    )
-    units_count: float | None = Field(
-        1,
-        description="Count of units of the product related to the invoice line item.",
-        examples=[1],
-    )
-    tax_rate: confloat(ge=0.0, le=100.0) | None = Field(
-        None, description="Tax rate of the invoice line item.", examples=[20]
-    )
-    period_start: AwareDatetime | None = Field(
-        None,
-        description="Start date of the period corresponding to the line item charge.",
-        examples=["2024-10-13T00:00:00.000Z"],
-    )
-    period_end: AwareDatetime | None = Field(
-        None,
-        description="End date of the period corresponding to the line item charge.",
-        examples=["2024-11-13T00:00:00.000Z"],
-    )
-    display_unit_amount: bool | None = Field(
-        None,
-        description="Whether the unit amount is displayed on the invoice PDF. Defaults to true.",
-        examples=[True],
-    )
-    display_service_period: bool | None = Field(
-        None,
-        description="Whether the service period dates are displayed in the line item description on the invoice PDF. Defaults to true.",
-        examples=[True],
-    )
-    product_id: str | None = Field(
-        None,
-        description="Product ID related to the invoice line item.",
-        examples=["itm_KbLcWt2qm5p1S2"],
-    )
-    name: str | None = Field(
-        None,
-        description="Name of the line item as it will appear on the invoice. Default to the product name.",
-        examples=["Platform access"],
-    )
-    unit_amount: float | None = Field(
-        None,
-        description="Amount of one unit of the product related to the invoice line item. Default to the product price amount. Expressed in currency's smallest unit.",
-        examples=[24000],
-    )
-
-
-class InvoiceDeprecatedCustomer(BaseModel):
-    id: str | None = Field(
-        None, description="Customer ID.", examples=["cus_Typ0px2W0aiEtl"]
-    )
-    name: str | None = Field(None, description="Customer name.", examples=["Acme"])
-    email: str | None = Field(
-        None,
-        description="Email to which all communications will be sent.",
-        examples=["billing@acme.com"],
-    )
-    external_id: str | None = Field(
-        None,
-        description="ID of the customer in your system. This helps matching your customer with the one on Hyperline.",
-        examples=[None],
-    )
-    vat_number: str | None = Field(
-        None, deprecated=True, description="Deprecated field, please use `tax_id`."
-    )
-    tax_id: str | None = Field(
-        None, description="Value of the customer tax ID.", examples=["FR123456789"]
-    )
-    local_tax_number: str | None = Field(
-        None, description="Customer local tax number.", examples=["12/345/67890"]
-    )
-    address: Address | None = None
-
-
-class InvoiceDeprecatedSeller(BaseModel):
-    id: str | None = Field(
-        None,
-        description="ID of the invoicing entity attached to the invoice.",
-        examples=["ive_47484fjdhy5"],
-    )
-    name: str | None = Field(
-        None,
-        description="Name of the invoicing entity",
-        examples=["Name of the invoicing entity"],
-    )
-    tax_id: str | None = Field(
-        None,
-        description="Tax identifier / VAT number of the invoicing entity",
-        examples=["FR5878986578"],
-    )
-    address: Address | None = Field(None, description="Seller address.")
-
-
-class InvoiceDeprecatedAdditionalDisplayField(BaseModel):
-    model_config = ConfigDict(
-        extra="allow",
-    )
-    type: Literal["standard"] | None = Field(
-        None, description="Display a standard invoice field."
-    )
-    field: Literal["customer_id", "subscription_id", "quote_id"] | None = Field(
-        None, description="Standard invoice field to display."
-    )
-    slug: str | None = Field(
-        None, description="Slug of the invoice or customer custom property to display."
-    )
-    label: constr(min_length=1, max_length=100) | None = Field(
-        None, description="Label displayed on the invoice."
-    )
-    value: constr(max_length=500) | None = Field(
-        None, description="Value displayed on the invoice."
-    )
-
-
-class InvoiceDeprecatedAllocation(BaseModel):
-    invoice_id: str | None = Field(
-        None,
-        description="ID of the invoice receiving the credit.",
-        examples=["inv_2QdJDDUej969ev"],
-    )
-    amount: float | None = Field(
-        None,
-        description="Credit amount applied to the invoice, in the currency's smallest unit.",
-        examples=[780000],
-    )
-
-
-class InvoiceDeprecatedTransactionProviderFee(BaseModel):
-    amount: float | None = Field(
-        None, description="Monetary amount. Expressed in currency's smallest unit."
-    )
-    currency: (
-        Literal[
-            "EUR",
-            "AED",
-            "AFN",
-            "XCD",
-            "ALL",
-            "AMD",
-            "AOA",
-            "ARS",
-            "USD",
-            "AUD",
-            "AWG",
-            "AZN",
-            "BAM",
-            "BBD",
-            "BDT",
-            "BGN",
-            "BHD",
-            "BIF",
-            "XOF",
-            "BMD",
-            "BND",
-            "BOB",
-            "BRL",
-            "BSD",
-            "BTN",
-            "NOK",
-            "BWP",
-            "BYR",
-            "BZD",
-            "CAD",
-            "CDF",
-            "XAF",
-            "CHF",
-            "NZD",
-            "CLP",
-            "CNY",
-            "COP",
-            "CRC",
-            "CUP",
-            "CVE",
-            "ANG",
-            "CZK",
-            "DJF",
-            "DKK",
-            "DOP",
-            "DZD",
-            "EGP",
-            "MAD",
-            "ERN",
-            "ETB",
-            "FJD",
-            "FKP",
-            "GBP",
-            "GEL",
-            "GHS",
-            "GIP",
-            "GMD",
-            "GNF",
-            "GTQ",
-            "GYD",
-            "HKD",
-            "HNL",
-            "HRK",
-            "HTG",
-            "HUF",
-            "IDR",
-            "ILS",
-            "INR",
-            "IQD",
-            "IRR",
-            "ISK",
-            "JMD",
-            "JOD",
-            "JPY",
-            "KES",
-            "KGS",
-            "KHR",
-            "KMF",
-            "KPW",
-            "KRW",
-            "KWD",
-            "KYD",
-            "KZT",
-            "LAK",
-            "LBP",
-            "LKR",
-            "LRD",
-            "LSL",
-            "LYD",
-            "MDL",
-            "MGA",
-            "MKD",
-            "MMK",
-            "MNT",
-            "MOP",
-            "MRO",
-            "MUR",
-            "MVR",
-            "MWK",
-            "MXN",
-            "MYR",
-            "MZN",
-            "NAD",
-            "XPF",
-            "NGN",
-            "NIO",
-            "NPR",
-            "OMR",
-            "PAB",
-            "PEN",
-            "PGK",
-            "PHP",
-            "PKR",
-            "PLN",
-            "PYG",
-            "QAR",
-            "RON",
-            "RSD",
-            "RUB",
-            "RWF",
-            "SAR",
-            "SBD",
-            "SCR",
-            "SDG",
-            "SEK",
-            "SGD",
-            "SHP",
-            "SLL",
-            "SOS",
-            "SRD",
-            "SSP",
-            "STD",
-            "SYP",
-            "SZL",
-            "THB",
-            "TJS",
-            "TMT",
-            "TND",
-            "TOP",
-            "TRY",
-            "TTD",
-            "TWD",
-            "TZS",
-            "UAH",
-            "UGX",
-            "UYU",
-            "UZS",
-            "VEF",
-            "VND",
-            "VUV",
-            "WST",
-            "YER",
-            "ZAR",
-            "ZMW",
-            "ZWL",
-        ]
-        | None
-    ) = Field(
-        None,
-        description="Currency code. See [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes).",
-        examples=["EUR"],
-    )
-    exchange_rate: float | None = None
-
-
-class InvoiceDeprecatedTransactionChargeback(BaseModel):
-    amount: float | None = Field(
-        None, description="Total chargeback loss amount.", examples=[31500]
-    )
-    last_chargeback_at: AwareDatetime | None = Field(
-        None,
-        description="Date corresponding to the last chargeback loss event.",
-        examples=["2024-10-13T10:00:01.860Z"],
-    )
-
-
-class InvoiceDeprecatedTransactionIntegration(BaseModel):
-    entity_id: str | None = Field(None, description="ID of the entity in the provider.")
-    provider_name: (
-        Literal[
-            "adyen",
-            "stripe",
-            "mollie",
-            "gocardless",
-            "airwallex",
-            "salesforce",
-            "hubspot",
-            "attio",
-            "xero",
-            "pennylane",
-            "zoho-books",
-            "exact-online",
-            "quickbooks",
-            "netsuite",
-            "rillet",
-            "datev",
-            "anrok",
-            "chargebee",
-            "slack",
-            "plain",
-            "zendesk",
-            "pylon",
-            "intercom",
-            "front",
-            "helpscout",
-            "claap",
-            "grain",
-            "gong",
-            "jiminny",
-            "posthog",
-        ]
-        | None
-    ) = Field(None, description="Provider name.")
-    provider_account_id: str | None = Field(
-        None, description="ID of the connected provider account."
-    )
-
-
-class Transaction1(BaseModel):
-    id: str | None = Field(
-        None, description="Transaction ID.", examples=["tra_2QdJDDUej969ev"]
-    )
-    type: Literal["subscription", "one_time", "refund", "chargeback"] | None = Field(
-        None,
-        description="\nTransaction type.\n\n- `subscription`: The transaction is related to a subscription payment.\n- `one_time`: The transaction is related to a one-time payment.\n- `refund`: The transaction is related to a refund payment.\n- `chargeback`: The transaction records funds withdrawn after a payment dispute.\n  ",
-        examples=["subscription"],
-    )
-    amount: float | None = Field(
-        None, description="Transaction amount.", examples=[31500]
-    )
-    currency: (
-        Literal[
-            "EUR",
-            "AED",
-            "AFN",
-            "XCD",
-            "ALL",
-            "AMD",
-            "AOA",
-            "ARS",
-            "USD",
-            "AUD",
-            "AWG",
-            "AZN",
-            "BAM",
-            "BBD",
-            "BDT",
-            "BGN",
-            "BHD",
-            "BIF",
-            "XOF",
-            "BMD",
-            "BND",
-            "BOB",
-            "BRL",
-            "BSD",
-            "BTN",
-            "NOK",
-            "BWP",
-            "BYR",
-            "BZD",
-            "CAD",
-            "CDF",
-            "XAF",
-            "CHF",
-            "NZD",
-            "CLP",
-            "CNY",
-            "COP",
-            "CRC",
-            "CUP",
-            "CVE",
-            "ANG",
-            "CZK",
-            "DJF",
-            "DKK",
-            "DOP",
-            "DZD",
-            "EGP",
-            "MAD",
-            "ERN",
-            "ETB",
-            "FJD",
-            "FKP",
-            "GBP",
-            "GEL",
-            "GHS",
-            "GIP",
-            "GMD",
-            "GNF",
-            "GTQ",
-            "GYD",
-            "HKD",
-            "HNL",
-            "HRK",
-            "HTG",
-            "HUF",
-            "IDR",
-            "ILS",
-            "INR",
-            "IQD",
-            "IRR",
-            "ISK",
-            "JMD",
-            "JOD",
-            "JPY",
-            "KES",
-            "KGS",
-            "KHR",
-            "KMF",
-            "KPW",
-            "KRW",
-            "KWD",
-            "KYD",
-            "KZT",
-            "LAK",
-            "LBP",
-            "LKR",
-            "LRD",
-            "LSL",
-            "LYD",
-            "MDL",
-            "MGA",
-            "MKD",
-            "MMK",
-            "MNT",
-            "MOP",
-            "MRO",
-            "MUR",
-            "MVR",
-            "MWK",
-            "MXN",
-            "MYR",
-            "MZN",
-            "NAD",
-            "XPF",
-            "NGN",
-            "NIO",
-            "NPR",
-            "OMR",
-            "PAB",
-            "PEN",
-            "PGK",
-            "PHP",
-            "PKR",
-            "PLN",
-            "PYG",
-            "QAR",
-            "RON",
-            "RSD",
-            "RUB",
-            "RWF",
-            "SAR",
-            "SBD",
-            "SCR",
-            "SDG",
-            "SEK",
-            "SGD",
-            "SHP",
-            "SLL",
-            "SOS",
-            "SRD",
-            "SSP",
-            "STD",
-            "SYP",
-            "SZL",
-            "THB",
-            "TJS",
-            "TMT",
-            "TND",
-            "TOP",
-            "TRY",
-            "TTD",
-            "TWD",
-            "TZS",
-            "UAH",
-            "UGX",
-            "UYU",
-            "UZS",
-            "VEF",
-            "VND",
-            "VUV",
-            "WST",
-            "YER",
-            "ZAR",
-            "ZMW",
-            "ZWL",
-        ]
-        | None
-    ) = Field(None, description="Transaction currency.", examples=["EUR"])
-    customer_id: str | None = Field(
-        None,
-        description="ID of the customer linked to the transaction.",
-        examples=["cus_QalW2vTAdkR6IY"],
-    )
-    provider_id: str | None = Field(
-        None,
-        deprecated=True,
-        description="Deprecated field, please use `integrations[].entity_id`.",
-    )
-    process_at: AwareDatetime | None = Field(
-        None,
-        description="Date corresponding to the processing of the transaction. If in the future, the transaction is scheduled to be processed.",
-        examples=["2024-11-12T07:38:39.222Z"],
-    )
-    settled_at: AwareDatetime | None = Field(
-        None,
-        description="Date when the transaction was settled. For provider transactions, this is derived from provider settlement data when available.",
-        examples=["2024-11-12T07:38:39.222Z"],
-    )
-    refunded_at: AwareDatetime | None = Field(
-        None,
-        description="Date corresponding to the refund of the transaction.",
-        examples=[None],
-    )
-    original_transaction_id: str | None = Field(
-        None,
-        description="Original payment transaction ID for a refund or chargeback.",
-        examples=[None],
-    )
-    reversed_at: AwareDatetime | None = Field(
-        None,
-        description="Date when a chargeback withdrawal was reversed.",
-        examples=[None],
-    )
-    last_refreshed_at: AwareDatetime | None = Field(
-        None,
-        description="Date corresponding to the last synchronization of the details with the payment provider.",
-        examples=[None],
-    )
-    provider_fee: InvoiceDeprecatedTransactionProviderFee | None = Field(
-        None,
-        description="Fee applied by the Payment Service Provider. Only supported for Stripe.",
-        examples=[None],
-        title="InvoiceDeprecatedTransactionProviderFee",
-    )
-    chargeback: InvoiceDeprecatedTransactionChargeback | None = Field(
-        None,
-        deprecated=True,
-        description="Deprecated field. Use transactions where `type` is `chargeback`; `original_transaction_id` identifies the affected payment transaction.",
-        examples=[None],
-        title="InvoiceDeprecatedTransactionChargeback",
-    )
-    integrations: list[InvoiceDeprecatedTransactionIntegration] | None = None
-    payment_method_type: (
-        Literal["card", "direct_debit", "direct_debit_ach", "direct_debit_bacs"] | None
-    ) = Field(None, description="Payment method type used for the transaction.")
-    payment_method: PaymentMethod | None = None
-    bank_account: StandardBankAccount | ConnectedBankAccount | None = Field(
-        None, description="Bank account used for a bank transfer transaction."
-    )
-    wallet_id: str | None = Field(
-        None,
-        description="ID of the wallet used for a wallet transaction.",
-        examples=["wal_PPpxP5d3uvgiTT"],
-    )
-    status: (
-        Literal["scheduled", "to_process", "pending", "settled", "cancelled"] | None
-    ) = Field(
-        None,
-        description="\nTransaction status.\n\n- `scheduled`: The transaction is scheduled to be processed in the future.\n- `to_process`: The transaction is waiting to be processed by our system.\n- `pending`: The transaction has been authorized by the related payment processor, but the banking transaction is not yet settled.\n- `settled`: The transaction has been cleared on the banking side, the money transfer is fully completed.\n- `cancelled`: The transaction has been cancelled and won't be processed again.\n  ",
-        examples=["settled"],
-    )
-    error_type: (
-        Literal[
-            "authentication_required",
-            "declined",
-            "fraud",
-            "insufficient_funds",
-            "mandate_invalid",
-            "payment_method_authorization_error",
-            "payment_method_declined",
-            "payment_method_expired",
-            "payment_method_invalid",
-            "payment_method_not_supported",
-            "processing_error",
-            "provider_error",
-            "unknown",
-        ]
-        | None
-    ) = Field(
-        None,
-        description="\nTransaction error type.\n\n- `authentication_required`: The card was declined as the transaction requires authentication (e.g. 3-D Secure). The customer should go to their portal page and authenticate their card. If the error happened on an already authenticated transaction, the customer needs to contact their card issuer for more information.\n- `payment_method_authorization_error`: A transaction authorization cannot be created for a variety of reasons such as the card issuer couldn't be reached, or the card requires a PIN.\n- `payment_method_declined`: The payment method was declined for a variety of reasons such as a card reported as lost or stolen, insufficient funds or reaching the limit available on the method to complete the purchase, a payment method on a known block list, etc.\n- `payment_method_expired`: The payment method is expired. The customer should go to their portal page and change their payment method.\n- `payment_method_invalid`: The payment method is invalid in most cases because of incorrect details (card/account number, CVC, expiration date, postal code).\n- `payment_method_not_supported`: The payment method doesn't support this type of purchase (e.g. currency, online payment).\n- `declined`: The payment was declined for a variety of reasons such as security violation, banking service not available, transaction not allowed, etc.\n- `fraud`: The payment provider suspected the transaction was fraudulent and has been blocked. Don't report more detailed information to your customer, and check on your provider account.\n- `processing_error`: The payment couldn't be processed by the issuer for an unknown reason.\n- `provider_error`: An error occurred when contacting the payment provider to initiate the transaction.\n- `unknown`: A generic error happened on the payment provider side.\n  ",
-        examples=[None],
-    )
-    error_message: str | None = Field(
-        None, description="Details of the error.", examples=[None]
-    )
-
-
-class InvoiceLineItem(BaseModel):
-    id: str | None = Field(
-        None, description="Invoice line item ID.", examples=["ili_0FACNpeoEFkGu3"]
-    )
-    name: str | None = Field(
-        None,
-        description="Name of the line item, corresponding to the related product.",
-        examples=["Platform access"],
-    )
-    entry_type: Literal["debit", "credit"] | None = Field(
-        None,
-        description="Indicates whether the line item is a debit or credit.",
-        examples=["debit"],
-    )
-    product_id: str | None = Field(
-        None,
-        description="Product ID related to the invoice line item.",
-        examples=["itm_KbLcWt2qm5p1S2"],
-    )
-    product_type: Literal["flat_fee", "seat", "dynamic", "credit", "bundle"] | None = (
-        Field(
-            None,
-            description="Product type related to the invoice line item.",
-            examples=["flat_fee"],
-        )
-    )
-    units_count: float | None = Field(
-        None,
-        description="Count of units of the product related to the invoice line item.",
-        examples=[1],
-    )
-    unit_amount: float | None = Field(
-        None,
-        description="Amount of one unit of the product related to the invoice line item. Expressed in currency's smallest unit.",
-        examples=[24000],
-    )
-    amount: float | None = Field(
-        None,
-        description="Total amount of the invoice line item. Debit or credit can be distinguished using the `entry_type` field. Expressed in currency's smallest unit.",
-        examples=[24000],
-    )
-    amount_excluding_tax: float | None = Field(
-        None,
-        description="Total amount without the taxes amount of the invoice line item. Expressed in currency's smallest unit.",
-        examples=[20000],
-    )
-    tax_rate: float | None = Field(
-        None, description="Tax rate of the invoice line item.", examples=[20]
-    )
-    tax_rate_id: str | None = Field(
-        None,
-        description="Custom tax rate ID applied to the invoice line item.",
-        examples=[None],
-    )
-    tax_amount: float | None = Field(
-        None,
-        description="Tax amount of the invoice line item. Expressed in currency's smallest unit.",
-        examples=[4000],
-    )
-    discount_amount: float | None = Field(
-        None,
-        description="Amount corresponding to the discounted part of the total amount of the invoice line item. Expressed in currency's smallest unit.",
-        examples=[0],
-    )
-    discount_percent: float | None = Field(
-        None,
-        description="Percentage applied to compute the discounted part of the invoice line amount. Only if coupons applied are percentage based.",
-    )
-    period_starts_at: AwareDatetime | None = Field(
-        None,
-        description="Start date of the period corresponding to the line item charge.",
-        examples=["2024-10-13T00:00:00.000Z"],
-    )
-    period_ends_at: AwareDatetime | None = Field(
-        None,
-        description="End date of the period corresponding to the line item charge.",
-        examples=["2024-11-13T00:00:00.000Z"],
-    )
-    revenue_type: Literal["recurring", "variable", "one_off"] | None = Field(
-        None,
-        description="Revenue type classification of the line item.\n\n- `recurring`: Recurring revenue (MRR) from subscription products billed at regular intervals.\n- `variable`: Variable revenue from usage-based products.\n- `one_off`: One-time revenue from single charges or products billed once.",
-        examples=["recurring"],
-    )
-    revenue_interval_count: float | None = Field(
-        None,
-        description="For recurring revenue, the number of interval periods between billings (e.g., 1 for monthly, 12 for annual).",
-        examples=[1],
-    )
-    revenue_interval_period: (
-        Literal["days", "weeks", "months", "quarters", "years", "once", "all"] | None
-    ) = Field(
-        None,
-        description="For recurring revenue, the interval period (days, weeks, months, quarters, years).",
-        examples=["months"],
-    )
-    display_unit_amount: bool | None = Field(
-        None,
-        description="Whether the unit amount is displayed on the invoice PDF. Defaults to true.",
-        examples=[True],
-    )
-    display_service_period: bool | None = Field(
-        None,
-        description="Whether the service period dates are displayed in the line item description on the invoice PDF. Defaults to true.",
-        examples=[True],
-    )
-    original_line_item_id: str | None = Field(
-        None,
-        description="ID of the original line item this line item is linked to (used for organisation-based billing).",
-        examples=[None],
-    )
-
-
-class InvoiceCoupon(BaseModel):
-    id: str | None = Field(
-        None, description="Coupon ID.", examples=["cou_DKL4Xcb5VSa8CQ"]
-    )
-    name: str | None = Field(
-        None, description="Coupon name.", examples=["Partner discount"]
-    )
-    discount_amount: float | None = Field(
-        None,
-        description="Amount to apply as a discount on the total amount (excluding taxes) of a subscription. Expressed in the currency's smallest unit.",
-        examples=[2000],
-    )
-    discount_percent: float | None = Field(
-        None,
-        description="Percentage to apply as a discount on the amount (excluding taxes) of a product.",
-        examples=[None],
-    )
-    line_item_ids: list[str] | None = Field(
-        None,
-        description="IDs of the line items to which the coupon applies. Null means all line items.",
-        examples=[["ili_0FACNpeoEFkGu3"]],
-    )
-
-
-class CursorPaginatedCustomer(BaseModel):
-    data: list[Customer] | None = Field(None, description="List of Customer.")
-    next_cursor: str | None = Field(
-        None,
-        description="Cursor to fetch the next page. `null` when there are no more items.",
-        examples=[None],
-    )
-    has_more: bool | None = Field(
-        None,
-        description="Whether more items are available after this page.",
-        examples=[False],
-    )
-    total: float | None = Field(
-        None,
-        description="Total number of items matching the filters. Only present when `include_total=true` was passed.",
-        examples=[1],
-    )
-
-
-class CustomerDetails(Customer):
-    payment_method: PaymentMethod | None = Field(
-        None,
-        description="Default payment method of the customer. Only applies to card and direct debit.",
-    )
-    bank_account: StandardBankAccount | ConnectedBankAccount | None = Field(
-        None,
-        description="Custom bank account for the customer. If not defined and customer paying by bank transfer, the bank accounts configured in your account settings will be used.",
-    )
-    organisation_id: str | None = Field(
-        None,
-        description="Parent organization ID to which the client is attached.",
-        examples=[None],
-    )
-    organisation_invoicing: Literal["none", "every_invoice", "concat"] | None = Field(
-        None,
-        description="\nHow customer invoices are issued from the parent organisation.\n\n- `none`: Invoices will keep being issued from this customer.\n- `every_invoice`: Customer invoices will be issued from the organisation individually.\n- `concat`: Customer invoices will be grouped into a global parent invoice at a regular schedule (configured on the organisation).\n ",
-        examples=[None],
-    )
-
-
-class CreateCustomer(BaseModel):
-    model_config = ConfigDict(
-        regex_engine="python-re",
-    )
-    name: str | None = Field(None, description="Customer name.", examples=["Acme"])
-    type: Literal["corporate", "person"] | None = Field(
-        None,
-        description="\nCustomer type.\n\n- `corporate`: The customer is a business entity.\n- `person`: The customer is a natural person.\n- `automatically_created`: The customer was automatically imported (e.g. from a data loader). This value cannot be used when creating/editing.\n ",
-        examples=["corporate"],
-    )
-    currency: (
-        Literal[
-            "EUR",
-            "AED",
-            "AFN",
-            "XCD",
-            "ALL",
-            "AMD",
-            "AOA",
-            "ARS",
-            "USD",
-            "AUD",
-            "AWG",
-            "AZN",
-            "BAM",
-            "BBD",
-            "BDT",
-            "BGN",
-            "BHD",
-            "BIF",
-            "XOF",
-            "BMD",
-            "BND",
-            "BOB",
-            "BRL",
-            "BSD",
-            "BTN",
-            "NOK",
-            "BWP",
-            "BYR",
-            "BZD",
-            "CAD",
-            "CDF",
-            "XAF",
-            "CHF",
-            "NZD",
-            "CLP",
-            "CNY",
-            "COP",
-            "CRC",
-            "CUP",
-            "CVE",
-            "ANG",
-            "CZK",
-            "DJF",
-            "DKK",
-            "DOP",
-            "DZD",
-            "EGP",
-            "MAD",
-            "ERN",
-            "ETB",
-            "FJD",
-            "FKP",
-            "GBP",
-            "GEL",
-            "GHS",
-            "GIP",
-            "GMD",
-            "GNF",
-            "GTQ",
-            "GYD",
-            "HKD",
-            "HNL",
-            "HRK",
-            "HTG",
-            "HUF",
-            "IDR",
-            "ILS",
-            "INR",
-            "IQD",
-            "IRR",
-            "ISK",
-            "JMD",
-            "JOD",
-            "JPY",
-            "KES",
-            "KGS",
-            "KHR",
-            "KMF",
-            "KPW",
-            "KRW",
-            "KWD",
-            "KYD",
-            "KZT",
-            "LAK",
-            "LBP",
-            "LKR",
-            "LRD",
-            "LSL",
-            "LYD",
-            "MDL",
-            "MGA",
-            "MKD",
-            "MMK",
-            "MNT",
-            "MOP",
-            "MRO",
-            "MUR",
-            "MVR",
-            "MWK",
-            "MXN",
-            "MYR",
-            "MZN",
-            "NAD",
-            "XPF",
-            "NGN",
-            "NIO",
-            "NPR",
-            "OMR",
-            "PAB",
-            "PEN",
-            "PGK",
-            "PHP",
-            "PKR",
-            "PLN",
-            "PYG",
-            "QAR",
-            "RON",
-            "RSD",
-            "RUB",
-            "RWF",
-            "SAR",
-            "SBD",
-            "SCR",
-            "SDG",
-            "SEK",
-            "SGD",
-            "SHP",
-            "SLL",
-            "SOS",
-            "SRD",
-            "SSP",
-            "STD",
-            "SYP",
-            "SZL",
-            "THB",
-            "TJS",
-            "TMT",
-            "TND",
-            "TOP",
-            "TRY",
-            "TTD",
-            "TWD",
-            "TZS",
-            "UAH",
-            "UGX",
-            "UYU",
-            "UZS",
-            "VEF",
-            "VND",
-            "VUV",
-            "WST",
-            "YER",
-            "ZAR",
-            "ZMW",
-            "ZWL",
-        ]
-        | None
-    ) = Field(
-        None,
-        description="Currency code. See [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes).",
-        examples=["EUR"],
-    )
-    country: (
-        Literal[
-            "AD",
-            "AE",
-            "AF",
-            "AG",
-            "AI",
-            "AL",
-            "AM",
-            "AO",
-            "AQ",
-            "AR",
-            "AS",
-            "AT",
-            "AU",
-            "AW",
-            "AX",
-            "AZ",
-            "BA",
-            "BB",
-            "BD",
-            "BE",
-            "BG",
-            "BH",
-            "BI",
-            "BJ",
-            "BL",
-            "BM",
-            "BN",
-            "BO",
-            "BQ",
-            "BR",
-            "BS",
-            "BT",
-            "BF",
-            "BV",
-            "BW",
-            "BY",
-            "BZ",
-            "CA",
-            "CC",
-            "CD",
-            "CF",
-            "CG",
-            "CH",
-            "CI",
-            "CK",
-            "CL",
-            "CM",
-            "CN",
-            "CO",
-            "CR",
-            "CU",
-            "CV",
-            "CW",
-            "CX",
-            "CY",
-            "CZ",
-            "DE",
-            "DJ",
-            "DK",
-            "DM",
-            "DO",
-            "DZ",
-            "EC",
-            "EE",
-            "EG",
-            "EH",
-            "ER",
-            "ES",
-            "ES-CE",
-            "ES-ML",
-            "ET",
-            "FI",
-            "FJ",
-            "FK",
-            "FM",
-            "FO",
-            "FR",
-            "GA",
-            "GB",
-            "GD",
-            "GE",
-            "GF",
-            "GG",
-            "GH",
-            "GI",
-            "GL",
-            "GM",
-            "GN",
-            "GP",
-            "GQ",
-            "GR",
-            "GS",
-            "GT",
-            "GU",
-            "GW",
-            "GY",
-            "HK",
-            "HM",
-            "HN",
-            "HR",
-            "HT",
-            "HU",
-            "IC",
-            "ID",
-            "IE",
-            "IL",
-            "IM",
-            "IN",
-            "IO",
-            "IQ",
-            "IR",
-            "IS",
-            "IT",
-            "JE",
-            "JM",
-            "JO",
-            "JP",
-            "KE",
-            "KG",
-            "KH",
-            "KI",
-            "KM",
-            "KN",
-            "KP",
-            "KR",
-            "KW",
-            "KY",
-            "KZ",
-            "LA",
-            "LB",
-            "LC",
-            "LI",
-            "LK",
-            "LR",
-            "LS",
-            "LT",
-            "LU",
-            "LV",
-            "LY",
-            "MA",
-            "MC",
-            "MD",
-            "ME",
-            "MF",
-            "MG",
-            "MH",
-            "MK",
-            "ML",
-            "MM",
-            "MN",
-            "MO",
-            "MP",
-            "MQ",
-            "MR",
-            "MS",
-            "MT",
-            "MU",
-            "MV",
-            "MW",
-            "MX",
-            "MY",
-            "MZ",
-            "NA",
-            "NC",
-            "NE",
-            "NF",
-            "NG",
-            "NI",
-            "NL",
-            "NO",
-            "NP",
-            "NR",
-            "NU",
-            "NZ",
-            "OM",
-            "PA",
-            "PE",
-            "PF",
-            "PG",
-            "PH",
-            "PK",
-            "PL",
-            "PM",
-            "PN",
-            "PR",
-            "PS",
-            "PT",
-            "PT-20",
-            "PT-30",
-            "PW",
-            "PY",
-            "QA",
-            "RE",
-            "RO",
-            "RS",
-            "RU",
-            "RW",
-            "SA",
-            "SB",
-            "SC",
-            "SD",
-            "SE",
-            "SG",
-            "SH",
-            "SI",
-            "SJ",
-            "SK",
-            "SL",
-            "SM",
-            "SN",
-            "SO",
-            "SR",
-            "SS",
-            "ST",
-            "SV",
-            "SX",
-            "SY",
-            "SZ",
-            "TC",
-            "TD",
-            "TF",
-            "TG",
-            "TH",
-            "TJ",
-            "TK",
-            "TL",
-            "TM",
-            "TN",
-            "TO",
-            "TR",
-            "TT",
-            "TV",
-            "TW",
-            "TZ",
-            "UA",
-            "UG",
-            "UM",
-            "US",
-            "UY",
-            "UZ",
-            "VA",
-            "VC",
-            "VE",
-            "VG",
-            "VI",
-            "VN",
-            "VU",
-            "WF",
-            "WS",
-            "XK",
-            "YE",
-            "YT",
-            "ZA",
-            "ZM",
-            "ZW",
-        ]
-        | None
-    ) = Field(
-        None,
-        deprecated=True,
-        description="Deprecated field, please use `billing_address.country`.",
-        examples=["FR"],
-    )
-    is_government_affiliated: bool | None = Field(
-        None,
-        description="Indicates if the customer is affiliated with a government entity.",
-        examples=[False],
-    )
-    vat_number: str | None = Field(
-        None, deprecated=True, description="Deprecated field, please use `tax_id`."
-    )
-    vat_rate_custom: confloat(ge=0.0, le=100.0) | None = Field(
-        None,
-        deprecated=True,
-        description="Deprecated field, please use `tax_rate_custom`.",
-    )
-    tax_ids: list[CreateCustomerTaxId] | None = Field(
-        None, description="Customer tax IDs.", max_length=1
-    )
-    local_tax_number: str | None = Field(
-        None, description="Customer local tax number.", examples=["12/345/67890"]
-    )
-    tax_rate_custom: confloat(ge=0.0, le=100.0) | None = Field(
-        None,
-        description="Customer custom tax rate. If not defined, the rate will be automatically determined based on the customer's country, your country, and applicable legal requirements.",
-    )
-    taxability: Literal["taxable", "exempt"] | None = Field(
-        None,
-        description="Customer taxability.\n\n- `taxable`: Taxes are automatically determined for the customer.\n- `exempt`: The customer is exempt from tax.\n ",
-        examples=["taxable"],
-    )
-    registration_number: str | None = Field(
-        None, description="Customer registration number.", examples=["36252187900034"]
-    )
-    external_id: str | None = Field(
-        None,
-        description="ID of the customer in your system. This helps matching your customer with the one on Hyperline.",
-    )
-    domain: (
-        constr(pattern=r"^(?!:\/\/)(?=.{1,253}$)(?!-)([a-z0-9-]{1,63}\.)+[a-z]{2,63}$")
-        | None
-    ) = Field(
-        None,
-        description="Customer domain. If not defined, it is inferred from the billing email.",
-        examples=["acme.com"],
-    )
-    invoicing_entity_id: str | None = Field(
-        None,
-        description="ID of the invoicing entity this customer will be attached to.",
-    )
-    billing_address: Address | None = Field(
-        None, description="Customer billing address.", title="Address"
-    )
-    shipping_address: Address | None = Field(
-        None, description="Customer shipping address.", title="Address"
-    )
-    billing_email: EmailStr | None = Field(
-        None,
-        description="Email to which all communications will be sent.",
-        examples=["billing@acme.com"],
-    )
-    invoice_emails: list[EmailStr] | None = Field(
-        None,
-        description="Emails to which invoices will be sent (e.g. payer, finance team, accounting firm). If not defined, invoices will be sent to the `billing_email`; otherwise, they won't be sent to the `billing_email`.",
-        examples=[["accounting@acme.com"]],
-    )
-    language: Literal["fr", "en", "de", "it", "nl", "es", "pt", "pl"] | None = Field(
-        None,
-        description="Language used for invoices, emails, and hosted pages.",
-        examples=["fr"],
-    )
-    timezone: (
-        Literal[
-            "Pacific/Midway",
-            "Pacific/Pago_Pago",
-            "Pacific/Niue",
-            "Pacific/Rarotonga",
-            "Pacific/Honolulu",
-            "Pacific/Tahiti",
-            "Pacific/Marquesas",
-            "Pacific/Gambier",
-            "America/Adak",
-            "America/Anchorage",
-            "Pacific/Pitcairn",
-            "America/Hermosillo",
-            "America/Phoenix",
-            "America/Los_Angeles",
-            "America/Tijuana",
-            "America/Vancouver",
-            "America/Whitehorse",
-            "America/Belize",
-            "America/Guatemala",
-            "America/Managua",
-            "America/Mexico_City",
-            "America/Costa_Rica",
-            "America/El_Salvador",
-            "America/Regina",
-            "America/Tegucigalpa",
-            "Pacific/Easter",
-            "Pacific/Galapagos",
-            "America/Edmonton",
-            "America/Ciudad_Juarez",
-            "America/Denver",
-            "America/Rio_Branco",
-            "America/Chicago",
-            "America/Matamoros",
-            "America/Winnipeg",
-            "America/Bogota",
-            "America/Atikokan",
-            "America/Cancun",
-            "America/Cayman",
-            "America/Jamaica",
-            "America/Panama",
-            "America/Guayaquil",
-            "America/Lima",
-            "America/Manaus",
-            "America/St_Kitts",
-            "America/Blanc-Sablon",
-            "America/Montserrat",
-            "America/Barbados",
-            "America/Port_of_Spain",
-            "America/Martinique",
-            "America/St_Lucia",
-            "America/St_Barthelemy",
-            "America/St_Vincent",
-            "America/Kralendijk",
-            "America/Guadeloupe",
-            "America/Marigot",
-            "America/Aruba",
-            "America/Lower_Princes",
-            "America/Tortola",
-            "America/Dominica",
-            "America/St_Thomas",
-            "America/Grenada",
-            "America/Antigua",
-            "America/Puerto_Rico",
-            "America/Santo_Domingo",
-            "America/Anguilla",
-            "America/Curacao",
-            "America/La_Paz",
-            "America/Santiago",
-            "America/Havana",
-            "America/Nassau",
-            "America/New_York",
-            "America/Port-au-Prince",
-            "America/Grand_Turk",
-            "America/Toronto",
-            "America/Guyana",
-            "America/Caracas",
-            "America/Argentina/Buenos_Aires",
-            "America/Halifax",
-            "Atlantic/Bermuda",
-            "America/Thule",
-            "America/Sao_Paulo",
-            "Antarctica/Palmer",
-            "America/Punta_Arenas",
-            "Atlantic/Stanley",
-            "America/Cayenne",
-            "America/Asuncion",
-            "America/Paramaribo",
-            "America/Montevideo",
-            "America/St_Johns",
-            "America/Noronha",
-            "Atlantic/South_Georgia",
-            "America/Miquelon",
-            "Atlantic/Cape_Verde",
-            "America/Nuuk",
-            "Atlantic/Azores",
-            "Etc/UTC",
-            "Africa/Abidjan",
-            "Africa/Bamako",
-            "Africa/Bissau",
-            "Africa/Conakry",
-            "Africa/Dakar",
-            "America/Danmarkshavn",
-            "Africa/Freetown",
-            "Atlantic/St_Helena",
-            "Africa/Accra",
-            "Africa/Lome",
-            "Africa/Monrovia",
-            "Africa/Nouakchott",
-            "Africa/Ouagadougou",
-            "Atlantic/Reykjavik",
-            "Africa/Sao_Tome",
-            "Africa/Banjul",
-            "Africa/Algiers",
-            "Africa/Tunis",
-            "Europe/Isle_of_Man",
-            "Europe/Dublin",
-            "Europe/London",
-            "Europe/Jersey",
-            "Europe/Guernsey",
-            "Africa/Bangui",
-            "Africa/Malabo",
-            "Africa/Brazzaville",
-            "Africa/Porto-Novo",
-            "Africa/Douala",
-            "Africa/Kinshasa",
-            "Africa/Lagos",
-            "Africa/Libreville",
-            "Africa/Luanda",
-            "Africa/Ndjamena",
-            "Africa/Niamey",
-            "Africa/Casablanca",
-            "Africa/El_Aaiun",
-            "Atlantic/Canary",
-            "Europe/Lisbon",
-            "Atlantic/Faroe",
-            "Africa/Bujumbura",
-            "Africa/Gaborone",
-            "Africa/Harare",
-            "Africa/Juba",
-            "Africa/Khartoum",
-            "Africa/Kigali",
-            "Africa/Blantyre",
-            "Africa/Lubumbashi",
-            "Africa/Lusaka",
-            "Africa/Maputo",
-            "Africa/Windhoek",
-            "Europe/Andorra",
-            "Europe/Belgrade",
-            "Europe/Berlin",
-            "Europe/Bratislava",
-            "Europe/Brussels",
-            "Europe/Budapest",
-            "Europe/Copenhagen",
-            "Europe/Gibraltar",
-            "Europe/Ljubljana",
-            "Arctic/Longyearbyen",
-            "Europe/Luxembourg",
-            "Europe/Madrid",
-            "Europe/Monaco",
-            "Europe/Oslo",
-            "Europe/Paris",
-            "Europe/Podgorica",
-            "Europe/Prague",
-            "Europe/Rome",
-            "Europe/Amsterdam",
-            "Europe/San_Marino",
-            "Europe/Malta",
-            "Europe/Sarajevo",
-            "Europe/Skopje",
-            "Europe/Stockholm",
-            "Europe/Tirane",
-            "Europe/Vaduz",
-            "Europe/Vatican",
-            "Europe/Vienna",
-            "Europe/Warsaw",
-            "Europe/Zagreb",
-            "Europe/Zurich",
-            "Europe/Kaliningrad",
-            "Africa/Tripoli",
-            "Antarctica/Troll",
-            "Africa/Johannesburg",
-            "Africa/Mbabane",
-            "Africa/Maseru",
-            "Asia/Kuwait",
-            "Asia/Bahrain",
-            "Asia/Baghdad",
-            "Asia/Qatar",
-            "Asia/Riyadh",
-            "Asia/Aden",
-            "Asia/Amman",
-            "Asia/Damascus",
-            "Africa/Addis_Ababa",
-            "Indian/Antananarivo",
-            "Africa/Asmara",
-            "Africa/Dar_es_Salaam",
-            "Africa/Djibouti",
-            "Africa/Kampala",
-            "Indian/Mayotte",
-            "Africa/Mogadishu",
-            "Indian/Comoro",
-            "Africa/Nairobi",
-            "Europe/Athens",
-            "Asia/Beirut",
-            "Europe/Bucharest",
-            "Africa/Cairo",
-            "Europe/Chisinau",
-            "Asia/Hebron",
-            "Europe/Helsinki",
-            "Europe/Kyiv",
-            "Europe/Mariehamn",
-            "Asia/Nicosia",
-            "Europe/Riga",
-            "Europe/Sofia",
-            "Europe/Tallinn",
-            "Europe/Vilnius",
-            "Asia/Jerusalem",
-            "Europe/Minsk",
-            "Europe/Moscow",
-            "Europe/Simferopol",
-            "Antarctica/Syowa",
-            "Europe/Istanbul",
-            "Asia/Tehran",
-            "Asia/Yerevan",
-            "Asia/Baku",
-            "Asia/Tbilisi",
-            "Asia/Dubai",
-            "Asia/Muscat",
-            "Indian/Mauritius",
-            "Indian/Reunion",
-            "Europe/Samara",
-            "Indian/Mahe",
-            "Asia/Kabul",
-            "Indian/Kerguelen",
-            "Asia/Almaty",
-            "Indian/Maldives",
-            "Antarctica/Mawson",
-            "Asia/Karachi",
-            "Asia/Dushanbe",
-            "Asia/Ashgabat",
-            "Asia/Tashkent",
-            "Asia/Yekaterinburg",
-            "Asia/Colombo",
-            "Asia/Kolkata",
-            "Asia/Kathmandu",
-            "Asia/Dhaka",
-            "Asia/Thimphu",
-            "Asia/Urumqi",
-            "Indian/Chagos",
-            "Asia/Bishkek",
-            "Asia/Omsk",
-            "Indian/Cocos",
-            "Asia/Yangon",
-            "Indian/Christmas",
-            "Antarctica/Davis",
-            "Asia/Hovd",
-            "Asia/Bangkok",
-            "Asia/Ho_Chi_Minh",
-            "Asia/Phnom_Penh",
-            "Asia/Vientiane",
-            "Asia/Novosibirsk",
-            "Asia/Jakarta",
-            "Antarctica/Casey",
-            "Australia/Perth",
-            "Asia/Brunei",
-            "Asia/Makassar",
-            "Asia/Macau",
-            "Asia/Shanghai",
-            "Asia/Hong_Kong",
-            "Asia/Irkutsk",
-            "Asia/Kuala_Lumpur",
-            "Asia/Manila",
-            "Asia/Singapore",
-            "Asia/Taipei",
-            "Asia/Ulaanbaatar",
-            "Australia/Eucla",
-            "Asia/Jayapura",
-            "Asia/Tokyo",
-            "Asia/Pyongyang",
-            "Asia/Seoul",
-            "Pacific/Palau",
-            "Asia/Dili",
-            "Asia/Chita",
-            "Australia/Adelaide",
-            "Australia/Darwin",
-            "Australia/Brisbane",
-            "Australia/Sydney",
-            "Pacific/Guam",
-            "Pacific/Saipan",
-            "Pacific/Chuuk",
-            "Antarctica/DumontDUrville",
-            "Pacific/Port_Moresby",
-            "Asia/Vladivostok",
-            "Australia/Lord_Howe",
-            "Pacific/Bougainville",
-            "Pacific/Kosrae",
-            "Pacific/Noumea",
-            "Pacific/Norfolk",
-            "Asia/Sakhalin",
-            "Pacific/Guadalcanal",
-            "Pacific/Efate",
-            "Pacific/Fiji",
-            "Pacific/Tarawa",
-            "Asia/Kamchatka",
-            "Pacific/Majuro",
-            "Pacific/Nauru",
-            "Pacific/Auckland",
-            "Antarctica/McMurdo",
-            "Pacific/Funafuti",
-            "Pacific/Wake",
-            "Pacific/Wallis",
-            "Pacific/Chatham",
-            "Pacific/Kanton",
-            "Pacific/Apia",
-            "Pacific/Fakaofo",
-            "Pacific/Tongatapu",
-            "Pacific/Kiritimati",
-        ]
-        | None
-    ) = Field(None, description="Customer timezone.", examples=["Europe/Paris"])
-    available_payment_methods: (
-        list[
-            Literal[
-                "card",
-                "apple_pay",
-                "google_pay",
-                "direct_debit",
-                "direct_debit_ach",
-                "direct_debit_bacs",
-                "stripe_link",
-                "transfer",
-                "transfer_automated",
-            ]
-        ]
-        | None
-    ) = Field(
-        None,
-        description="List of payment methods you allow your customer to pay with. You customer will be able to select one of them in their portal page and those will be the default options when creating a checkout session.",
-        examples=[["card", "direct_debit"]],
-    )
-    payment_method_type: (
-        Literal[
-            "card",
-            "apple_pay",
-            "google_pay",
-            "direct_debit",
-            "direct_debit_ach",
-            "direct_debit_bacs",
-            "stripe_link",
-            "transfer",
-            "transfer_automated",
-            "external",
-        ]
-        | None
-    ) = Field(
-        None,
-        description="Default payment method type used to pay subscriptions and one-off invoices.",
-        examples=["card"],
-    )
-    bank_account: UpdateBankAccount | None = None
-    custom_payment_delay: float | None = Field(
-        None,
-        description="Custom payment terms in days. If not defined, the default one defined on the related invoicing entity will be used.",
-        examples=[30],
-    )
-    custom_payment_initiation_delay: float | None = Field(
-        None,
-        description="Custom initiation delay in days before triggering payment. If not defined, the default one defined on the related invoicing entity will be used.",
-        examples=[7],
-    )
-    organisation_id: str | None = Field(
-        None, description="Parent organization ID to which the client is attached."
-    )
-    organisation_invoicing: Literal["none", "every_invoice", "concat"] | None = Field(
-        "none",
-        description="\nHow customer invoices are issued from the parent organisation.\n\n- `none`: Invoices will keep being issued from this customer.\n- `every_invoice`: Customer invoices will be issued from the organisation individually.\n- `concat`: Customer invoices will be grouped into a global parent invoice at a regular schedule (configured on the organisation).\n ",
-    )
-    properties: (
-        dict[str, str | float | bool | list[str | float | bool | None] | None] | None
-    ) = Field(
-        None,
-        description="Key/value pairs to store any metadata useful in your context.",
-    )
-    custom_properties: (
-        dict[str, str | float | bool | AwareDatetime | list[str] | None] | None
-    ) = Field(
-        None,
-        description="A list of key value with the slug of the custom property as the key and the custom property value as value.",
-    )
-    invoice_reminders_enabled: bool | Literal["true", "false"] | None = Field(
-        None, description="Indicates if invoice reminders are enabled for the customer."
-    )
-    price_book_id: str | None = Field(
-        None,
-        description="Default price book ID assigned to the customer.",
-        examples=["prib_613_WbVIZ1329e"],
-    )
-    owner_id: str | None = Field(
-        None,
-        description="ID of the Hyperline user responsible for this customer and targeted by customer agent notifications.",
-        examples=["usr_KMcxRWc1ZQwvJG"],
-    )
-    follower_ids: list[str] | None = Field(
-        None,
-        description="IDs of Hyperline users following this customer.",
-        examples=[["usr_KMcxRWc1ZQwvJG"]],
-    )
-
-
-class CustomerDetailsV1(CustomerV1):
-    providers: CustomerDetailsV1Providers | None = Field(
-        None,
-        deprecated=True,
-        description="Deprecated field, please use `integrations`.",
-        title="CustomerDetailsV1Providers",
-    )
-    current_payment_method: PaymentMethod | None = Field(
-        None,
-        description="Default payment method of the customer. Only applies to card and direct debit.",
-    )
-    bank_account: StandardBankAccount | ConnectedBankAccount | None = Field(
-        None,
-        description="Custom bank account for the customer. If not defined and customer paying by bank transfer, the bank accounts configured in your account settings will be used.",
-    )
-    organisation_id: str | None = Field(
-        None,
-        description="Parent organization ID to which the client is attached.",
-        examples=[None],
-    )
-    organisation_invoicing: Literal["none", "every_invoice", "concat"] | None = Field(
-        None,
-        description="\nHow customer invoices are issued from the parent organisation.\n\n- `none`: Invoices will keep being issued from this customer.\n- `every_invoice`: Customer invoices will be issued from the organisation individually.\n- `concat`: Customer invoices will be grouped into a global parent invoice at a regular schedule (configured on the organisation).\n ",
-        examples=[None],
-    )
-
-
-class CreateInvoice(BaseModel):
-    customer_id: str | None = Field(
-        None, description="Customer ID.", examples=["cus_Typ0px2W0aiEtl"]
-    )
-    currency: (
-        Literal[
-            "EUR",
-            "AED",
-            "AFN",
-            "XCD",
-            "ALL",
-            "AMD",
-            "AOA",
-            "ARS",
-            "USD",
-            "AUD",
-            "AWG",
-            "AZN",
-            "BAM",
-            "BBD",
-            "BDT",
-            "BGN",
-            "BHD",
-            "BIF",
-            "XOF",
-            "BMD",
-            "BND",
-            "BOB",
-            "BRL",
-            "BSD",
-            "BTN",
-            "NOK",
-            "BWP",
-            "BYR",
-            "BZD",
-            "CAD",
-            "CDF",
-            "XAF",
-            "CHF",
-            "NZD",
-            "CLP",
-            "CNY",
-            "COP",
-            "CRC",
-            "CUP",
-            "CVE",
-            "ANG",
-            "CZK",
-            "DJF",
-            "DKK",
-            "DOP",
-            "DZD",
-            "EGP",
-            "MAD",
-            "ERN",
-            "ETB",
-            "FJD",
-            "FKP",
-            "GBP",
-            "GEL",
-            "GHS",
-            "GIP",
-            "GMD",
-            "GNF",
-            "GTQ",
-            "GYD",
-            "HKD",
-            "HNL",
-            "HRK",
-            "HTG",
-            "HUF",
-            "IDR",
-            "ILS",
-            "INR",
-            "IQD",
-            "IRR",
-            "ISK",
-            "JMD",
-            "JOD",
-            "JPY",
-            "KES",
-            "KGS",
-            "KHR",
-            "KMF",
-            "KPW",
-            "KRW",
-            "KWD",
-            "KYD",
-            "KZT",
-            "LAK",
-            "LBP",
-            "LKR",
-            "LRD",
-            "LSL",
-            "LYD",
-            "MDL",
-            "MGA",
-            "MKD",
-            "MMK",
-            "MNT",
-            "MOP",
-            "MRO",
-            "MUR",
-            "MVR",
-            "MWK",
-            "MXN",
-            "MYR",
-            "MZN",
-            "NAD",
-            "XPF",
-            "NGN",
-            "NIO",
-            "NPR",
-            "OMR",
-            "PAB",
-            "PEN",
-            "PGK",
-            "PHP",
-            "PKR",
-            "PLN",
-            "PYG",
-            "QAR",
-            "RON",
-            "RSD",
-            "RUB",
-            "RWF",
-            "SAR",
-            "SBD",
-            "SCR",
-            "SDG",
-            "SEK",
-            "SGD",
-            "SHP",
-            "SLL",
-            "SOS",
-            "SRD",
-            "SSP",
-            "STD",
-            "SYP",
-            "SZL",
-            "THB",
-            "TJS",
-            "TMT",
-            "TND",
-            "TOP",
-            "TRY",
-            "TTD",
-            "TWD",
-            "TZS",
-            "UAH",
-            "UGX",
-            "UYU",
-            "UZS",
-            "VEF",
-            "VND",
-            "VUV",
-            "WST",
-            "YER",
-            "ZAR",
-            "ZMW",
-            "ZWL",
-        ]
-        | None
-    ) = Field(
-        None,
-        description="Currency code of the invoice. See [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes).",
-        examples=["EUR"],
-    )
-    status: Literal["to_pay", "paid", "draft"] | None = Field(
-        "paid",
-        description="Current invoice status.\n\n- `draft`: Invoice is in draft mode (not finalized yet).\n- `open`: Invoice for the current billing period, which will be issued at the end of the period (used for invoices with usage-based data).\n- `grace_period`: Invoice is in a review period after being issued for the billing period and before becoming due for payment.\n- `to_pay`: Invoice is awaiting payment.\n- `partially_paid`: Invoice is partially paid.\n- `paid`: Invoice is fully paid.\n- `voided`: Invoice has been voided and is no longer valid.\n- `closed`: Invoice was not issued and has been discarded.\n- `error`: Invoice failed to be paid.\n- `archived`: A previous version of an invoice.\n- `charged_on_parent`: Invoice is charged on the parent customer.\n- `pending_parent_concat`: Invoice is pending invoices concatenation on the parent customer to be grouped.\n- `uncollectible`: Invoice is uncollectible (bad debt). Only metadata (properties, custom_note, custom_properties) can be updated in this status.\n",
-        examples=["paid"],
-    )
-    invoicing_entity_id: str | None = Field(
-        None,
-        description="ID of the invoicing entity attached to the invoice.",
-        examples=["ive_47484fjdhy5"],
-    )
-    number: str | None = Field(
-        None,
-        description="Invoice number. If specified, the invoice will be considered as imported from an external source and the number will not be generated by Hyperline. You are responsible for avoiding duplicates and ensuring it does not impact the numbering sequence in Hyperline.",
-        examples=["INV-35"],
-    )
-    type: Literal["invoice", "credit_note", "document"] | None = Field(
-        None,
-        description="Type of the invoice.\n\n- `invoice`: Legal invoice to be paid by your customer.\n- `credit_note`: Legal credit note cancelling an invoice and refunding your customer.\n- `document`: Custom document with no legal value. Can be generated from a subscription to meet specific needs.\n  ",
-        examples=["invoice"],
-    )
-    document_name: str | None = Field(
-        None,
-        description="If the invoice is of type `document` you can give it a custom name (displayed on the final PDF).",
-    )
-    reference: str | None = Field(
-        None,
-        description="Unique identifier to ease reconciliation with payment. Useful for bank transfer.",
-        examples=["V0KAHOU6J3"],
-    )
-    purchase_order: str | None = Field(
-        None,
-        description="Reference to the purchase order linked to the invoice.",
-        examples=["PO-12345"],
-    )
-    custom_note: constr(max_length=20000) | None = Field(
-        None,
-        description="Custom note added to the invoice.",
-        examples=["Thank you for your purchase!"],
-    )
-    additional_info: constr(max_length=20000) | None = Field(
-        None,
-        description="Additional information added to the invoice. If not defined, it will be inherited from the invoicing entity's settings.",
-        examples=[
-            "This invoice must be paid within the payment delay indicated. After this period a late payment penalty of 10% will be applied."
-        ],
-    )
-    footer: constr(max_length=20000) | None = Field(
-        None,
-        description="Footer added to the invoice. If not defined, it will be inherited from the invoicing entity's settings.",
-        examples=["ACME (Acme SAS) is a company registered in France | SIREN N°123456"],
-    )
-    tax_rate: confloat(ge=0.0, le=100.0) | None = Field(
-        None,
-        deprecated=True,
-        description="Deprecated field, please use `line_items[].tax_rate`.",
-    )
-    tax_scheme: Literal["auto", "not_eligible"] | None = Field(
-        "auto",
-        description="Tax scheme of the invoice.\n\n- `auto`: Tax is automatically computed and applied.\n- `not_eligible`: Tax collection is disabled for the invoice.\n  ",
-        examples=["auto"],
-    )
-    payment_method_strategy: Literal["current", "external"] | None = Field(
-        None,
-        description="\nPayment method strategy used to charge the invoice. Only applies to `to_pay` status.\n\n- `current`: Use the current default payment method of the customer.\n- `external`: Manage the payment of the invoice outside of Hyperline.\n",
-        examples=["external"],
-    )
-    payment_method_id: str | None = Field(
-        None,
-        description="ID of the default payment method used to pay the invoice. Transactions related to the invoice may use different payment methods.",
-        examples=["pm_1ryTrMj4TTAT1N"],
-    )
-    bank_account_id: str | None = Field(
-        None,
-        description="ID of the bank account displayed on the invoice. Transactions related to the invoice may use different bank accounts.",
-        examples=["bac_KJyPrMA1toAqRG"],
-    )
-    subscription_id: str | None = Field(
-        None,
-        description="ID of the subscription related to the invoice.",
-        examples=["sub_amiaWZ3lzDIWaoT"],
-    )
-    emitted_at: AwareDatetime | None = Field(
-        None,
-        description="Issue date of the invoice.",
-        examples=["2024-10-13T00:00:00.000Z"],
-    )
-    due_at: AwareDatetime | None = Field(
-        None,
-        description="Due date of the invoice. Computed from the issue date and the payment delay configured in your settings.",
-        examples=["2024-11-12T00:00:00.000Z"],
-    )
-    settled_at: AwareDatetime | None = Field(
-        None,
-        description="Date the invoice was fully paid.",
-        examples=["2024-10-15T14:01:56.000Z"],
-    )
-    properties: (
-        dict[str, str | float | bool | list[str | float | bool | None] | None] | None
-    ) = Field(
-        None,
-        description="Key/value pairs to store any metadata useful in your context.",
-    )
-    custom_properties: (
-        dict[str, str | float | bool | AwareDatetime | list[str] | None] | None
-    ) = Field(
-        None,
-        description="Values for custom properties defined for the `invoice` entity, keyed by slug.",
-    )
-    additional_display_fields: list[CreateInvoiceAdditionalDisplayField] | None = Field(
-        None,
-        description="Ordered additional fields displayed on the invoice PDF. Invoice and customer custom properties are referenced by slug.",
-        max_length=20,
-    )
-    line_items: list[CreateInvoiceLineItem] | None = Field(None, min_length=1)
-    transactions: list[CreateInvoiceTransaction] | None = None
-    coupons: list[CreateInvoiceCoupon] | None = None
-
-
-class BankAccount(RootModel[StandardBankAccount | ConnectedBankAccount | None]):
+class BankAccountModel(RootModel[StandardBankAccount | ConnectedBankAccount | None]):
     root: StandardBankAccount | ConnectedBankAccount | None = None
 
 
@@ -6419,7 +6424,7 @@ class InvoiceSeller(BaseModel):
         description="Tax identifier / VAT number of the invoicing entity",
         examples=["FR5878986578"],
     )
-    address: Address | None = Field(None, description="Seller address.")
+    address: Address | None = None
 
 
 class Invoice(BaseModel):
@@ -7277,6 +7282,42 @@ class InvoiceDeprecated(BaseModel):
     )
 
 
+class CursorPaginatedCustomer(BaseModel):
+    data: list[Customer] | None = Field(None, description="List of Customer.")
+    next_cursor: str | None = Field(
+        None,
+        description="Cursor to fetch the next page. `null` when there are no more items.",
+        examples=[None],
+    )
+    has_more: bool | None = Field(
+        None,
+        description="Whether more items are available after this page.",
+        examples=[False],
+    )
+    total: float | None = Field(
+        None,
+        description="Total number of items matching the filters. Only present when `include_total=true` was passed.",
+        examples=[1],
+    )
+
+
+class CustomerDetails(Customer):
+    payment_method: PaymentMethod | None = None
+    bank_account: BankAccount2 | BankAccount3 | BankAccount4 | BankAccount5 | None = (
+        None
+    )
+    organisation_id: str | None = Field(
+        None,
+        description="Parent organization ID to which the client is attached.",
+        examples=[None],
+    )
+    organisation_invoicing: Literal["none", "every_invoice", "concat"] | None = Field(
+        None,
+        description="\nHow customer invoices are issued from the parent organisation.\n\n- `none`: Invoices will keep being issued from this customer.\n- `every_invoice`: Customer invoices will be issued from the organisation individually.\n- `concat`: Customer invoices will be grouped into a global parent invoice at a regular schedule (configured on the organisation).\n ",
+        examples=[None],
+    )
+
+
 class CursorPaginatedInvoice(BaseModel):
     data: list[Invoice] | None = Field(None, description="List of Invoice.")
     next_cursor: str | None = Field(
@@ -7298,6 +7339,29 @@ class CursorPaginatedInvoice(BaseModel):
 
 class InvoiceDetails(Invoice):
     integrations: list[InvoiceDetailsIntegration] | None = None
+
+
+class CustomerDetailsV1(CustomerV1):
+    providers: CustomerDetailsV1Providers | None = Field(
+        None,
+        deprecated=True,
+        description="Deprecated field, please use `integrations`.",
+        title="CustomerDetailsV1Providers",
+    )
+    current_payment_method: PaymentMethod | None = None
+    bank_account: (
+        BankAccount62 | BankAccount63 | BankAccount64 | BankAccount65 | None
+    ) = None
+    organisation_id: str | None = Field(
+        None,
+        description="Parent organization ID to which the client is attached.",
+        examples=[None],
+    )
+    organisation_invoicing: Literal["none", "every_invoice", "concat"] | None = Field(
+        None,
+        description="\nHow customer invoices are issued from the parent organisation.\n\n- `none`: Invoices will keep being issued from this customer.\n- `every_invoice`: Customer invoices will be issued from the organisation individually.\n- `concat`: Customer invoices will be grouped into a global parent invoice at a regular schedule (configured on the organisation).\n ",
+        examples=[None],
+    )
 
 
 class InvoiceDetailsV1(InvoiceDeprecated):

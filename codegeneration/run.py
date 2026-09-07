@@ -6,6 +6,7 @@ Usage (from repo root):
 """
 from __future__ import annotations
 
+import importlib
 import sys
 from pathlib import Path
 from typing import NamedTuple
@@ -36,13 +37,13 @@ class Connector(NamedTuple):
 
 
 def discover() -> dict[str, Connector]:
-    """Every connectors/<name>/codegen.yaml. The generator knows no provider by name.
+    """Every connectors/<name>/paths.yaml. The generator knows no provider by name.
 
     Chift is deliberately absent: we implement Chift's contract, we don't call it —
     `chift/models.py` is the target shape, not a client.
     """
     found = {}
-    for config_path in sorted(CONNECTORS_DIR.glob("*/codegen.yaml")):
+    for config_path in sorted(CONNECTORS_DIR.glob("*/paths.yaml")):
         name = config_path.parent.name
         config = yaml.safe_load(config_path.read_text())
         try:
@@ -56,6 +57,19 @@ def discover() -> dict[str, Connector]:
         except KeyError as exc:
             raise SystemExit(f"{config_path.relative_to(ROOT)}: missing key {exc}") from exc
     return found
+
+
+def spec_patch(name: str):
+    """`connectors/<name>/patch.py::patch` if it exists, else identity.
+
+    Provider spec defects are provider knowledge: they live with the connector,
+    never in this package. See connectors/hyperline/patch.py for the conventions.
+    """
+    try:
+        module = importlib.import_module(f"connectors.{name}.patch")
+    except ModuleNotFoundError:
+        return lambda spec: spec
+    return module.patch
 
 
 def _write_models(normalized: Path, output: Path) -> None:
@@ -95,6 +109,7 @@ def run(
     out_pkg: Path,
     client_cls: str,
     endpoints: dict[str, tuple[str, ...]],
+    patch=lambda spec: spec,
 ) -> None:
     if not spec_path.is_file():
         raise SystemExit(f"OpenAPI not found: {spec_path}")
@@ -110,7 +125,8 @@ def run(
     if missing:
         raise SystemExit(f"OpenAPI endpoints not found: {missing}")
 
-    spec = normalize.normalize(prune.prune(raw, endpoints))
+    # prune -> provider patches -> generic normalization
+    spec = normalize.normalize(patch(prune.prune(raw, endpoints)))
     out_pkg.mkdir(parents=True, exist_ok=True)
     (out_pkg / "__init__.py").touch()
 
@@ -131,7 +147,7 @@ def run(
 def main(argv: list[str] | None = None) -> None:
     connectors = discover()
     if not connectors:
-        raise SystemExit(f"no connectors/*/codegen.yaml under {CONNECTORS_DIR}")
+        raise SystemExit(f"no connectors/*/paths.yaml under {CONNECTORS_DIR}")
 
     names = argv if argv is not None else sys.argv[1:]
     for name in names or connectors:
@@ -141,7 +157,13 @@ def main(argv: list[str] | None = None) -> None:
             )
         connector = connectors[name]
         print(f"{name}:")
-        run(connector.spec, connector.out_pkg, connector.client_class, connector.endpoints)
+        run(
+            connector.spec,
+            connector.out_pkg,
+            connector.client_class,
+            connector.endpoints,
+            spec_patch(name),
+        )
         print(f"  wrote {connector.out_pkg.relative_to(ROOT)}/models.py + client.py")
 
 

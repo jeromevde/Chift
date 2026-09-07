@@ -1515,18 +1515,20 @@ components:
       - type: object
         properties:
           payment_method:
-            description: Default payment method of the customer. Only applies to card
-              and direct debit.
-            $ref: '#/components/schemas/PaymentMethod'
+            allOf:
+            - $ref: '#/components/schemas/PaymentMethod'
+            - description: Default payment method of the customer. Only applies to
+                card and direct debit.
           bank_account:
-            anyOf:
-            - $ref: '#/components/schemas/StandardBankAccount'
-            - $ref: '#/components/schemas/ConnectedBankAccount'
-            - type: 'null'
-            description: Custom bank account for the customer. If not defined and
-              customer paying by bank transfer, the bank accounts configured in your
-              account settings will be used.
-            $ref: '#/components/schemas/BankAccount'
+            allOf:
+            - $ref: '#/components/schemas/BankAccount'
+            - anyOf:
+              - $ref: '#/components/schemas/StandardBankAccount'
+              - $ref: '#/components/schemas/ConnectedBankAccount'
+              - type: 'null'
+              description: Custom bank account for the customer. If not defined and
+                customer paying by bank transfer, the bank accounts configured in
+                your account settings will be used.
           organisation_id:
             type:
             - string
@@ -2149,12 +2151,14 @@ components:
           type: string
           description: ID of the invoicing entity this customer will be attached to.
         billing_address:
-          type: object
-          $ref: '#/components/schemas/Address'
+          allOf:
+          - $ref: '#/components/schemas/Address'
+          - type: object
         shipping_address:
-          type: object
-          description: Customer shipping address.
-          $ref: '#/components/schemas/Address'
+          allOf:
+          - $ref: '#/components/schemas/Address'
+          - type: object
+            description: Customer shipping address.
         billing_email:
           type: string
           format: email
@@ -2701,18 +2705,20 @@ components:
             description: Deprecated field, please use `integrations`.
             title: CustomerDetailsV1Providers
           current_payment_method:
-            description: Default payment method of the customer. Only applies to card
-              and direct debit.
-            $ref: '#/components/schemas/PaymentMethod'
+            allOf:
+            - $ref: '#/components/schemas/PaymentMethod'
+            - description: Default payment method of the customer. Only applies to
+                card and direct debit.
           bank_account:
-            anyOf:
-            - $ref: '#/components/schemas/StandardBankAccount'
-            - $ref: '#/components/schemas/ConnectedBankAccount'
-            - type: 'null'
-            description: Custom bank account for the customer. If not defined and
-              customer paying by bank transfer, the bank accounts configured in your
-              account settings will be used.
-            $ref: '#/components/schemas/BankAccount'
+            allOf:
+            - $ref: '#/components/schemas/BankAccount'
+            - anyOf:
+              - $ref: '#/components/schemas/StandardBankAccount'
+              - $ref: '#/components/schemas/ConnectedBankAccount'
+              - type: 'null'
+              description: Custom bank account for the customer. If not defined and
+                customer paying by bank transfer, the bank accounts configured in
+                your account settings will be used.
           organisation_id:
             type:
             - string
@@ -3668,7 +3674,6 @@ components:
           description: A list of key value with the slug of the custom property as
             the key and the custom property value as value.
         billing_address:
-          type: object
           $ref: '#/components/schemas/Address'
         shipping_address:
           type:
@@ -5781,7 +5786,6 @@ components:
           description: A list of key value with the slug of the custom property as
             the key and the custom property value as value.
         billing_address:
-          type: object
           $ref: '#/components/schemas/Address'
         shipping_address:
           type:
@@ -7588,8 +7592,9 @@ components:
               description: Tax identifier / VAT number of the invoicing entity
               example: FR5878986578
             address:
-              description: Seller address.
-              $ref: '#/components/schemas/Address'
+              allOf:
+              - $ref: '#/components/schemas/Address'
+              - description: Seller address.
           required:
           - id
           - name
@@ -8308,12 +8313,13 @@ components:
                 payment_method:
                   $ref: '#/components/schemas/PaymentMethod'
                 bank_account:
-                  anyOf:
-                  - $ref: '#/components/schemas/StandardBankAccount'
-                  - $ref: '#/components/schemas/ConnectedBankAccount'
-                  - type: 'null'
-                  description: Bank account used for a bank transfer transaction.
-                  $ref: '#/components/schemas/BankAccount'
+                  allOf:
+                  - $ref: '#/components/schemas/BankAccount'
+                  - anyOf:
+                    - $ref: '#/components/schemas/StandardBankAccount'
+                    - $ref: '#/components/schemas/ConnectedBankAccount'
+                    - type: 'null'
+                    description: Bank account used for a bank transfer transaction.
                 wallet_id:
                   type: string
                   description: ID of the wallet used for a wallet transaction.
@@ -9391,8 +9397,9 @@ components:
               description: Tax identifier / VAT number of the invoicing entity
               example: FR5878986578
             address:
-              description: Seller address.
-              $ref: '#/components/schemas/Address'
+              allOf:
+              - $ref: '#/components/schemas/Address'
+              - description: Seller address.
           required:
           - id
           - name
@@ -10116,12 +10123,13 @@ components:
                 payment_method:
                   $ref: '#/components/schemas/PaymentMethod'
                 bank_account:
-                  anyOf:
-                  - $ref: '#/components/schemas/StandardBankAccount'
-                  - $ref: '#/components/schemas/ConnectedBankAccount'
-                  - type: 'null'
-                  description: Bank account used for a bank transfer transaction.
-                  $ref: '#/components/schemas/BankAccount'
+                  allOf:
+                  - $ref: '#/components/schemas/BankAccount'
+                  - anyOf:
+                    - $ref: '#/components/schemas/StandardBankAccount'
+                    - $ref: '#/components/schemas/ConnectedBankAccount'
+                    - type: 'null'
+                    description: Bank account used for a bank transfer transaction.
                 wallet_id:
                   type: string
                   description: ID of the wallet used for a wallet transaction.

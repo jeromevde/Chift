@@ -1,82 +1,20 @@
 """Rewrite the OpenAPI idioms that make Python generators produce bad code.
 
-Each rule below is one function. They run in order on every schema node.
-The examples are real, taken from Hyperline's spec.
+Rules run on every schema node (except hoist/rename, which are whole-spec passes).
+Examples in the rule docstrings are from Hyperline.
 
+Generic rules should preserve which values the OpenAPI accepts. A lossy rewrite
+needs an explicit, documented reason; provider-specific or contract-changing
+corrections generally belong in ``connectors/<provider>/patch.py``. The current
+``anonymous_union`` rule is an intentional exception because it trades unused
+variant constraints for a small, stable provider-intake model.
 
-hoist — an inline response has no name, so the client has nothing to return
-────────────────────────────────────────────────────────────────────────────
-    /v2/subscriptions/{id}:                 components:
-      get:                                    schemas:
-        operationId: getSubscription            GetSubscriptionResponse:      # ← lifted
-        responses:                                allOf: [...]
-          "200":                            /v2/subscriptions/{id}:
-            schema:                           get:
-              allOf: [...]        ────►         responses:
-                                                  "200":
-                                                    schema:
-                                                      $ref: '#/...GetSubscriptionResponse'
-
-    Without it: `def get_subscription(...) -> None`.
-
-
-annotated_ref — allOf used only to hang a description on a $ref
-────────────────────────────────────────────────────────────────────────────
-    billing_address:                        billing_address:
-      allOf:                      ────►       $ref: '#/components/schemas/Address'
-        - $ref: '#/...Address'
-        - type: object                      # Address is `type: [object, "null"]`, so the
-                                            # second branch asks a generator to intersect
-                                            # an object with a non-object.
-
-    Without it: openapi-python-client drops Customer entirely —
-    "Cannot take allOf a non-object" — and every endpoint using it loses its type.
-
-
-anonymous_union — a union whose branches have no names
-────────────────────────────────────────────────────────────────────────────
-    PaymentMethod:                          PaymentMethod:
-      anyOf:                                  type: [object, "null"]
-        - title: Card           ────►         additionalProperties: true
-          properties: {...}
-        - title: Card (errored)             # Deliberately lossy: we never map this
-          properties: {...}                 # field. Preserves `null` if a branch had it.
-        - ... 5 more, none $ref'd
-
-    Without it: PaymentMethod1..19, plus PaymentMethod8(PaymentMethod1, PaymentMethod7).
-
-
-NOT a rule: large enums are kept
-────────────────────────────────────────────────────────────────────────────
-    country:
-      type: string
-      enum: [AD, AE, AF, ...255 values]     ← kept, verbatim
-
-    An earlier version dropped enums over 20 values, on the grounds that a
-    provider can widen them without a version bump: `currency` (155), `country`
-    (255), `timezone` (316, IANA — it changes several times a year). Deliberately
-    reverted. These are business vocabulary the spec does document, and dropping
-    them is silent information loss; the generated file is ~3x larger and that is
-    an acceptable price.
-
-    The consequence is real and must be handled downstream, not here: a value the
-    provider adds later fails validation rather than passing through as a string.
-    The connector turns that into ChiftAPIError(502) — a downstream failure, not a
-    bad request — instead of the caller seeing a raw pydantic error.
-
-
-name_from_path — an anonymous object needs a class name
-────────────────────────────────────────────────────────────────────────────
-    Invoice:                                Invoice:
-      properties:                             properties:
-        customer:               ────►           customer:
-          type: object                            type: object
-          properties: {...}                       title: InvoiceCustomer
-
-    Without it: `Customer1`, because `Customer` is taken. A title names a class,
-    so it is set on objects and stripped everywhere else — FastAPI specs put a
-    title on every scalar field, which otherwise yields RootModel[str | None].
+Large enums are deliberately kept (currency/country/timezone). Truncating them is
+silent information loss; a value the provider adds later fails validation and the
+connector turns that into ChiftAPIError(502).
 """
+
+from __future__ import annotations
 
 import re
 import sys
@@ -86,34 +24,28 @@ import yaml
 
 
 def pascal(*parts: str) -> str:
-    """('get_customer', 'Response') -> 'GetCustomerResponse'. Keeps existing caps."""
     words = [w for part in parts for w in re.findall(r"[A-Za-z0-9]+", part)]
     return "".join(w[:1].upper() + w[1:] for w in words)
 
 
 def singular(name: str) -> str:
-    """Name for an array's items: CustomerTaxIds -> CustomerTaxId."""
     return re.sub(r"ies$", "y", name).removesuffix("s")
 
 
-# ── the rules ────────────────────────────────────────────────────────────────
-
-
-def annotated_ref(schema: dict, name: str) -> dict:
-    """allOf of one $ref plus branches that add no properties -> the $ref."""
-    if "allOf" not in schema:
-        return schema
-    refs = [b for b in schema["allOf"] if set(b) == {"$ref"}]
-    rest = [b for b in schema["allOf"] if set(b) != {"$ref"}]
-    if len(refs) != 1 or any("properties" in b for b in rest):
-        return schema
-    annotations = {k: v for branch in rest for k, v in branch.items()}
-    siblings = {k: v for k, v in schema.items() if k != "allOf"}
-    return {**annotations, **siblings, **refs[0]}
-
-
 def anonymous_union(schema: dict, name: str) -> dict:
-    """A union of unnamed object branches, undiscriminated -> free-form object."""
+    """Flatten a union whose branches have no names (and no discriminator).
+
+        PaymentMethod:                          PaymentMethod:
+          anyOf:                                  type: [object, "null"]
+            - title: Card           ────►         properties: {…merged…}  # first branch wins
+              properties: {...}                   additionalProperties: true
+            - title: Card (errored)
+              properties: {...}                 # Keeps null if a branch had it. Merges known
+            - ... 5 more, none $ref'd           # property names (load-bearing on request bodies)
+                                                # rather than discarding them.
+
+    Without it: PaymentMethod1..19, plus PaymentMethod8(PaymentMethod1, PaymentMethod7).
+    """
     for keyword in ("anyOf", "oneOf"):
         branches = schema.get(keyword)
         if not branches or len(branches) < 2 or "discriminator" in schema:
@@ -128,15 +60,11 @@ def anonymous_union(schema: dict, name: str) -> dict:
             )
         }
         if declared <= {"object", "null"}:
-            # Merge the branches' properties rather than discarding them: the field
-            # names are the only thing the spec author did write down, and for a
-            # request body they are load-bearing. First branch wins on a conflict.
             merged: dict = {}
             for branch in branches:
                 for key, value in (branch.get("properties") or {}).items():
                     merged.setdefault(key, value)
             return {
-                # keep the null branch, or the field stops accepting null
                 "type": ["object", "null"] if "null" in declared else "object",
                 **({"properties": merged} if merged else {}),
                 "additionalProperties": True,
@@ -146,20 +74,28 @@ def anonymous_union(schema: dict, name: str) -> dict:
 
 
 def name_from_path(schema: dict, name: str) -> dict:
-    """Title an object after where it lives; strip titles from everything else."""
+    """Give an anonymous object a class name via title; strip title elsewhere.
+
+        Invoice:                                Invoice:
+          properties:                             properties:
+            customer:               ────►           customer:
+              type: object                            type: object
+              properties: {...}                       title: InvoiceCustomer
+
+    Without it: `Customer1`, because `Customer` is taken. A title names a class,
+    so it is set on objects and stripped everywhere else — FastAPI specs put a
+    title on every scalar field, which otherwise yields RootModel[str | None].
+    """
     if "properties" in schema:
         return {**schema, "title": name}
     return {k: v for k, v in schema.items() if k != "title"}
 
 
-RULES = (annotated_ref, anonymous_union, name_from_path)
-
-
-# ── applying them ────────────────────────────────────────────────────────────
+RULES = (anonymous_union, name_from_path)
 
 
 def walk(node, name: str):
-    """Recurse into a schema, then apply every rule to it on the way back up."""
+    """Recursively apply RULES to every schema node under ``node``."""
     if isinstance(node, list):
         return [walk(item, name) for item in node]
     if not isinstance(node, dict):
@@ -183,7 +119,21 @@ def walk(node, name: str):
 
 
 def hoist(spec: dict) -> dict:
-    """Move inline request/response schemas into components, so all are $refs."""
+    """Lift inline request/response schemas into components so the client has a return type.
+
+        /v2/subscriptions/{id}:                 components:
+          get:                                    schemas:
+            operationId: getSubscription            GetSubscriptionResponse:      # ← lifted
+            responses:                                allOf: [...]
+              "200":                            /v2/subscriptions/{id}:
+                schema:                           get:
+                  allOf: [...]        ────►         responses:
+                                                      "200":
+                                                        schema:
+                                                          $ref: '#/...GetSubscriptionResponse'
+
+    Without it: ``def get_subscription(...) -> None``.
+    """
     schemas = spec["components"]["schemas"]
     for operations in spec["paths"].values():
         for operation in operations.values():
@@ -200,13 +150,21 @@ def hoist(spec: dict) -> dict:
                 if not content or "$ref" in content.get("schema", {}):
                     continue
                 name = pascal(operation["operationId"], suffix)
+                if name in schemas:
+                    raise ValueError(
+                        f"cannot hoist {operation['operationId']}: "
+                        f"component {name!r} already exists"
+                    )
                 schemas[name] = content["schema"]
                 content["schema"] = {"$ref": f"#/components/schemas/{name}"}
     return spec
 
 
 def rename(node, alias: dict):
-    """Rewrite every $ref through `alias`, so names match what emit.py writes."""
+    """PascalCase every component schema name and rewrite $refs to match.
+
+    Needed so emit.py and datamodel-codegen agree on class names.
+    """
     if isinstance(node, list):
         return [rename(item, alias) for item in node]
     if not isinstance(node, dict):
@@ -217,43 +175,24 @@ def rename(node, alias: dict):
     return {key: rename(value, alias) for key, value in node.items()}
 
 
-# Hyperline marks these as `format: date` but the live API (and the spec's own
-# examples) return datetimes. Nested under Customer.subscriptions.items.
-_DATETIME_MASQUERADING_AS_DATE = frozenset(
-    {
-        "current_period_started_at",
-        "current_period_ends_at",
-    }
-)
-
-
-def provider_quirks(node):
-    """Fix known provider/spec mismatches that survive the generic rewrites."""
-    if isinstance(node, list):
-        return [provider_quirks(item) for item in node]
-    if not isinstance(node, dict):
-        return node
-    out = {key: provider_quirks(value) for key, value in node.items()}
-    props = out.get("properties")
-    if isinstance(props, dict):
-        for key in _DATETIME_MASQUERADING_AS_DATE:
-            field = props.get(key)
-            if isinstance(field, dict) and field.get("format") == "date":
-                props[key] = {**field, "format": "date-time"}
-    return out
-
-
 def normalize(spec: dict) -> dict:
+    """hoist → rename → walk(RULES) over every component schema."""
     spec = hoist(spec)
     alias = {name: pascal(name) for name in spec["components"]["schemas"]}
+    reverse = {}
+    for source, target in alias.items():
+        if target in reverse:
+            raise ValueError(
+                f"component names {reverse[target]!r} and {source!r} both "
+                f"normalize to {target!r}"
+            )
+        reverse[target] = source
     spec = rename(spec, alias)
     schemas = {
         alias[name]: walk(schema, alias[name])
         for name, schema in spec["components"]["schemas"].items()
     }
-    return provider_quirks(
-        {**spec, "components": {**spec["components"], "schemas": schemas}}
-    )
+    return {**spec, "components": {**spec["components"], "schemas": schemas}}
 
 
 if __name__ == "__main__":

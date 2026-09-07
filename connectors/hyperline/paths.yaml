@@ -1,8 +1,8 @@
 # What to generate from Hyperline's OpenAPI, and nothing more.
 #
-# `python -m codegeneration.run` discovers this file; the generator itself knows
-# nothing about Hyperline. Adding a provider means adding a directory, not editing
-# codegeneration/.
+# `python -m codegeneration.run` discovers connectors/*/paths.yaml; the generator
+# itself knows nothing about Hyperline. Adding a provider means adding a directory,
+# not editing codegeneration/.
 #
 # Output lands in generated/<connector-directory-name>/.
 

@@ -5,6 +5,7 @@ description = "POC: OpenAPI codegen + Hyperline → Chift invoicing connector"
 requires-python = ">=3.11"
 dependencies = [
     "httpx>=0.28",
+    "iso4217==1.16.20260101",
     "pydantic>=2.0",
     "python-dotenv>=1.0",
     "email-validator>=2.0",
