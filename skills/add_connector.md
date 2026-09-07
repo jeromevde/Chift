@@ -461,9 +461,26 @@ runner is the easy part, and the part that does not make the output correct.
 
 ## Step 5 — Expose and test
 
-Wire the connector into `chift/api.py` only if it should be reachable over HTTP. The FastAPI
-layer dispatches on `CONNECTORS[consumer_id]`; its single provider-error handler needs no changes
-for a new provider.
+Subclass `chift.connector.InvoicingConnector` and set `provider = "<name>"`. That class is the
+contract: five abstract methods, no shared behaviour. Defining the subclass registers it, and
+`chift/api.py` resolves `consumer -> provider slug -> class -> from_env()` without naming any
+provider, so **no code in `chift/` changes when you add one**.
+
+```python
+class AcmeInvoicingConnector(InvoicingConnector):
+    provider = "acme"
+
+    @classmethod
+    def from_env(cls) -> "AcmeInvoicingConnector":
+        return cls()          # credentials come from connectors/acme/config.py
+```
+
+Omitting a method is a `TypeError` at construction, not an `AttributeError` on the first
+request. Register the consumer with `CONSUMERS[consumer_id] = "acme"`; the API's single
+provider-error handler needs no changes.
+
+Keep provider-specific operations (archive-before-delete, fixture creation) off the contract as
+ordinary methods on your subclass. The contract carries only what Chift publishes.
 
 ```bash
 pytest                    # live sandbox round-trip
