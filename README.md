@@ -15,7 +15,7 @@ pip install -e ".[dev]" && python -m codegeneration.run hyperline
 # that is the point: generated diffs are reviewable.
 
 pytest
-# 31 tests. With HYPERLINE_API_KEY_TEST in .env, this creates real customers and
+# 36 tests. With HYPERLINE_API_KEY_TEST in .env, this creates real customers and
 # invoices in the Hyperline sandbox, reads them back through Chift's contract, and
 # deletes them. Without a key, the offline half still runs.
 
@@ -41,8 +41,10 @@ Three things to look at:
 | [Retrieve one invoice](https://docs.chift.eu/api-reference/endpoints/invoicing/retrieve-one-invoice) | `GET /v2/invoices/{id}` |
 | [Retrieve all invoices](https://docs.chift.eu/api-reference/endpoints/invoicing/retrieve-all-invoices) | `GET /v2/invoices` |
 
-The FastAPI surface exposes those four reads. Create/delete operations exist only in the generated
-Hyperline client so the live tests can manage their own fixtures.
+The FastAPI surface exposes those four reads, plus `POST` contacts and invoices, which take
+Chift's published `ContactItemIn` and `InvoiceItemIn` and are what the live tests use to create
+their own fixtures. Delete is provider workflow (Hyperline archives before deleting) and stays
+off the contract, on the connector.
 
 ## Architecture
 

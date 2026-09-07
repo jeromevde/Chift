@@ -13,7 +13,6 @@ import logging
 import httpx
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 
 from chift import connector as registry
 from chift.connector import InvoicingConnector
@@ -22,6 +21,7 @@ from chift.models import (
     ChiftPage,
     ContactItemIn,
     ContactItemOut,
+    InvoiceItemIn,
     InvoiceItemOut,
 )
 
@@ -81,11 +81,6 @@ def _connector(consumer_id: str) -> InvoicingConnector:
     return CONNECTORS[consumer_id]
 
 
-class CreateInvoiceBody(BaseModel):
-    customer_id: str
-    reference: str
-
-
 @app.get(
     "/consumers/{consumer_id}/invoicing/contacts",
     response_model=ChiftPage[ContactItemOut],
@@ -124,10 +119,8 @@ def list_invoices(
 
 
 @app.post("/consumers/{consumer_id}/invoicing/invoices", response_model=InvoiceItemOut)
-def create_invoice(consumer_id: str, body: CreateInvoiceBody) -> InvoiceItemOut:
-    return _connector(consumer_id).create_invoice(
-        customer_id=body.customer_id, reference=body.reference
-    )
+def create_invoice(consumer_id: str, body: InvoiceItemIn) -> InvoiceItemOut:
+    return _connector(consumer_id).create_invoice(body)
 
 
 @app.get(

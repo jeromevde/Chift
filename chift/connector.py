@@ -18,7 +18,13 @@ import pkgutil
 from abc import ABC, abstractmethod
 from typing import ClassVar
 
-from chift.models import ChiftPage, ContactItemIn, ContactItemOut, InvoiceItemOut
+from chift.models import (
+    ChiftPage,
+    ContactItemIn,
+    ContactItemOut,
+    InvoiceItemIn,
+    InvoiceItemOut,
+)
 
 # provider slug -> connector class, populated by __init_subclass__ below.
 _REGISTRY: dict[str, type[InvoicingConnector]] = {}
@@ -61,13 +67,11 @@ class InvoicingConnector(ABC):
 
     @abstractmethod
     def create_contact(self, body: ContactItemIn) -> ContactItemOut:
-        """Create a contact from Chift's published `ContactItemIn`.
+        """Create a contact from Chift's published `ContactItemIn`."""
 
-        On the contract because the body is Chift's own schema. `create_invoice`
-        deliberately is not: it still takes an invented body and fills the rest
-        with constants, so it remains a provider-specific method until it maps
-        Chift's published input the way this one does.
-        """
+    @abstractmethod
+    def create_invoice(self, body: InvoiceItemIn) -> InvoiceItemOut:
+        """Create an invoice from Chift's published `InvoiceItemIn`."""
 
 
 def _discover() -> None:

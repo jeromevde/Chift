@@ -16,12 +16,13 @@ from iso4217 import Currency
 
 from chift.api import CONNECTORS, app
 from chift.connector import InvoicingConnector
-from chift.models import InvoiceStatus
+from chift.models import InvoiceItemIn, InvoiceStatus
 from connectors.hyperline.config import get_settings
 from connectors.hyperline.connector import (
     INVOICE_STATUS,
     HyperlineInvoicingConnector,
     _page_via_cursor,
+    from_invoice,
     to_contact,
     to_invoice,
 )
@@ -318,7 +319,28 @@ def test_create_two_invoices_and_get_them_back(client):
         for label in ("a", "b"):
             r = http.post(
                 f"/consumers/{CONSUMER}/invoicing/invoices",
-                json={"customer_id": customer_id, "reference": f"ref-{label}-{suffix}"},
+                json={
+                    "currency": "EUR",
+                    "invoice_type": "customer_invoice",
+                    "status": "draft",
+                    "invoice_date": "2026-01-15",
+                    "partner_id": customer_id,
+                    "reference": f"ref-{label}-{suffix}",
+                    "untaxed_amount": 1000.0,
+                    "tax_amount": 210.0,
+                    "total": 1210.0,
+                    "lines": [
+                        {
+                            "description": "POC consulting",
+                            "unit_price": 1000.0,
+                            "quantity": 1,
+                            "tax_rate": 21,
+                            "untaxed_amount": 1000.0,
+                            "tax_amount": 210.0,
+                            "total": 1210.0,
+                        }
+                    ],
+                },
             )
             assert r.status_code == 200, r.text
             invoice = r.json()
@@ -465,3 +487,67 @@ def test_an_unknown_provider_is_our_misconfiguration_not_a_bad_request():
         assert "not-implemented" in got.text
     finally:
         CONSUMERS.pop(consumer, None)
+
+
+def _chift_invoice(**over):
+    base = {
+        "currency": "EUR",
+        "invoice_type": "customer_invoice",
+        "status": "draft",
+        "invoice_date": "2026-01-15",
+        "partner_id": "cus_1",
+        "untaxed_amount": 1000.0,
+        "tax_amount": 210.0,
+        "total": 1210.0,
+        "lines": [
+            {
+                "description": "Consulting",
+                "unit_price": 1000.0,
+                "quantity": 1,
+                "tax_rate": 21,
+                "untaxed_amount": 1000.0,
+                "tax_amount": 210.0,
+                "total": 1210.0,
+            }
+        ],
+    }
+    return InvoiceItemIn.model_validate(base | over)
+
+
+def test_create_invoice_scales_to_the_currency_smallest_unit():
+    """The inverse of _amount: JPY has no minor unit, EUR has two."""
+    eur = from_invoice(_chift_invoice())
+    assert eur.line_items[0].unit_amount == 100_000
+
+    jpy = from_invoice(
+        _chift_invoice(currency="JPY")
+    )
+    assert jpy.line_items[0].unit_amount == 1000
+
+
+def test_create_invoice_sends_nothing_the_caller_did_not_state():
+    sent = from_invoice(_chift_invoice()).model_dump(mode="json", exclude_none=True)
+    # No invented currency, address, tax rate or line description.
+    assert sent["customer_id"] == "cus_1"
+    assert sent["currency"] == "EUR"
+    assert sent["type"] == "invoice"
+    assert sent["status"] == "draft"
+    assert sent["line_items"][0]["name"] == "Consulting"
+    assert "number" not in sent and "reference" not in sent
+
+
+def test_create_invoice_refuses_a_document_hyperline_cannot_represent():
+    """Hyperline bills a vendor's customers; it has no accounts-payable side."""
+    with pytest.raises(ValueError, match="invoice type"):
+        from_invoice(_chift_invoice(invoice_type="supplier_invoice"))
+
+
+def test_create_invoice_refuses_an_invoice_with_no_lines():
+    with pytest.raises(ValueError, match="invoice.lines"):
+        from_invoice(_chift_invoice(lines=[]))
+
+
+def test_posted_maps_to_the_hyperline_state_that_reads_back_as_posted():
+    """from_invoice and INVOICE_STATUS must agree, or a create/read round trip drifts."""
+    hl_status = from_invoice(_chift_invoice(status="posted")).status
+    assert INVOICE_STATUS[hl_status] is InvoiceStatus.posted

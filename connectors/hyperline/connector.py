@@ -14,7 +14,7 @@ dates, status collapse, contact roles, pagination — stay explicit for review.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any, TypeVar
 
 from iso4217 import Currency
@@ -26,9 +26,13 @@ from chift.models import (
     ChiftPage,
     ContactItemIn,
     ContactItemOut,
+    InvoiceItemIn,
     InvoiceItemOut,
+    InvoiceLineItemIn,
     InvoiceLineItemOut,
     InvoiceStatus,
+    InvoiceStatusIn,
+    InvoicingCreateInvoiceType,
     InvoicingInvoiceType,
     Ref,
 )
@@ -107,6 +111,17 @@ def _amount(n: float, currency: str) -> float:
     except ValueError as exc:
         raise ValueError(f"Unmapped provider currency: {currency}") from exc
     return float(n) / 10**exponent
+
+
+# Mapping decision: the inverse of `_amount`. Chift states a decimal amount; Hyperline
+# wants the currency's smallest unit, so scale up by the same ISO 4217 exponent and round
+# to an integer count of minor units rather than sending a fraction of a cent.
+def _minor(n: float, currency: str) -> int:
+    try:
+        exponent = Currency(currency).exponent
+    except ValueError as exc:
+        raise ValueError(f"Unmappable currency: {currency}") from exc
+    return round(float(n) * 10**exponent)
 
 
 def _day(s: Any) -> date | None:
@@ -304,6 +319,70 @@ def to_invoice(
     )
 
 
+# Mapping decision: Chift states a calendar date; Hyperline's create fields are timezone-aware
+# instants. `_day` discarded time on the way out, so there is none to restore: midnight UTC is
+# the explicit choice, not a coercion. It round-trips, because to_invoice trims back to a date.
+def _instant(d: date | None) -> str | None:
+    if d is None:
+        return None
+    return datetime(d.year, d.month, d.day, tzinfo=UTC).isoformat()
+
+
+# Mapping decision: Hyperline requires only customer_id and line_items on create, so
+# everything else is sent only when Chift's body carries it.
+CREATE_INVOICE_TYPE = {
+    InvoicingCreateInvoiceType.customer_invoice: "invoice",
+    InvoicingCreateInvoiceType.customer_refund: "credit_note",
+    # Mapping decision: Hyperline bills a vendor's own customers and has no accounts-payable
+    # side, so supplier documents have no representation and are refused by name.
+}
+
+# Mapping decision: inverse of INVOICE_STATUS. Chift accepts only draft and posted on create;
+# `to_pay` is the issued state Hyperline puts a posted invoice into.
+CREATE_INVOICE_STATUS = {
+    InvoiceStatusIn.draft: "draft",
+    InvoiceStatusIn.posted: "to_pay",
+}
+
+
+def _hl_line(line: InvoiceLineItemIn, currency: str):
+    # REVIEW: Chift requires tax_amount, untaxed_amount and total on every input line, but
+    # Hyperline derives all three from unit_amount, units_count and tax_rate. They are read
+    # and deliberately not sent; Hyperline recomputes them, and to_invoice reads back what
+    # Hyperline computed rather than what the caller stated.
+    return hl.CreateInvoiceLineItemCreateInvoiceLineItem3(
+        name=line.description,
+        product_id=line.product_id,
+        unit_amount=_minor(line.unit_price, currency),
+        units_count=line.quantity,
+        tax_rate=line.tax_rate,
+    )
+
+
+def from_invoice(body: InvoiceItemIn) -> hl.CreateInvoice:
+    """Chift InvoiceItemIn -> Hyperline CreateInvoice. Inverse of `to_invoice`."""
+    currency = body.currency
+    return hl.CreateInvoice(
+        # Mapping decision: Chift's partner is Hyperline's invoice customer, and Hyperline
+        # requires it, so an invoice with no partner fails here rather than at the provider.
+        customer_id=_required(body.partner_id, "invoice.partner_id"),
+        currency=currency,
+        type=_require_map(CREATE_INVOICE_TYPE, body.invoice_type, kind="invoice type"),
+        status=_require_map(CREATE_INVOICE_STATUS, body.status, kind="invoice status"),
+        number=body.invoice_number,
+        reference=body.reference,
+        custom_note=body.customer_memo,
+        emitted_at=_instant(body.invoice_date),
+        due_at=_instant(body.due_date),
+        # Mapping decision: Hyperline requires at least one line, so an empty Chift `lines`
+        # is refused here rather than becoming a provider 400.
+        line_items=[
+            _hl_line(line, currency)
+            for line in _required(body.lines or None, "invoice.lines")
+        ],
+    )
+
+
 def _page_via_cursor(fetch, *, page: int, size: int, map_item, **query):
     # Mapping decision: Chift page N is reconstructed from opaque cursors without storing
     # provider state that could become stale between calls.
@@ -357,27 +436,8 @@ class HyperlineInvoicingConnector(InvoicingConnector):
         raw = self.client.create_customer(from_contact(body))
         return to_contact(raw)
 
-    def create_invoice(self, *, customer_id: str, reference: str) -> InvoiceItemOut:
-        raw = self.client.create_invoice(
-            hl.CreateInvoice.model_validate(
-                {
-                    "customer_id": customer_id,
-                    "currency": "EUR",
-                    "status": "draft",
-                    "reference": reference,
-                    # Mapping decision: use Hyperline's inline-item alternative
-                    # (name + amount) rather than a pre-existing product_id.
-                    "line_items": [
-                        {
-                            "name": "POC consulting",
-                            "unit_amount": 100_000,
-                            "units_count": 1,
-                            "tax_rate": 21,
-                        }
-                    ],
-                }
-            )
-        )
+    def create_invoice(self, body: InvoiceItemIn) -> InvoiceItemOut:
+        raw = self.client.create_invoice(from_invoice(body))
         return to_invoice(raw)
 
     def delete_contact(self, contact_id: str) -> None:
