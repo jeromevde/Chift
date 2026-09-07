@@ -1,16 +1,18 @@
-"""Keep only the chosen operations and the schemas they transitively reference."""
+"""Keep chosen operations and every component they transitively reference."""
 
 HTTP_METHODS = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
 
 
 def refs(node, out):
-    """Collect $ref target names in document order (deterministic)."""
+    """Collect internal component references in document order."""
     if isinstance(node, dict):
         target = node.get("$ref")
-        if isinstance(target, str):
-            name = target.rsplit("/", 1)[-1]
-            if name not in out:
-                out.append(name)
+        if (
+            isinstance(target, str)
+            and target.startswith("#/components/")
+            and target not in out
+        ):
+            out.append(target)
         for value in node.values():
             refs(value, out)
     elif isinstance(node, list):
@@ -20,7 +22,7 @@ def refs(node, out):
 
 
 def prune(spec: dict, endpoints: dict[str, tuple[str, ...]]) -> dict:
-    """Keep configured path/method pairs plus path metadata and referenced schemas."""
+    """Keep configured operations and the complete closure of their component refs."""
     paths = {
         path: {
             key: value
@@ -29,19 +31,26 @@ def prune(spec: dict, endpoints: dict[str, tuple[str, ...]]) -> dict:
         }
         for path, methods in endpoints.items()
     }
-    schemas, out = spec["components"]["schemas"], {}
+    source, components = spec["components"], {}
     queue = refs(paths, [])
     while queue:
-        name = queue.pop(0)
-        if name in out or name not in schemas:
+        ref = queue.pop(0)
+        parts = ref.split("/")
+        section, encoded_name = parts[2:4]
+        name = encoded_name.replace("~1", "/").replace("~0", "~")
+        output = components.setdefault(section, {})
+        if name in output:
             continue
-        out[name] = schemas[name]
-        queue.extend(refs(schemas[name], []))
+        try:
+            output[name] = source[section][name]
+        except KeyError as exc:
+            raise ValueError(f"unresolved OpenAPI reference: {ref}") from exc
+        queue.extend(refs(output[name], []))
+
+    components.setdefault("schemas", {})
+    components["securitySchemes"] = source.get("securitySchemes", {})
     return {
         **{key: spec[key] for key in ("openapi", "info", "servers") if key in spec},
         "paths": paths,
-        "components": {
-            "schemas": out,
-            "securitySchemes": spec["components"].get("securitySchemes", {}),
-        },
+        "components": components,
     }

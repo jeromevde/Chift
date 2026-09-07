@@ -1,7 +1,7 @@
 # Add a connector
 
 <!-- skill version: bump when the procedure or review rules change -->
-**version:** 4
+**version:** 7
 **applies to:** `connectors/<provider>/connector.py`
 
 How to onboard a new provider to Chift's unified invoicing API, end to end.
@@ -175,7 +175,7 @@ Then:
 python -m codegeneration.run <name>
 ```
 
-This runs prune → normalize → `datamodel-code-generator` → `emit`, and produces:
+This runs prune → name operation models → normalize → `datamodel-code-generator` → `emit`, and produces:
 
 ```
 generated/<name>/
@@ -184,26 +184,37 @@ generated/<name>/
     openapi.normalized.yaml    the exact input to the generator, for inspection
 ```
 
-**The command fails the build if the generated models cannot parse the spec's own examples.**
-That is deliberate — it catches provider schema drift at generate time instead of in
-production. If it fails, read the message: it names the operation and the field.
+**The command fails if documented values do not parse, an unsupported request body is selected,
+or the emitted client is invalid Python.** That catches provider drift and unsupported operations
+at generation time. If it fails, the message names the operation and problem.
 
 ### When generation produces bad output
 
-Fix it in `codegeneration/normalize.py`, never in the generated file. The existing rules cover
-the cases that broke every generator we tested:
+Fix it in `codegeneration/normalize.py` or `emit.py`, never in the generated file. The existing
+rules cover the cases that broke every generator we tested:
 
 | Symptom | Rule |
 |---|---|
-| `Cannot take allOf a non-object`, models silently dropped | `annotated_ref` |
-| `PaymentMethod1`, `PaymentMethod8(PaymentMethod1, PaymentMethod7)` | `anonymous_union` |
-| `Customer1`, `Type4`, `Status7` | `name_from_path` |
+| `$ref` wrapped only to add a description | `ref_metadata` |
+| Existing object title overwritten or `Customer1` generated | `name_from_path` |
+| Anonymous variants share unique literal values | `literal_union_titles` |
+| Anonymous object variants produce numbered duplicate models | `anonymous_union` |
 | Client method returns `None` because the response is an inline schema | `hoist` |
 
-If a new provider needs a rule, add it as a named function in `RULES` with a worked example in
-the module docstring, and say whether it preserves meaning or deliberately overrides the
-declared contract. See `RESEARCH.md` for the full reasoning, including the rules
-we considered and rejected.
+If a new provider needs a rule, add it as a named function with a docstring showing exact input and
+output. Generic normalization must preserve which values the OpenAPI accepts unless the rule
+documents why widening is appropriate. Provider-specific or contract-changing corrections
+generally belong in `patch.py`, with evidence.
+
+Preserve `$ref` unions, discriminators, and complete collision-free provider titles. The generic
+normalizer may add titles when every anonymous branch has a distinct const/single-enum value. Only
+otherwise unidentified inline object unions are widened: collect every documented property, use
+property-level `anyOf` for conflicting definitions, leave properties absent from any branch
+unconstrained, and keep requirements shared by every branch. Never use first-branch-wins merging.
+
+The widened generated model accepts more combinations than the provider. When constructing a
+request, the mapper must still choose and document one valid provider alternative rather than
+treating optional generated fields as proof that any combination is valid.
 
 ### When the spec is wrong about its own API
 
@@ -245,7 +256,7 @@ The split to hold on to:
 
 | | Lives in | Because |
 |---|---|---|
-| Generic rewrites (`allOf` wrappers, anonymous unions, inline schemas) | `codegeneration/normalize.py` | true of any OpenAPI document |
+| Generic rewrites, lossless except for explicit anonymous-union widening | `codegeneration/normalize.py` | true of any OpenAPI document |
 | Spec corrections (this field is mislabelled) | `connectors/<name>/patch.py` | true only of this provider |
 
 ### Credentials

@@ -1,9 +1,10 @@
-"""Run the connector codegen: prune -> normalize -> models + client.
+"""Run the connector codegen: prune -> normalize (incl. hoist) -> models + client.
 
 Usage (from repo root):
   python -m codegeneration
   python -m codegeneration.run hyperline
 """
+
 from __future__ import annotations
 
 import importlib
@@ -15,6 +16,7 @@ import yaml
 from datamodel_code_generator import (
     DataModelType,
     InputFileType,
+    NamingStrategy,
     PythonVersion,
     generate,
 )
@@ -55,7 +57,9 @@ def discover() -> dict[str, Connector]:
                 endpoints={p: tuple(m) for p, m in config["endpoints"].items()},
             )
         except KeyError as exc:
-            raise SystemExit(f"{config_path.relative_to(ROOT)}: missing key {exc}") from exc
+            raise SystemExit(
+                f"{config_path.relative_to(ROOT)}: missing key {exc}"
+            ) from exc
     return found
 
 
@@ -90,6 +94,8 @@ def _write_models(normalized: Path, output: Path) -> None:
         use_union_operator=True,
         # Use schema `title` for class names (normalize sets those); avoids Customer1 noise.
         use_title_as_name=True,
+        # Prefix titled variants with their parent context (PaymentMethodCard).
+        naming_strategy=NamingStrategy.ParentPrefixed,
         # Flatten RootModel wrappers so fields are on the model, not .root.
         collapse_root_models=True,
         # Enums as Literal[...] so `customer.type == "corporate"` works (Enum members don't).
@@ -125,7 +131,7 @@ def run(
     if missing:
         raise SystemExit(f"OpenAPI endpoints not found: {missing}")
 
-    # prune -> provider patches -> generic normalization
+    # prune -> provider patches -> normalize (hoist + schema rules)
     spec = normalize.normalize(patch(prune.prune(raw, endpoints)))
     out_pkg.mkdir(parents=True, exist_ok=True)
     (out_pkg / "__init__.py").touch()
@@ -134,7 +140,10 @@ def run(
     normalized.write_text(yaml.safe_dump(spec, sort_keys=False))
     models_py = out_pkg / "models.py"
     _write_models(normalized, models_py)
-    (out_pkg / "client.py").write_text(emit.emit(spec, client_cls))
+    client_py = out_pkg / "client.py"
+    client = emit.emit(spec, client_cls)
+    compile(client, str(client_py), "exec")
+    client_py.write_text(client)
 
     sys.path.insert(0, str(ROOT))
     pkg_import = ".".join(out_pkg.relative_to(ROOT).parts)

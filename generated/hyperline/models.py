@@ -19,7 +19,7 @@ from pydantic import (
 )
 
 
-class BankAccount1(BaseModel):
+class BankAccountBankAccount(BaseModel):
     pass
 
 
@@ -65,7 +65,7 @@ class InvoiceDetailsIntegration(BaseModel):
     )
 
 
-class CreateCustomerTaxId(BaseModel):
+class CreateCustomerCreateCustomerTaxId(BaseModel):
     value: str | None = Field(
         None, description="Value of the customer tax ID.", examples=["FR123456789"]
     )
@@ -104,11 +104,11 @@ class CustomerDetailsV1Providers(BaseModel):
     posthog: str | None = None
 
 
-class BankAccount61(BaseModel):
+class BankAccount1BankAccount1(BaseModel):
     pass
 
 
-class CustomerV1TaxId(BaseModel):
+class CustomerV1CustomerV1TaxId(BaseModel):
     value: str | None = Field(
         None, description="Value of the customer tax ID.", examples=["FR123456789"]
     )
@@ -121,7 +121,7 @@ class CustomerV1TaxId(BaseModel):
     )
 
 
-class CustomerV1ShippingAddress(BaseModel):
+class CustomerV1CustomerV1ShippingAddress(BaseModel):
     name: str | None = Field(None, description="Address name.", examples=["Acme"])
     line1: str | None = Field(
         None, description="Address first line.", examples=["5 rue de Paradis"]
@@ -465,7 +465,7 @@ class CustomerV1ShippingAddress(BaseModel):
     )
 
 
-class CustomerV1Subscription(BaseModel):
+class CustomerV1CustomerV1Subscription(BaseModel):
     id: str | None = Field(
         None, description="Subscription ID.", examples=["sub_0kIc7jrF7gV00V"]
     )
@@ -501,7 +501,7 @@ class CustomerV1Subscription(BaseModel):
     )
 
 
-class CustomerV1Integration(BaseModel):
+class CustomerV1CustomerV1Integration(BaseModel):
     entity_id: str | None = Field(None, description="ID of the entity in the provider.")
     provider_name: (
         Literal[
@@ -543,18 +543,27 @@ class CustomerV1Integration(BaseModel):
     )
 
 
-class CreateInvoiceAdditionalDisplayField(BaseModel):
-    model_config = ConfigDict(
-        extra="allow",
-    )
+class CreateInvoiceStandard(BaseModel):
     type: Literal["standard"] | None = Field(
         None, description="Display a standard invoice field."
     )
     field: Literal["customer_id", "subscription_id", "quote_id"] | None = Field(
         None, description="Standard invoice field to display."
     )
+
+
+class CreateInvoiceCustomProperty(BaseModel):
+    type: Literal["custom_property"] | None = Field(
+        None, description="Display an invoice or customer custom property."
+    )
     slug: str | None = Field(
         None, description="Slug of the invoice or customer custom property to display."
+    )
+
+
+class CreateInvoiceCustom(BaseModel):
+    type: Literal["custom"] | None = Field(
+        None, description="Display a custom label and value."
     )
     label: constr(min_length=1, max_length=100) | None = Field(
         None, description="Label displayed on the invoice."
@@ -564,10 +573,7 @@ class CreateInvoiceAdditionalDisplayField(BaseModel):
     )
 
 
-class CreateInvoiceTransaction(BaseModel):
-    model_config = ConfigDict(
-        extra="allow",
-    )
+class CreateInvoicePaymentMethod(BaseModel):
     amount: confloat(ge=0.0) | None = Field(
         None, description="Transaction amount.", examples=[31500]
     )
@@ -581,11 +587,33 @@ class CreateInvoiceTransaction(BaseModel):
         description="Payment method used to execute the transaction. Only applies to scheduled transactions with a process_at date in the future.",
         examples=["pm_1xMpj5bwRqN7LM"],
     )
+
+
+class CreateInvoiceBankTransfer(BaseModel):
+    amount: confloat(ge=0.0) | None = Field(
+        None, description="Transaction amount.", examples=[31500]
+    )
+    process_at: AwareDatetime | None = Field(
+        None,
+        description="Date corresponding to the processing of the transaction. If in the future, the transaction is scheduled to be processed.",
+        examples=["2024-11-12T07:38:39.222Z"],
+    )
     payment_method_type: Literal["transfer"] | None = None
     bank_account_id: str | None = Field(
         None,
         description="Bank account linked to the transaction.",
         examples=["bac_KJyPrMA1toAqRG"],
+    )
+
+
+class CreateInvoiceProviderTransaction(BaseModel):
+    amount: confloat(ge=0.0) | None = Field(
+        None, description="Transaction amount.", examples=[31500]
+    )
+    process_at: AwareDatetime | None = Field(
+        None,
+        description="Date corresponding to the processing of the transaction. If in the future, the transaction is scheduled to be processed.",
+        examples=["2024-11-12T07:38:39.222Z"],
     )
     provider_name: Literal["airwallex", "gocardless", "mollie", "stripe"] | None = (
         Field(None, description="Provider name.")
@@ -600,13 +628,38 @@ class CreateInvoiceTransaction(BaseModel):
     )
 
 
-class CreateInvoiceCoupon(BaseModel):
-    model_config = ConfigDict(
-        extra="allow",
+class CreateInvoiceExternalTransaction(BaseModel):
+    amount: confloat(ge=0.0) | None = Field(
+        None, description="Transaction amount.", examples=[31500]
     )
+    process_at: AwareDatetime | None = Field(
+        None,
+        description="Date corresponding to the processing of the transaction. If in the future, the transaction is scheduled to be processed.",
+        examples=["2024-11-12T07:38:39.222Z"],
+    )
+    payment_method_type: Literal["external"] | None = None
+
+
+class CreateInvoiceCouponAmount(BaseModel):
     coupon_id: str | None = Field(
         None, description="Coupon ID.", examples=["cou_1eTaiytfA0i2Vb"]
     )
+    name: str | None = Field(
+        None, description="Name of the coupon.", examples=["Black Friday 2023"]
+    )
+    discount_amount: PositiveFloat | None = Field(
+        None,
+        description="Amount corresponding to the discounted part of the total amount.",
+        examples=[500],
+    )
+    line_item_indexes: list[float] | None = Field(
+        None,
+        description="Index of the line items to which the coupon applies. Null means all line items.",
+        examples=[[0, 1]],
+    )
+
+
+class CreateInvoiceInlineCoupon(BaseModel):
     name: str | None = Field(
         None, description="Name of the coupon.", examples=["Black Friday 2023"]
     )
@@ -664,7 +717,7 @@ class InvoiceDetailsV1Integration(BaseModel):
     )
 
 
-class CustomerTaxId(BaseModel):
+class CustomerCustomerTaxId(BaseModel):
     value: str | None = Field(
         None, description="Value of the customer tax ID.", examples=["FR123456789"]
     )
@@ -677,7 +730,7 @@ class CustomerTaxId(BaseModel):
     )
 
 
-class CustomerShippingAddress(BaseModel):
+class CustomerCustomerShippingAddress(BaseModel):
     name: str | None = Field(None, description="Address name.", examples=["Acme"])
     line1: str | None = Field(
         None, description="Address first line.", examples=["5 rue de Paradis"]
@@ -1021,7 +1074,7 @@ class CustomerShippingAddress(BaseModel):
     )
 
 
-class CustomerSubscription(BaseModel):
+class CustomerCustomerSubscription(BaseModel):
     id: str | None = Field(
         None, description="Subscription ID.", examples=["sub_0kIc7jrF7gV00V"]
     )
@@ -1057,7 +1110,7 @@ class CustomerSubscription(BaseModel):
     )
 
 
-class CustomerIntegration(BaseModel):
+class CustomerCustomerIntegration(BaseModel):
     entity_id: str | None = Field(None, description="ID of the entity in the provider.")
     provider_name: (
         Literal[
@@ -1099,7 +1152,7 @@ class CustomerIntegration(BaseModel):
     )
 
 
-class CustomerOwner(BaseModel):
+class CustomerCustomerOwner(BaseModel):
     id: str | None = Field(
         None, description="Hyperline user ID.", examples=["usr_KMcxRWc1ZQwvJG"]
     )
@@ -1117,7 +1170,7 @@ class CustomerOwner(BaseModel):
     )
 
 
-class CustomerFollower(BaseModel):
+class CustomerCustomerFollower(BaseModel):
     id: str | None = Field(
         None, description="Hyperline user ID.", examples=["usr_KMcxRWc1ZQwvJG"]
     )
@@ -1135,10 +1188,7 @@ class CustomerFollower(BaseModel):
     )
 
 
-class PaymentMethod(BaseModel):
-    model_config = ConfigDict(
-        extra="allow",
-    )
+class PaymentMethodCard(BaseModel):
     id: str | None = Field(
         None, description="Payment method ID.", examples=["pm_1xMpj5bwRqN7LM"]
     )
@@ -1163,6 +1213,17 @@ class PaymentMethod(BaseModel):
     brand: str | None = Field(
         None, description="Brand of the card.", examples=["visa", "mastercard", "amex"]
     )
+
+
+class PaymentMethodCardErrored(BaseModel):
+    id: str | None = Field(
+        None, description="Payment method ID.", examples=["pm_1xMpj5bwRqN7LM"]
+    )
+    status: Literal["errored"] | None = Field(
+        None,
+        description="\nPayment method status.\n\n- `errored`: The payment method has failed and can no longer be used.\n  ",
+        examples=["errored"],
+    )
     error_type: (
         Literal[
             "authentication_required",
@@ -1182,12 +1243,189 @@ class PaymentMethod(BaseModel):
         description="\nPayment method error type.\n\n- `authentication_required`: The card was declined as the transaction requires authentication (e.g. 3-D Secure). The customer should go to their portal page and authenticate their card. If the error happened on an already authenticated transaction, the customer needs to contact their card issuer for more information.\n- `authorization_error`: A transaction authorization cannot be created for a variety of reasons such as the card issuer couldn't be reached, or the card requires a PIN.\n- `declined`: The payment method was declined for a variety of reasons such as a card reported as lost or stolen, insufficient funds or reaching the limit available on the method to complete the purchase, a payment method on a known block list, etc.\n- `expired`: The payment method is expired. The customer should go to their portal page and change their payment method.\n- `fraud`: The payment provider suspected the payment method was fraudulent and has been blocked. Don't report more detailed information to your customer, and check on your provider account.\n- `invalid`: The payment method is invalid in most cases because of incorrect details (card/account number, CVC, expiration date, postal code).\n- `not_supported`: The payment method doesn't support this type of purchase (e.g. currency, online payment).\n- `unknown`: A generic error happened on the payment provider side.\n  ",
         examples=["expired"],
     )
+    type: Literal["card", "apple_pay", "google_pay"] | None = Field(
+        None,
+        description="\nPayment method type.\n\n- `card`: Credit or debit card\n- `apple_pay`: Apple Pay\n- `google_pay`: Google Pay\n- `direct_debit_sepa`: SEPA Direct Debit\n- `direct_debit_ach`: ACH Direct Debit\n- `direct_debit_bacs`: Bacs Direct Debit\n- `stripe_link`: Stripe Link\n  ",
+        examples=["card"],
+    )
+    last_4_digits: float | None = Field(
+        None, description="Last four digits of the card.", examples=[2718]
+    )
+    expiration_date: str | None = Field(
+        None,
+        description="Expiration date of the card using YYYY-MM format.",
+        examples=["2027-11"],
+    )
+    brand: str | None = Field(
+        None, description="Brand of the card.", examples=["visa", "mastercard", "amex"]
+    )
+
+
+class PaymentMethodDirectDebit(BaseModel):
+    id: str | None = Field(
+        None, description="Payment method ID.", examples=["pm_1xMpj5bwRqN7LM"]
+    )
+    status: Literal["active", "pending", "expired", "errored"] | None = Field(
+        None,
+        description="\nPayment method status.\n\n- `active`: The payment method is ready to be used.\n- `pending`: The payment method is pending activation or being validated.\n  ",
+        examples=["active"],
+    )
+    type: Literal["direct_debit", "direct_debit_ach", "direct_debit_bacs"] | None = (
+        Field(
+            None,
+            description="\nPayment method type.\n\n- `card`: Credit or debit card\n- `apple_pay`: Apple Pay\n- `google_pay`: Google Pay\n- `direct_debit_sepa`: SEPA Direct Debit\n- `direct_debit_ach`: ACH Direct Debit\n- `direct_debit_bacs`: Bacs Direct Debit\n- `stripe_link`: Stripe Link\n  ",
+            examples=["direct_debit"],
+        )
+    )
     account_number_ending: str | None = Field(
         None, description="Last characters of the account number.", examples=["6789"]
     )
 
 
-class StandardBankAccount(BaseModel):
+class PaymentMethodDirectDebitErrored(BaseModel):
+    id: str | None = Field(
+        None, description="Payment method ID.", examples=["pm_1xMpj5bwRqN7LM"]
+    )
+    status: Literal["errored"] | None = Field(
+        None,
+        description="\nPayment method status.\n\n- `errored`: The payment method has failed and can no longer be used.\n  ",
+        examples=["errored"],
+    )
+    error_type: (
+        Literal[
+            "authentication_required",
+            "authorization_error",
+            "insufficient_funds",
+            "declined",
+            "expired",
+            "fraud",
+            "invalid",
+            "mandate_invalid",
+            "not_supported",
+            "unknown",
+        ]
+        | None
+    ) = Field(
+        None,
+        description="\nPayment method error type.\n\n- `authentication_required`: The card was declined as the transaction requires authentication (e.g. 3-D Secure). The customer should go to their portal page and authenticate their card. If the error happened on an already authenticated transaction, the customer needs to contact their card issuer for more information.\n- `authorization_error`: A transaction authorization cannot be created for a variety of reasons such as the card issuer couldn't be reached, or the card requires a PIN.\n- `declined`: The payment method was declined for a variety of reasons such as a card reported as lost or stolen, insufficient funds or reaching the limit available on the method to complete the purchase, a payment method on a known block list, etc.\n- `expired`: The payment method is expired. The customer should go to their portal page and change their payment method.\n- `fraud`: The payment provider suspected the payment method was fraudulent and has been blocked. Don't report more detailed information to your customer, and check on your provider account.\n- `invalid`: The payment method is invalid in most cases because of incorrect details (card/account number, CVC, expiration date, postal code).\n- `not_supported`: The payment method doesn't support this type of purchase (e.g. currency, online payment).\n- `unknown`: A generic error happened on the payment provider side.\n  ",
+        examples=["expired"],
+    )
+    type: Literal["direct_debit", "direct_debit_ach", "direct_debit_bacs"] | None = (
+        Field(
+            None,
+            description="\nPayment method type.\n\n- `card`: Credit or debit card\n- `apple_pay`: Apple Pay\n- `google_pay`: Google Pay\n- `direct_debit_sepa`: SEPA Direct Debit\n- `direct_debit_ach`: ACH Direct Debit\n- `direct_debit_bacs`: Bacs Direct Debit\n- `stripe_link`: Stripe Link\n  ",
+            examples=["direct_debit"],
+        )
+    )
+    account_number_ending: str | None = Field(
+        None, description="Last characters of the account number.", examples=["6789"]
+    )
+
+
+class PaymentMethodStripeLink(BaseModel):
+    id: str | None = Field(
+        None, description="Payment method ID.", examples=["pm_1xMpj5bwRqN7LM"]
+    )
+    status: Literal["active", "pending", "expired", "errored"] | None = Field(
+        None,
+        description="\nPayment method status.\n\n- `active`: The payment method is ready to be used.\n- `pending`: The payment method is pending activation or being validated.\n  ",
+        examples=["active"],
+    )
+    type: Literal["stripe_link"] | None = Field(
+        None,
+        description="\nPayment method type.\n\n- `card`: Credit or debit card\n- `apple_pay`: Apple Pay\n- `google_pay`: Google Pay\n- `direct_debit_sepa`: SEPA Direct Debit\n- `direct_debit_ach`: ACH Direct Debit\n- `direct_debit_bacs`: Bacs Direct Debit\n- `stripe_link`: Stripe Link\n  ",
+        examples=["stripe_link"],
+    )
+
+
+class PaymentMethodStripeLinkErrored(BaseModel):
+    id: str | None = Field(
+        None, description="Payment method ID.", examples=["pm_1xMpj5bwRqN7LM"]
+    )
+    status: Literal["errored"] | None = Field(
+        None,
+        description="\nPayment method status.\n\n- `errored`: The payment method has failed and can no longer be used.\n  ",
+        examples=["errored"],
+    )
+    error_type: (
+        Literal[
+            "authentication_required",
+            "authorization_error",
+            "insufficient_funds",
+            "declined",
+            "expired",
+            "fraud",
+            "invalid",
+            "mandate_invalid",
+            "not_supported",
+            "unknown",
+        ]
+        | None
+    ) = Field(
+        None,
+        description="\nPayment method error type.\n\n- `authentication_required`: The card was declined as the transaction requires authentication (e.g. 3-D Secure). The customer should go to their portal page and authenticate their card. If the error happened on an already authenticated transaction, the customer needs to contact their card issuer for more information.\n- `authorization_error`: A transaction authorization cannot be created for a variety of reasons such as the card issuer couldn't be reached, or the card requires a PIN.\n- `declined`: The payment method was declined for a variety of reasons such as a card reported as lost or stolen, insufficient funds or reaching the limit available on the method to complete the purchase, a payment method on a known block list, etc.\n- `expired`: The payment method is expired. The customer should go to their portal page and change their payment method.\n- `fraud`: The payment provider suspected the payment method was fraudulent and has been blocked. Don't report more detailed information to your customer, and check on your provider account.\n- `invalid`: The payment method is invalid in most cases because of incorrect details (card/account number, CVC, expiration date, postal code).\n- `not_supported`: The payment method doesn't support this type of purchase (e.g. currency, online payment).\n- `unknown`: A generic error happened on the payment provider side.\n  ",
+        examples=["expired"],
+    )
+    type: Literal["stripe_link"] | None = Field(
+        None,
+        description="\nPayment method type.\n\n- `card`: Credit or debit card\n- `apple_pay`: Apple Pay\n- `google_pay`: Google Pay\n- `direct_debit_sepa`: SEPA Direct Debit\n- `direct_debit_ach`: ACH Direct Debit\n- `direct_debit_bacs`: Bacs Direct Debit\n- `stripe_link`: Stripe Link\n  ",
+        examples=["stripe_link"],
+    )
+
+
+class StandardBankAccountIbanBicSwift(BaseModel):
+    format: Literal["iban_bic_swift"] | None = Field(
+        None, description="Bank account details format.", examples=["iban_bic_swift"]
+    )
+    iban: str | None = Field(
+        None, description="IBAN.", examples=["FR7630006000011234567890189"]
+    )
+    bic_swift: str | None = Field(
+        None, description="BIC or SWIFT code.", examples=["BNPAFRPP"]
+    )
+
+
+class StandardBankAccountSortCodeAccountNumber(BaseModel):
+    format: Literal["sort_code_account_number"] | None = Field(
+        None,
+        description="Bank account details format.",
+        examples=["sort_code_account_number"],
+    )
+    sort_code: str | None = Field(None, description="Sort code.", examples=["123456"])
+    account_number: str | None = Field(
+        None, description="Account number.", examples=["000123456789"]
+    )
+
+
+class StandardBankAccountAccountNumberRoutingNumber(BaseModel):
+    format: Literal["account_number_routing_number"] | None = Field(
+        None,
+        description="Bank account details format.",
+        examples=["account_number_routing_number"],
+    )
+    account_number: str | None = Field(
+        None, description="Account number.", examples=["000123456789"]
+    )
+    routing_number: str | None = Field(
+        None, description="Routing number.", examples=["021000021"]
+    )
+
+
+class StandardBankAccountAccountNumberBicSwift(BaseModel):
+    format: Literal["account_number_bic_swift"] | None = Field(
+        None,
+        description="Bank account details format.",
+        examples=["account_number_bic_swift"],
+    )
+    account_number: str | None = Field(
+        None, description="Account number.", examples=["000123456789"]
+    )
+    bic_swift: str | None = Field(
+        None, description="BIC or SWIFT code.", examples=["BNPAFRPP"]
+    )
+
+
+class StandardBankAccountStandardBankAccount(BaseModel):
     type: Literal["standard"] | None = Field(
         None,
         description="Bank account type.\n\n- `standard`: Bank account not connected through open banking.\n- `connected`: Bank account connected through open banking.\n",
@@ -1365,6 +1603,34 @@ class StandardBankAccount(BaseModel):
     country: str | None = Field(
         None, description="Bank account country.", examples=["FR"]
     )
+
+
+class StandardBankAccountStandardBankAccount1(
+    StandardBankAccountIbanBicSwift, StandardBankAccountStandardBankAccount
+):
+    pass
+
+
+class StandardBankAccountStandardBankAccount2(
+    StandardBankAccountSortCodeAccountNumber, StandardBankAccountStandardBankAccount
+):
+    pass
+
+
+class StandardBankAccountStandardBankAccount3(
+    StandardBankAccountAccountNumberRoutingNumber,
+    StandardBankAccountStandardBankAccount,
+):
+    pass
+
+
+class StandardBankAccountStandardBankAccount4(
+    StandardBankAccountAccountNumberBicSwift, StandardBankAccountStandardBankAccount
+):
+    pass
+
+
+class ConnectedBankAccountIbanBicSwift(BaseModel):
     format: Literal["iban_bic_swift"] | None = Field(
         None, description="Bank account details format.", examples=["iban_bic_swift"]
     )
@@ -1374,7 +1640,26 @@ class StandardBankAccount(BaseModel):
     bic_swift: str | None = Field(
         None, description="BIC or SWIFT code.", examples=["BNPAFRPP"]
     )
+
+
+class ConnectedBankAccountSortCodeAccountNumber(BaseModel):
+    format: Literal["sort_code_account_number"] | None = Field(
+        None,
+        description="Bank account details format.",
+        examples=["sort_code_account_number"],
+    )
     sort_code: str | None = Field(None, description="Sort code.", examples=["123456"])
+    account_number: str | None = Field(
+        None, description="Account number.", examples=["000123456789"]
+    )
+
+
+class ConnectedBankAccountAccountNumberRoutingNumber(BaseModel):
+    format: Literal["account_number_routing_number"] | None = Field(
+        None,
+        description="Bank account details format.",
+        examples=["account_number_routing_number"],
+    )
     account_number: str | None = Field(
         None, description="Account number.", examples=["000123456789"]
     )
@@ -1383,7 +1668,21 @@ class StandardBankAccount(BaseModel):
     )
 
 
-class ConnectedBankAccount(BaseModel):
+class ConnectedBankAccountAccountNumberBicSwift(BaseModel):
+    format: Literal["account_number_bic_swift"] | None = Field(
+        None,
+        description="Bank account details format.",
+        examples=["account_number_bic_swift"],
+    )
+    account_number: str | None = Field(
+        None, description="Account number.", examples=["000123456789"]
+    )
+    bic_swift: str | None = Field(
+        None, description="BIC or SWIFT code.", examples=["BNPAFRPP"]
+    )
+
+
+class ConnectedBankAccountConnectedBankAccount(BaseModel):
     type: Literal["connected"] | None = Field(
         None,
         description="Bank account type.\n\n- `standard`: Bank account not connected through open banking.\n- `connected`: Bank account connected through open banking.\n",
@@ -1581,36 +1880,54 @@ class ConnectedBankAccount(BaseModel):
     country: str | None = Field(
         None, description="Bank account country.", examples=["FR"]
     )
-    format: Literal["iban_bic_swift"] | None = Field(
-        None, description="Bank account details format.", examples=["iban_bic_swift"]
-    )
-    iban: str | None = Field(
-        None, description="IBAN.", examples=["FR7630006000011234567890189"]
-    )
-    bic_swift: str | None = Field(
-        None, description="BIC or SWIFT code.", examples=["BNPAFRPP"]
-    )
-    sort_code: str | None = Field(None, description="Sort code.", examples=["123456"])
-    account_number: str | None = Field(
-        None, description="Account number.", examples=["000123456789"]
-    )
-    routing_number: str | None = Field(
-        None, description="Routing number.", examples=["021000021"]
-    )
 
 
-class InvoiceAdditionalDisplayField(BaseModel):
-    model_config = ConfigDict(
-        extra="allow",
-    )
+class ConnectedBankAccountConnectedBankAccount1(
+    ConnectedBankAccountIbanBicSwift, ConnectedBankAccountConnectedBankAccount
+):
+    pass
+
+
+class ConnectedBankAccountConnectedBankAccount2(
+    ConnectedBankAccountSortCodeAccountNumber, ConnectedBankAccountConnectedBankAccount
+):
+    pass
+
+
+class ConnectedBankAccountConnectedBankAccount3(
+    ConnectedBankAccountAccountNumberRoutingNumber,
+    ConnectedBankAccountConnectedBankAccount,
+):
+    pass
+
+
+class ConnectedBankAccountConnectedBankAccount4(
+    ConnectedBankAccountAccountNumberBicSwift, ConnectedBankAccountConnectedBankAccount
+):
+    pass
+
+
+class InvoiceStandard(BaseModel):
     type: Literal["standard"] | None = Field(
         None, description="Display a standard invoice field."
     )
     field: Literal["customer_id", "subscription_id", "quote_id"] | None = Field(
         None, description="Standard invoice field to display."
     )
+
+
+class InvoiceCustomProperty(BaseModel):
+    type: Literal["custom_property"] | None = Field(
+        None, description="Display an invoice or customer custom property."
+    )
     slug: str | None = Field(
         None, description="Slug of the invoice or customer custom property to display."
+    )
+
+
+class InvoiceCustom(BaseModel):
+    type: Literal["custom"] | None = Field(
+        None, description="Display a custom label and value."
     )
     label: constr(min_length=1, max_length=100) | None = Field(
         None, description="Label displayed on the invoice."
@@ -1620,7 +1937,7 @@ class InvoiceAdditionalDisplayField(BaseModel):
     )
 
 
-class InvoiceAllocation(BaseModel):
+class InvoiceInvoiceAllocation(BaseModel):
     invoice_id: str | None = Field(
         None,
         description="ID of the invoice receiving the credit.",
@@ -1633,7 +1950,7 @@ class InvoiceAllocation(BaseModel):
     )
 
 
-class InvoiceTransactionProviderFee(BaseModel):
+class TransactionInvoiceTransactionProviderFee(BaseModel):
     amount: float | None = Field(
         None, description="Monetary amount. Expressed in currency's smallest unit."
     )
@@ -1804,7 +2121,7 @@ class InvoiceTransactionProviderFee(BaseModel):
     exchange_rate: float | None = None
 
 
-class InvoiceTransactionChargeback(BaseModel):
+class TransactionInvoiceTransactionChargeback(BaseModel):
     amount: float | None = Field(
         None, description="Total chargeback loss amount.", examples=[31500]
     )
@@ -1815,7 +2132,7 @@ class InvoiceTransactionChargeback(BaseModel):
     )
 
 
-class InvoiceTransactionIntegration(BaseModel):
+class TransactionInvoiceTransactionIntegration(BaseModel):
     entity_id: str | None = Field(None, description="ID of the entity in the provider.")
     provider_name: (
         Literal[
@@ -1855,26 +2172,6 @@ class InvoiceTransactionIntegration(BaseModel):
     provider_account_id: str | None = Field(
         None, description="ID of the connected provider account."
     )
-
-
-class BankAccount71(BaseModel):
-    pass
-
-
-class BankAccount72(StandardBankAccount, BankAccount71):
-    pass
-
-
-class BankAccount73(ConnectedBankAccount, BankAccount71):
-    pass
-
-
-class BankAccount74(StandardBankAccount, BankAccount71):
-    pass
-
-
-class BankAccount75(ConnectedBankAccount, BankAccount71):
-    pass
 
 
 class Transaction(BaseModel):
@@ -2089,64 +2386,42 @@ class Transaction(BaseModel):
         description="Date corresponding to the last synchronization of the details with the payment provider.",
         examples=[None],
     )
-    provider_fee: InvoiceTransactionProviderFee | None = Field(
+    provider_fee: TransactionInvoiceTransactionProviderFee | None = Field(
         None,
         description="Fee applied by the Payment Service Provider. Only supported for Stripe.",
         examples=[None],
         title="InvoiceTransactionProviderFee",
     )
-    chargeback: InvoiceTransactionChargeback | None = Field(
+    chargeback: TransactionInvoiceTransactionChargeback | None = Field(
         None,
         deprecated=True,
         description="Deprecated field. Use transactions where `type` is `chargeback`; `original_transaction_id` identifies the affected payment transaction.",
         examples=[None],
         title="InvoiceTransactionChargeback",
     )
-    integrations: list[InvoiceTransactionIntegration] | None = None
+    integrations: list[TransactionInvoiceTransactionIntegration] | None = None
     payment_method_type: (
-        Literal["card", "direct_debit", "direct_debit_ach", "direct_debit_bacs"] | None
-    ) = Field(None, description="Payment method type used for the transaction.")
-    payment_method: PaymentMethod | None = None
-    bank_account: (
-        BankAccount72 | BankAccount73 | BankAccount74 | BankAccount75 | None
-    ) = None
-    wallet_id: str | None = Field(
-        None,
-        description="ID of the wallet used for a wallet transaction.",
-        examples=["wal_PPpxP5d3uvgiTT"],
-    )
-    status: (
-        Literal["scheduled", "to_process", "pending", "settled", "cancelled"] | None
-    ) = Field(
-        None,
-        description="\nTransaction status.\n\n- `scheduled`: The transaction is scheduled to be processed in the future.\n- `to_process`: The transaction is waiting to be processed by our system.\n- `pending`: The transaction has been authorized by the related payment processor, but the banking transaction is not yet settled.\n- `settled`: The transaction has been cleared on the banking side, the money transfer is fully completed.\n- `cancelled`: The transaction has been cancelled and won't be processed again.\n  ",
-        examples=["settled"],
-    )
-    error_type: (
         Literal[
-            "authentication_required",
-            "declined",
-            "fraud",
-            "insufficient_funds",
-            "mandate_invalid",
-            "payment_method_authorization_error",
-            "payment_method_declined",
-            "payment_method_expired",
-            "payment_method_invalid",
-            "payment_method_not_supported",
-            "processing_error",
-            "provider_error",
-            "unknown",
+            "card",
+            "direct_debit",
+            "direct_debit_ach",
+            "direct_debit_bacs",
+            "transfer",
+            "transfer_automated",
+            "wallet",
+            "external",
         ]
         | None
-    ) = Field(
-        None,
-        description="\nTransaction error type.\n\n- `authentication_required`: The card was declined as the transaction requires authentication (e.g. 3-D Secure). The customer should go to their portal page and authenticate their card. If the error happened on an already authenticated transaction, the customer needs to contact their card issuer for more information.\n- `payment_method_authorization_error`: A transaction authorization cannot be created for a variety of reasons such as the card issuer couldn't be reached, or the card requires a PIN.\n- `payment_method_declined`: The payment method was declined for a variety of reasons such as a card reported as lost or stolen, insufficient funds or reaching the limit available on the method to complete the purchase, a payment method on a known block list, etc.\n- `payment_method_expired`: The payment method is expired. The customer should go to their portal page and change their payment method.\n- `payment_method_invalid`: The payment method is invalid in most cases because of incorrect details (card/account number, CVC, expiration date, postal code).\n- `payment_method_not_supported`: The payment method doesn't support this type of purchase (e.g. currency, online payment).\n- `declined`: The payment was declined for a variety of reasons such as security violation, banking service not available, transaction not allowed, etc.\n- `fraud`: The payment provider suspected the transaction was fraudulent and has been blocked. Don't report more detailed information to your customer, and check on your provider account.\n- `processing_error`: The payment couldn't be processed by the issuer for an unknown reason.\n- `provider_error`: An error occurred when contacting the payment provider to initiate the transaction.\n- `unknown`: A generic error happened on the payment provider side.\n  ",
-        examples=[None],
-    )
-    error_message: str | None = Field(
-        None, description="Details of the error.", examples=[None]
-    )
+    ) = None
+    payment_method: Any | None = None
+    bank_account: Any | None = None
+    wallet_id: Any | None = None
+    status: (
+        Literal["scheduled", "to_process", "pending", "settled", "cancelled", "failed"]
+        | None
+    ) = None
+    error_type: Any | None = None
+    error_message: Any | None = None
 
 
 class Address(BaseModel):
@@ -2493,10 +2768,7 @@ class Address(BaseModel):
     )
 
 
-class UpdateBankAccount(BaseModel):
-    bank_name: str | None = Field(
-        None, description="Bank name.", examples=["Fake bank"]
-    )
+class UpdateBankAccountIbanBicSwift(BaseModel):
     format: Literal["iban_bic_swift"] | None = Field(
         None, description="Bank account details format.", examples=["iban_bic_swift"]
     )
@@ -2506,13 +2778,76 @@ class UpdateBankAccount(BaseModel):
     bic_swift: str | None = Field(
         None, description="BIC or SWIFT code.", examples=["BNPAFRPP"]
     )
+
+
+class UpdateBankAccountSortCodeAccountNumber(BaseModel):
+    format: Literal["sort_code_account_number"] | None = Field(
+        None,
+        description="Bank account details format.",
+        examples=["sort_code_account_number"],
+    )
     sort_code: str | None = Field(None, description="Sort code.", examples=["123456"])
+    account_number: str | None = Field(
+        None, description="Account number.", examples=["000123456789"]
+    )
+
+
+class UpdateBankAccountAccountNumberRoutingNumber(BaseModel):
+    format: Literal["account_number_routing_number"] | None = Field(
+        None,
+        description="Bank account details format.",
+        examples=["account_number_routing_number"],
+    )
     account_number: str | None = Field(
         None, description="Account number.", examples=["000123456789"]
     )
     routing_number: str | None = Field(
         None, description="Routing number.", examples=["021000021"]
     )
+
+
+class UpdateBankAccountAccountNumberBicSwift(BaseModel):
+    format: Literal["account_number_bic_swift"] | None = Field(
+        None,
+        description="Bank account details format.",
+        examples=["account_number_bic_swift"],
+    )
+    account_number: str | None = Field(
+        None, description="Account number.", examples=["000123456789"]
+    )
+    bic_swift: str | None = Field(
+        None, description="BIC or SWIFT code.", examples=["BNPAFRPP"]
+    )
+
+
+class UpdateBankAccountUpdateBankAccount(BaseModel):
+    bank_name: str | None = Field(
+        None, description="Bank name.", examples=["Fake bank"]
+    )
+
+
+class UpdateBankAccountUpdateBankAccount1(
+    UpdateBankAccountIbanBicSwift, UpdateBankAccountUpdateBankAccount
+):
+    pass
+
+
+class UpdateBankAccountUpdateBankAccount2(
+    UpdateBankAccountSortCodeAccountNumber, UpdateBankAccountUpdateBankAccount
+):
+    pass
+
+
+class UpdateBankAccountUpdateBankAccount3(
+    UpdateBankAccountAccountNumberRoutingNumber, UpdateBankAccountUpdateBankAccount
+):
+    pass
+
+
+class UpdateBankAccountUpdateBankAccount4(
+    UpdateBankAccountAccountNumberBicSwift, UpdateBankAccountUpdateBankAccount
+):
+    pass
 
 
 class CreateInvoiceLineItem(BaseModel):
@@ -2566,7 +2901,7 @@ class CreateInvoiceLineItem(BaseModel):
     )
 
 
-class InvoiceDeprecatedCustomer(BaseModel):
+class InvoiceDeprecatedInvoiceDeprecatedCustomer(BaseModel):
     id: str | None = Field(
         None, description="Customer ID.", examples=["cus_Typ0px2W0aiEtl"]
     )
@@ -2593,7 +2928,7 @@ class InvoiceDeprecatedCustomer(BaseModel):
     address: Address | None = None
 
 
-class InvoiceDeprecatedSeller(BaseModel):
+class InvoiceDeprecatedInvoiceDeprecatedSeller(BaseModel):
     id: str | None = Field(
         None,
         description="ID of the invoicing entity attached to the invoice.",
@@ -2609,21 +2944,30 @@ class InvoiceDeprecatedSeller(BaseModel):
         description="Tax identifier / VAT number of the invoicing entity",
         examples=["FR5878986578"],
     )
-    address: Address | None = None
+    address: Address | None = Field(None, description="Seller address.")
 
 
-class InvoiceDeprecatedAdditionalDisplayField(BaseModel):
-    model_config = ConfigDict(
-        extra="allow",
-    )
+class InvoiceDeprecatedStandard(BaseModel):
     type: Literal["standard"] | None = Field(
         None, description="Display a standard invoice field."
     )
     field: Literal["customer_id", "subscription_id", "quote_id"] | None = Field(
         None, description="Standard invoice field to display."
     )
+
+
+class InvoiceDeprecatedCustomProperty(BaseModel):
+    type: Literal["custom_property"] | None = Field(
+        None, description="Display an invoice or customer custom property."
+    )
     slug: str | None = Field(
         None, description="Slug of the invoice or customer custom property to display."
+    )
+
+
+class InvoiceDeprecatedCustom(BaseModel):
+    type: Literal["custom"] | None = Field(
+        None, description="Display a custom label and value."
     )
     label: constr(min_length=1, max_length=100) | None = Field(
         None, description="Label displayed on the invoice."
@@ -2633,7 +2977,7 @@ class InvoiceDeprecatedAdditionalDisplayField(BaseModel):
     )
 
 
-class InvoiceDeprecatedAllocation(BaseModel):
+class InvoiceDeprecatedInvoiceDeprecatedAllocation(BaseModel):
     invoice_id: str | None = Field(
         None,
         description="ID of the invoice receiving the credit.",
@@ -2646,7 +2990,7 @@ class InvoiceDeprecatedAllocation(BaseModel):
     )
 
 
-class InvoiceDeprecatedTransactionProviderFee(BaseModel):
+class Transaction1InvoiceDeprecatedTransactionProviderFee(BaseModel):
     amount: float | None = Field(
         None, description="Monetary amount. Expressed in currency's smallest unit."
     )
@@ -2817,7 +3161,7 @@ class InvoiceDeprecatedTransactionProviderFee(BaseModel):
     exchange_rate: float | None = None
 
 
-class InvoiceDeprecatedTransactionChargeback(BaseModel):
+class Transaction1InvoiceDeprecatedTransactionChargeback(BaseModel):
     amount: float | None = Field(
         None, description="Total chargeback loss amount.", examples=[31500]
     )
@@ -2828,7 +3172,7 @@ class InvoiceDeprecatedTransactionChargeback(BaseModel):
     )
 
 
-class InvoiceDeprecatedTransactionIntegration(BaseModel):
+class Transaction1InvoiceDeprecatedTransactionIntegration(BaseModel):
     entity_id: str | None = Field(None, description="ID of the entity in the provider.")
     provider_name: (
         Literal[
@@ -2868,26 +3212,6 @@ class InvoiceDeprecatedTransactionIntegration(BaseModel):
     provider_account_id: str | None = Field(
         None, description="ID of the connected provider account."
     )
-
-
-class BankAccount81(BaseModel):
-    pass
-
-
-class BankAccount82(StandardBankAccount, BankAccount81):
-    pass
-
-
-class BankAccount83(ConnectedBankAccount, BankAccount81):
-    pass
-
-
-class BankAccount84(StandardBankAccount, BankAccount81):
-    pass
-
-
-class BankAccount85(ConnectedBankAccount, BankAccount81):
-    pass
 
 
 class Transaction1(BaseModel):
@@ -3102,64 +3426,44 @@ class Transaction1(BaseModel):
         description="Date corresponding to the last synchronization of the details with the payment provider.",
         examples=[None],
     )
-    provider_fee: InvoiceDeprecatedTransactionProviderFee | None = Field(
+    provider_fee: Transaction1InvoiceDeprecatedTransactionProviderFee | None = Field(
         None,
         description="Fee applied by the Payment Service Provider. Only supported for Stripe.",
         examples=[None],
         title="InvoiceDeprecatedTransactionProviderFee",
     )
-    chargeback: InvoiceDeprecatedTransactionChargeback | None = Field(
+    chargeback: Transaction1InvoiceDeprecatedTransactionChargeback | None = Field(
         None,
         deprecated=True,
         description="Deprecated field. Use transactions where `type` is `chargeback`; `original_transaction_id` identifies the affected payment transaction.",
         examples=[None],
         title="InvoiceDeprecatedTransactionChargeback",
     )
-    integrations: list[InvoiceDeprecatedTransactionIntegration] | None = None
+    integrations: list[Transaction1InvoiceDeprecatedTransactionIntegration] | None = (
+        None
+    )
     payment_method_type: (
-        Literal["card", "direct_debit", "direct_debit_ach", "direct_debit_bacs"] | None
-    ) = Field(None, description="Payment method type used for the transaction.")
-    payment_method: PaymentMethod | None = None
-    bank_account: (
-        BankAccount82 | BankAccount83 | BankAccount84 | BankAccount85 | None
-    ) = None
-    wallet_id: str | None = Field(
-        None,
-        description="ID of the wallet used for a wallet transaction.",
-        examples=["wal_PPpxP5d3uvgiTT"],
-    )
-    status: (
-        Literal["scheduled", "to_process", "pending", "settled", "cancelled"] | None
-    ) = Field(
-        None,
-        description="\nTransaction status.\n\n- `scheduled`: The transaction is scheduled to be processed in the future.\n- `to_process`: The transaction is waiting to be processed by our system.\n- `pending`: The transaction has been authorized by the related payment processor, but the banking transaction is not yet settled.\n- `settled`: The transaction has been cleared on the banking side, the money transfer is fully completed.\n- `cancelled`: The transaction has been cancelled and won't be processed again.\n  ",
-        examples=["settled"],
-    )
-    error_type: (
         Literal[
-            "authentication_required",
-            "declined",
-            "fraud",
-            "insufficient_funds",
-            "mandate_invalid",
-            "payment_method_authorization_error",
-            "payment_method_declined",
-            "payment_method_expired",
-            "payment_method_invalid",
-            "payment_method_not_supported",
-            "processing_error",
-            "provider_error",
-            "unknown",
+            "card",
+            "direct_debit",
+            "direct_debit_ach",
+            "direct_debit_bacs",
+            "transfer",
+            "transfer_automated",
+            "wallet",
+            "external",
         ]
         | None
-    ) = Field(
-        None,
-        description="\nTransaction error type.\n\n- `authentication_required`: The card was declined as the transaction requires authentication (e.g. 3-D Secure). The customer should go to their portal page and authenticate their card. If the error happened on an already authenticated transaction, the customer needs to contact their card issuer for more information.\n- `payment_method_authorization_error`: A transaction authorization cannot be created for a variety of reasons such as the card issuer couldn't be reached, or the card requires a PIN.\n- `payment_method_declined`: The payment method was declined for a variety of reasons such as a card reported as lost or stolen, insufficient funds or reaching the limit available on the method to complete the purchase, a payment method on a known block list, etc.\n- `payment_method_expired`: The payment method is expired. The customer should go to their portal page and change their payment method.\n- `payment_method_invalid`: The payment method is invalid in most cases because of incorrect details (card/account number, CVC, expiration date, postal code).\n- `payment_method_not_supported`: The payment method doesn't support this type of purchase (e.g. currency, online payment).\n- `declined`: The payment was declined for a variety of reasons such as security violation, banking service not available, transaction not allowed, etc.\n- `fraud`: The payment provider suspected the transaction was fraudulent and has been blocked. Don't report more detailed information to your customer, and check on your provider account.\n- `processing_error`: The payment couldn't be processed by the issuer for an unknown reason.\n- `provider_error`: An error occurred when contacting the payment provider to initiate the transaction.\n- `unknown`: A generic error happened on the payment provider side.\n  ",
-        examples=[None],
-    )
-    error_message: str | None = Field(
-        None, description="Details of the error.", examples=[None]
-    )
+    ) = None
+    payment_method: Any | None = None
+    bank_account: Any | None = None
+    wallet_id: Any | None = None
+    status: (
+        Literal["scheduled", "to_process", "pending", "settled", "cancelled", "failed"]
+        | None
+    ) = None
+    error_type: Any | None = None
+    error_message: Any | None = None
 
 
 class InvoiceLineItem(BaseModel):
@@ -3298,19 +3602,7 @@ class InvoiceCoupon(BaseModel):
     )
 
 
-class BankAccount2(StandardBankAccount, BankAccount1):
-    pass
-
-
-class BankAccount3(ConnectedBankAccount, BankAccount1):
-    pass
-
-
-class BankAccount4(StandardBankAccount, BankAccount1):
-    pass
-
-
-class BankAccount5(ConnectedBankAccount, BankAccount1):
+class BankAccountBankAccount1(BankAccountBankAccount):
     pass
 
 
@@ -3766,7 +4058,7 @@ class CreateCustomer(BaseModel):
         deprecated=True,
         description="Deprecated field, please use `tax_rate_custom`.",
     )
-    tax_ids: list[CreateCustomerTaxId] | None = Field(
+    tax_ids: list[CreateCustomerCreateCustomerTaxId] | None = Field(
         None, description="Customer tax IDs.", max_length=1
     )
     local_tax_number: str | None = Field(
@@ -4177,7 +4469,16 @@ class CreateCustomer(BaseModel):
         description="Default payment method type used to pay subscriptions and one-off invoices.",
         examples=["card"],
     )
-    bank_account: UpdateBankAccount | None = None
+    bank_account: (
+        UpdateBankAccountUpdateBankAccount1
+        | UpdateBankAccountUpdateBankAccount2
+        | UpdateBankAccountUpdateBankAccount3
+        | UpdateBankAccountUpdateBankAccount4
+        | None
+    ) = Field(
+        None,
+        description="Custom bank account for the customer. If not defined and customer paying by bank transfer, the bank accounts configured in your account settings will be used.",
+    )
     custom_payment_delay: float | None = Field(
         None,
         description="Custom payment terms in days. If not defined, the default one defined on the related invoicing entity will be used.",
@@ -4200,12 +4501,14 @@ class CreateCustomer(BaseModel):
     ) = Field(
         None,
         description="Key/value pairs to store any metadata useful in your context.",
+        title="CreateCustomerProperties",
     )
     custom_properties: (
         dict[str, str | float | bool | AwareDatetime | list[str] | None] | None
     ) = Field(
         None,
         description="A list of key value with the slug of the custom property as the key and the custom property value as value.",
+        title="CreateCustomerCustomProperties",
     )
     invoice_reminders_enabled: bool | Literal["true", "false"] | None = Field(
         None, description="Indicates if invoice reminders are enabled for the customer."
@@ -4227,19 +4530,7 @@ class CreateCustomer(BaseModel):
     )
 
 
-class BankAccount62(StandardBankAccount, BankAccount61):
-    pass
-
-
-class BankAccount63(ConnectedBankAccount, BankAccount61):
-    pass
-
-
-class BankAccount64(StandardBankAccount, BankAccount61):
-    pass
-
-
-class BankAccount65(ConnectedBankAccount, BankAccount61):
+class BankAccount1BankAccount11(BankAccount1BankAccount1):
     pass
 
 
@@ -4700,7 +4991,9 @@ class CustomerV1(BaseModel):
         deprecated=True,
         description="Deprecated field, please use `tax_rate_custom`.",
     )
-    tax_ids: list[CustomerV1TaxId] | None = Field(None, description="Customer tax IDs.")
+    tax_ids: list[CustomerV1CustomerV1TaxId] | None = Field(
+        None, description="Customer tax IDs."
+    )
     local_tax_number: str | None = Field(
         None, description="Customer local tax number.", examples=["12/345/67890"]
     )
@@ -5056,13 +5349,15 @@ class CustomerV1(BaseModel):
         None,
         description="Key/value pairs to store any metadata useful in your context.",
         examples=[None],
+        title="CustomerV1Properties",
     )
     custom_properties: dict[str, Any] | None = Field(
         None,
         description="A list of key value with the slug of the custom property as the key and the custom property value as value.",
+        title="CustomerV1CustomProperties",
     )
     billing_address: Address | None = None
-    shipping_address: CustomerV1ShippingAddress | None = Field(
+    shipping_address: CustomerV1CustomerV1ShippingAddress | None = Field(
         None,
         description="Customer shipping address.",
         title="CustomerV1ShippingAddress",
@@ -5144,13 +5439,13 @@ class CustomerV1(BaseModel):
         description="Custom initiation delay in days before triggering payment. If not defined, the default one defined on the related invoicing entity will be used.",
         examples=[7],
     )
-    subscriptions: list[CustomerV1Subscription] | None = None
+    subscriptions: list[CustomerV1CustomerV1Subscription] | None = None
     segment_ids: list[str] | None = Field(
         None,
         description="IDs of segments this customer belongs to.",
         examples=[["seg_0kIc7jrF7gV00V"]],
     )
-    integrations: list[CustomerV1Integration] | None = None
+    integrations: list[CustomerV1CustomerV1Integration] | None = None
     created_at: AwareDatetime | None = Field(
         None,
         description="Customer creation date. UTC date time string in the [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) format.",
@@ -5437,21 +5732,34 @@ class CreateInvoice(BaseModel):
     ) = Field(
         None,
         description="Key/value pairs to store any metadata useful in your context.",
+        title="CreateInvoiceProperties",
     )
     custom_properties: (
         dict[str, str | float | bool | AwareDatetime | list[str] | None] | None
     ) = Field(
         None,
         description="Values for custom properties defined for the `invoice` entity, keyed by slug.",
+        title="CreateInvoiceCustomProperties",
     )
-    additional_display_fields: list[CreateInvoiceAdditionalDisplayField] | None = Field(
+    additional_display_fields: (
+        list[CreateInvoiceStandard | CreateInvoiceCustomProperty | CreateInvoiceCustom]
+        | None
+    ) = Field(
         None,
         description="Ordered additional fields displayed on the invoice PDF. Invoice and customer custom properties are referenced by slug.",
         max_length=20,
     )
     line_items: list[CreateInvoiceLineItem] | None = Field(None, min_length=1)
-    transactions: list[CreateInvoiceTransaction] | None = None
-    coupons: list[CreateInvoiceCoupon] | None = None
+    transactions: (
+        list[
+            CreateInvoicePaymentMethod
+            | CreateInvoiceBankTransfer
+            | CreateInvoiceProviderTransaction
+            | CreateInvoiceExternalTransaction
+        ]
+        | None
+    ) = None
+    coupons: list[CreateInvoiceCouponAmount | CreateInvoiceInlineCoupon] | None = None
 
 
 class Customer(BaseModel):
@@ -5900,7 +6208,9 @@ class Customer(BaseModel):
         description="Customer domain. If not defined, it is inferred from the billing email.",
         examples=["acme.com"],
     )
-    tax_ids: list[CustomerTaxId] | None = Field(None, description="Customer tax IDs.")
+    tax_ids: list[CustomerCustomerTaxId] | None = Field(
+        None, description="Customer tax IDs."
+    )
     local_tax_number: str | None = Field(
         None, description="Customer local tax number.", examples=["12/345/67890"]
     )
@@ -6256,13 +6566,15 @@ class Customer(BaseModel):
         None,
         description="Key/value pairs to store any metadata useful in your context.",
         examples=[None],
+        title="CustomerProperties",
     )
     custom_properties: dict[str, Any] | None = Field(
         None,
         description="A list of key value with the slug of the custom property as the key and the custom property value as value.",
+        title="CustomerCustomProperties",
     )
     billing_address: Address | None = None
-    shipping_address: CustomerShippingAddress | None = Field(
+    shipping_address: CustomerCustomerShippingAddress | None = Field(
         None, description="Customer shipping address.", title="CustomerShippingAddress"
     )
     billing_email: EmailStr | None = Field(
@@ -6308,13 +6620,13 @@ class Customer(BaseModel):
         description="List of payment methods you allow your customer to pay with. You customer will be able to select one of them in their portal page and those will be the default options when creating a checkout session.",
         examples=[["card", "direct_debit"]],
     )
-    subscriptions: list[CustomerSubscription] | None = None
+    subscriptions: list[CustomerCustomerSubscription] | None = None
     segment_ids: list[str] | None = Field(
         None,
         description="IDs of segments this customer belongs to.",
         examples=[["seg_0kIc7jrF7gV00V"]],
     )
-    integrations: list[CustomerIntegration] | None = None
+    integrations: list[CustomerCustomerIntegration] | None = None
     created_at: AwareDatetime | None = Field(
         None,
         description="Customer creation date. UTC date time string in the [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) format.",
@@ -6335,12 +6647,12 @@ class Customer(BaseModel):
         description="ID of the Hyperline user responsible for this customer and targeted by customer agent notifications.",
         examples=["usr_KMcxRWc1ZQwvJG"],
     )
-    owner: CustomerOwner | None = Field(
+    owner: CustomerCustomerOwner | None = Field(
         None,
         description="Hyperline user responsible for this customer and targeted by customer agent notifications.",
         title="CustomerOwner",
     )
-    followers: list[CustomerFollower] | None = Field(
+    followers: list[CustomerCustomerFollower] | None = Field(
         None,
         description="Hyperline users following this customer and targeted by customer agent notifications.",
     )
@@ -6380,11 +6692,33 @@ class Customer(BaseModel):
     )
 
 
-class BankAccountModel(RootModel[StandardBankAccount | ConnectedBankAccount | None]):
-    root: StandardBankAccount | ConnectedBankAccount | None = None
+class BankAccountModel(
+    RootModel[
+        StandardBankAccountStandardBankAccount1
+        | StandardBankAccountStandardBankAccount2
+        | StandardBankAccountStandardBankAccount3
+        | StandardBankAccountStandardBankAccount4
+        | ConnectedBankAccountConnectedBankAccount1
+        | ConnectedBankAccountConnectedBankAccount2
+        | ConnectedBankAccountConnectedBankAccount3
+        | ConnectedBankAccountConnectedBankAccount4
+        | None
+    ]
+):
+    root: (
+        StandardBankAccountStandardBankAccount1
+        | StandardBankAccountStandardBankAccount2
+        | StandardBankAccountStandardBankAccount3
+        | StandardBankAccountStandardBankAccount4
+        | ConnectedBankAccountConnectedBankAccount1
+        | ConnectedBankAccountConnectedBankAccount2
+        | ConnectedBankAccountConnectedBankAccount3
+        | ConnectedBankAccountConnectedBankAccount4
+        | None
+    ) = None
 
 
-class InvoiceCustomer(BaseModel):
+class InvoiceInvoiceCustomer(BaseModel):
     id: str | None = Field(
         None, description="Customer ID.", examples=["cus_Typ0px2W0aiEtl"]
     )
@@ -6408,7 +6742,7 @@ class InvoiceCustomer(BaseModel):
     address: Address | None = None
 
 
-class InvoiceSeller(BaseModel):
+class InvoiceInvoiceSeller(BaseModel):
     id: str | None = Field(
         None,
         description="ID of the invoicing entity attached to the invoice.",
@@ -6424,7 +6758,7 @@ class InvoiceSeller(BaseModel):
         description="Tax identifier / VAT number of the invoicing entity",
         examples=["FR5878986578"],
     )
-    address: Address | None = None
+    address: Address | None = Field(None, description="Seller address.")
 
 
 class Invoice(BaseModel):
@@ -6757,8 +7091,8 @@ class Invoice(BaseModel):
         description="Footer added to the invoice. If not defined, it will be inherited from the invoicing entity's settings.",
         examples=["ACME (Acme SAS) is a company registered in France | SIREN N°123456"],
     )
-    customer: InvoiceCustomer | None = Field(None, title="InvoiceCustomer")
-    seller: InvoiceSeller | None = Field(None, title="InvoiceSeller")
+    customer: InvoiceInvoiceCustomer | None = Field(None, title="InvoiceCustomer")
+    seller: InvoiceInvoiceSeller | None = Field(None, title="InvoiceSeller")
     subscription_id: str | None = Field(
         None,
         description="ID of the subscription related to the invoice.",
@@ -6803,13 +7137,17 @@ class Invoice(BaseModel):
         None,
         description="Key/value pairs to store any metadata useful in your context.",
         examples=[None],
+        title="InvoiceProperties",
     )
     custom_properties: dict[str, Any] | None = Field(
         None,
         description="Values for custom properties defined for the `invoice` entity, keyed by slug.",
         examples=[None],
+        title="InvoiceCustomProperties",
     )
-    additional_display_fields: list[InvoiceAdditionalDisplayField] | None = Field(
+    additional_display_fields: (
+        list[InvoiceStandard | InvoiceCustomProperty | InvoiceCustom] | None
+    ) = Field(
         None,
         description="Ordered additional fields displayed on the invoice PDF. Invoice and customer custom properties are referenced by slug.",
         examples=[None],
@@ -6828,7 +7166,7 @@ class Invoice(BaseModel):
     line_items: list[InvoiceLineItem] | None = Field(
         None, description="List of line items composing the invoice."
     )
-    allocations: list[InvoiceAllocation] | None = Field(
+    allocations: list[InvoiceInvoiceAllocation] | None = Field(
         None,
         description="Current invoice applications made by this credit note. Only present for credit notes.",
     )
@@ -7184,10 +7522,10 @@ class InvoiceDeprecated(BaseModel):
         description="Footer added to the invoice. If not defined, it will be inherited from the invoicing entity's settings.",
         examples=["ACME (Acme SAS) is a company registered in France | SIREN N°123456"],
     )
-    customer: InvoiceDeprecatedCustomer | None = Field(
+    customer: InvoiceDeprecatedInvoiceDeprecatedCustomer | None = Field(
         None, title="InvoiceDeprecatedCustomer"
     )
-    seller: InvoiceDeprecatedSeller | None = Field(
+    seller: InvoiceDeprecatedInvoiceDeprecatedSeller | None = Field(
         None, title="InvoiceDeprecatedSeller"
     )
     subscription_id: str | None = Field(
@@ -7239,19 +7577,26 @@ class InvoiceDeprecated(BaseModel):
         None,
         description="Key/value pairs to store any metadata useful in your context.",
         examples=[None],
+        title="InvoiceDeprecatedProperties",
     )
     custom_properties: dict[str, Any] | None = Field(
         None,
         description="Values for custom properties defined for the `invoice` entity, keyed by slug.",
         examples=[None],
+        title="InvoiceDeprecatedCustomProperties",
     )
-    additional_display_fields: list[InvoiceDeprecatedAdditionalDisplayField] | None = (
-        Field(
-            None,
-            description="Ordered additional fields displayed on the invoice PDF. Invoice and customer custom properties are referenced by slug.",
-            examples=[None],
-            max_length=20,
-        )
+    additional_display_fields: (
+        list[
+            InvoiceDeprecatedStandard
+            | InvoiceDeprecatedCustomProperty
+            | InvoiceDeprecatedCustom
+        ]
+        | None
+    ) = Field(
+        None,
+        description="Ordered additional fields displayed on the invoice PDF. Invoice and customer custom properties are referenced by slug.",
+        examples=[None],
+        max_length=20,
     )
     original_invoice_id: str | None = Field(
         None,
@@ -7266,7 +7611,7 @@ class InvoiceDeprecated(BaseModel):
     line_items: list[InvoiceLineItem] | None = Field(
         None, description="List of line items composing the invoice."
     )
-    allocations: list[InvoiceDeprecatedAllocation] | None = Field(
+    allocations: list[InvoiceDeprecatedInvoiceDeprecatedAllocation] | None = Field(
         None,
         description="Current invoice applications made by this credit note. Only present for credit notes.",
     )
@@ -7302,10 +7647,19 @@ class CursorPaginatedCustomer(BaseModel):
 
 
 class CustomerDetails(Customer):
-    payment_method: PaymentMethod | None = None
-    bank_account: BankAccount2 | BankAccount3 | BankAccount4 | BankAccount5 | None = (
-        None
+    payment_method: (
+        PaymentMethodCard
+        | PaymentMethodCardErrored
+        | PaymentMethodDirectDebit
+        | PaymentMethodDirectDebitErrored
+        | PaymentMethodStripeLink
+        | PaymentMethodStripeLinkErrored
+        | None
+    ) = Field(
+        None,
+        description="Default payment method of the customer. Only applies to card and direct debit.",
     )
+    bank_account: BankAccountBankAccount1 | None = None
     organisation_id: str | None = Field(
         None,
         description="Parent organization ID to which the client is attached.",
@@ -7348,10 +7702,19 @@ class CustomerDetailsV1(CustomerV1):
         description="Deprecated field, please use `integrations`.",
         title="CustomerDetailsV1Providers",
     )
-    current_payment_method: PaymentMethod | None = None
-    bank_account: (
-        BankAccount62 | BankAccount63 | BankAccount64 | BankAccount65 | None
-    ) = None
+    current_payment_method: (
+        PaymentMethodCard
+        | PaymentMethodCardErrored
+        | PaymentMethodDirectDebit
+        | PaymentMethodDirectDebitErrored
+        | PaymentMethodStripeLink
+        | PaymentMethodStripeLinkErrored
+        | None
+    ) = Field(
+        None,
+        description="Default payment method of the customer. Only applies to card and direct debit.",
+    )
+    bank_account: BankAccount1BankAccount11 | None = None
     organisation_id: str | None = Field(
         None,
         description="Parent organization ID to which the client is attached.",

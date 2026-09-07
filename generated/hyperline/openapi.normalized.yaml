@@ -1515,10 +1515,9 @@ components:
       - type: object
         properties:
           payment_method:
-            allOf:
-            - $ref: '#/components/schemas/PaymentMethod'
-            - description: Default payment method of the customer. Only applies to
-                card and direct debit.
+            description: Default payment method of the customer. Only applies to card
+              and direct debit.
+            $ref: '#/components/schemas/PaymentMethod'
           bank_account:
             allOf:
             - $ref: '#/components/schemas/BankAccount'
@@ -2154,11 +2153,13 @@ components:
           allOf:
           - $ref: '#/components/schemas/Address'
           - type: object
+            title: CreateCustomerBillingAddress
         shipping_address:
           allOf:
           - $ref: '#/components/schemas/Address'
           - type: object
             description: Customer shipping address.
+            title: CreateCustomerShippingAddress
         billing_email:
           type: string
           format: email
@@ -2590,6 +2591,7 @@ components:
                 - type: 'null'
             - type: 'null'
           description: Key/value pairs to store any metadata useful in your context.
+          title: CreateCustomerProperties
         custom_properties:
           type: object
           additionalProperties:
@@ -2608,6 +2610,7 @@ components:
             - type: 'null'
           description: A list of key value with the slug of the custom property as
             the key and the custom property value as value.
+          title: CreateCustomerCustomProperties
         invoice_reminders_enabled:
           anyOf:
           - type: boolean
@@ -2705,10 +2708,9 @@ components:
             description: Deprecated field, please use `integrations`.
             title: CustomerDetailsV1Providers
           current_payment_method:
-            allOf:
-            - $ref: '#/components/schemas/PaymentMethod'
-            - description: Default payment method of the customer. Only applies to
-                card and direct debit.
+            description: Default payment method of the customer. Only applies to card
+              and direct debit.
+            $ref: '#/components/schemas/PaymentMethod'
           bank_account:
             allOf:
             - $ref: '#/components/schemas/BankAccount'
@@ -3653,6 +3655,7 @@ components:
             - type: 'null'
           description: Key/value pairs to store any metadata useful in your context.
           example: null
+          title: CustomerV1Properties
         custom_properties:
           type:
           - object
@@ -3673,6 +3676,7 @@ components:
             - type: 'null'
           description: A list of key value with the slug of the custom property as
             the key and the custom property value as value.
+          title: CustomerV1CustomProperties
         billing_address:
           $ref: '#/components/schemas/Address'
         shipping_address:
@@ -4665,6 +4669,7 @@ components:
                 - type: 'null'
             - type: 'null'
           description: Key/value pairs to store any metadata useful in your context.
+          title: CreateInvoiceProperties
         custom_properties:
           type: object
           additionalProperties:
@@ -4683,38 +4688,65 @@ components:
             - type: 'null'
           description: Values for custom properties defined for the `invoice` entity,
             keyed by slug.
+          title: CreateInvoiceCustomProperties
         additional_display_fields:
           type: array
           items:
-            type: object
-            properties:
-              type:
-                type: string
-                enum:
-                - standard
-                description: Display a standard invoice field.
-              field:
-                type: string
-                enum:
-                - customer_id
-                - subscription_id
-                - quote_id
-                description: Standard invoice field to display.
-              slug:
-                type: string
-                description: Slug of the invoice or customer custom property to display.
-              label:
-                type: string
-                minLength: 1
-                maxLength: 100
-                description: Label displayed on the invoice.
-              value:
-                type: string
-                maxLength: 500
-                description: Value displayed on the invoice.
-            additionalProperties: true
-            description: ''
-            title: CreateInvoiceAdditionalDisplayField
+            oneOf:
+            - type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                  - standard
+                  description: Display a standard invoice field.
+                field:
+                  type: string
+                  enum:
+                  - customer_id
+                  - subscription_id
+                  - quote_id
+                  description: Standard invoice field to display.
+              required:
+              - type
+              - field
+              title: Standard
+            - type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                  - custom_property
+                  description: Display an invoice or customer custom property.
+                slug:
+                  type: string
+                  description: Slug of the invoice or customer custom property to
+                    display.
+              required:
+              - type
+              - slug
+              title: CustomProperty
+            - type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                  - custom
+                  description: Display a custom label and value.
+                label:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  description: Label displayed on the invoice.
+                value:
+                  type: string
+                  maxLength: 500
+                  description: Value displayed on the invoice.
+              required:
+              - type
+              - label
+              - value
+              title: Custom
           maxItems: 20
           description: Ordered additional fields displayed on the invoice PDF. Invoice
             and customer custom properties are referenced by slug.
@@ -4726,87 +4758,175 @@ components:
         transactions:
           type: array
           items:
-            type: object
-            properties:
-              amount:
-                type: number
-                minimum: 0
-                description: Transaction amount.
-                example: 31500
-              process_at:
-                type: string
-                format: date-time
-                description: Date corresponding to the processing of the transaction.
-                  If in the future, the transaction is scheduled to be processed.
-                example: '2024-11-12T07:38:39.222Z'
-              payment_method_id:
-                type: string
-                description: Payment method used to execute the transaction. Only
-                  applies to scheduled transactions with a process_at date in the
-                  future.
-                example: pm_1xMpj5bwRqN7LM
-              payment_method_type:
-                type: string
-                enum:
-                - transfer
-              bank_account_id:
-                type: string
-                description: Bank account linked to the transaction.
-                example: bac_KJyPrMA1toAqRG
-              provider_name:
-                type: string
-                enum:
-                - airwallex
-                - gocardless
-                - mollie
-                - stripe
-                description: Provider name.
-              provider_id:
-                type: string
-                description: Provider ID. Required if multiple instances of the same
-                  provider are connected in Hyperline.
-              provider_transaction_id:
-                type: string
-                description: ID of the transaction on the provider's side. If the
-                  transaction is pending, Hyperline will automatically refresh it
-                  with the latest details until it is settled. Note that the `amount`
-                  and `process_at` fields may be overridden by the transaction data.
-            additionalProperties: true
-            description: ''
-            title: CreateInvoiceTransaction
+            anyOf:
+            - type: object
+              properties:
+                amount:
+                  type: number
+                  minimum: 0
+                  description: Transaction amount.
+                  example: 31500
+                process_at:
+                  type: string
+                  format: date-time
+                  description: Date corresponding to the processing of the transaction.
+                    If in the future, the transaction is scheduled to be processed.
+                  example: '2024-11-12T07:38:39.222Z'
+                payment_method_id:
+                  type: string
+                  description: Payment method used to execute the transaction. Only
+                    applies to scheduled transactions with a process_at date in the
+                    future.
+                  example: pm_1xMpj5bwRqN7LM
+              required:
+              - amount
+              - process_at
+              - payment_method_id
+              title: Payment method
+            - type: object
+              properties:
+                amount:
+                  type: number
+                  minimum: 0
+                  description: Transaction amount.
+                  example: 31500
+                process_at:
+                  type: string
+                  format: date-time
+                  description: Date corresponding to the processing of the transaction.
+                    If in the future, the transaction is scheduled to be processed.
+                  example: '2024-11-12T07:38:39.222Z'
+                payment_method_type:
+                  type: string
+                  enum:
+                  - transfer
+                bank_account_id:
+                  type: string
+                  description: Bank account linked to the transaction.
+                  example: bac_KJyPrMA1toAqRG
+              required:
+              - amount
+              - process_at
+              - payment_method_type
+              title: Bank transfer
+            - type: object
+              properties:
+                amount:
+                  type: number
+                  minimum: 0
+                  description: Transaction amount.
+                  example: 31500
+                process_at:
+                  type: string
+                  format: date-time
+                  description: Date corresponding to the processing of the transaction.
+                    If in the future, the transaction is scheduled to be processed.
+                  example: '2024-11-12T07:38:39.222Z'
+                provider_name:
+                  type: string
+                  enum:
+                  - airwallex
+                  - gocardless
+                  - mollie
+                  - stripe
+                  description: Provider name.
+                provider_id:
+                  type: string
+                  description: Provider ID. Required if multiple instances of the
+                    same provider are connected in Hyperline.
+                provider_transaction_id:
+                  type: string
+                  description: ID of the transaction on the provider's side. If the
+                    transaction is pending, Hyperline will automatically refresh it
+                    with the latest details until it is settled. Note that the `amount`
+                    and `process_at` fields may be overridden by the transaction data.
+              required:
+              - provider_name
+              - provider_transaction_id
+              title: Provider transaction
+            - type: object
+              properties:
+                amount:
+                  type: number
+                  minimum: 0
+                  description: Transaction amount.
+                  example: 31500
+                process_at:
+                  type: string
+                  format: date-time
+                  description: Date corresponding to the processing of the transaction.
+                    If in the future, the transaction is scheduled to be processed.
+                  example: '2024-11-12T07:38:39.222Z'
+                payment_method_type:
+                  type: string
+                  enum:
+                  - external
+              required:
+              - amount
+              - process_at
+              title: External transaction
         coupons:
           type: array
           items:
-            type: object
-            properties:
-              coupon_id:
-                type: string
-                description: Coupon ID.
-                example: cou_1eTaiytfA0i2Vb
-              name:
-                type: string
-                description: Name of the coupon.
-                example: Black Friday 2023
-              discount_amount:
-                type: number
-                exclusiveMinimum: 0
-                description: Amount corresponding to the discounted part of the total
-                  amount.
-                example: 500
-              line_item_indexes:
-                type:
-                - array
-                - 'null'
-                items:
+            anyOf:
+            - type: object
+              properties:
+                coupon_id:
+                  type: string
+                  description: Coupon ID.
+                  example: cou_1eTaiytfA0i2Vb
+                name:
+                  type: string
+                  description: Name of the coupon.
+                  example: Black Friday 2023
+                discount_amount:
                   type: number
-                description: Index of the line items to which the coupon applies.
-                  Null means all line items.
-                example:
-                - 0
-                - 1
-            additionalProperties: true
-            description: ''
-            title: CreateInvoiceCoupon
+                  exclusiveMinimum: 0
+                  description: Amount corresponding to the discounted part of the
+                    total amount.
+                  example: 500
+                line_item_indexes:
+                  type:
+                  - array
+                  - 'null'
+                  items:
+                    type: number
+                  description: Index of the line items to which the coupon applies.
+                    Null means all line items.
+                  example:
+                  - 0
+                  - 1
+              required:
+              - coupon_id
+              title: Coupon amount
+            - type: object
+              properties:
+                name:
+                  type: string
+                  description: Name of the coupon.
+                  example: Black Friday 2023
+                discount_amount:
+                  type: number
+                  exclusiveMinimum: 0
+                  description: Amount corresponding to the discounted part of the
+                    total amount.
+                  example: 500
+                line_item_indexes:
+                  type:
+                  - array
+                  - 'null'
+                  items:
+                    type: number
+                  description: Index of the line items to which the coupon applies.
+                    Null means all line items.
+                  example:
+                  - 0
+                  - 1
+              required:
+              - name
+              - discount_amount
+              - line_item_indexes
+              title: Inline coupon
       required:
       - customer_id
       - line_items
@@ -5765,6 +5885,7 @@ components:
             - type: 'null'
           description: Key/value pairs to store any metadata useful in your context.
           example: null
+          title: CustomerProperties
         custom_properties:
           type:
           - object
@@ -5785,6 +5906,7 @@ components:
             - type: 'null'
           description: A list of key value with the slug of the custom property as
             the key and the custom property value as value.
+          title: CustomerCustomProperties
         billing_address:
           $ref: '#/components/schemas/Address'
         shipping_address:
@@ -6522,100 +6644,361 @@ components:
       - payment_method_id
       title: Customer
     PaymentMethod:
-      type:
-      - object
-      - 'null'
-      properties:
-        id:
-          type: string
-          description: Payment method ID.
-          example: pm_1xMpj5bwRqN7LM
-        status:
-          type: string
-          enum:
-          - active
-          - pending
-          - expired
-          - errored
-          description: "\nPayment method status.\n\n- `active`: The payment method\
-            \ is ready to be used.\n- `pending`: The payment method is pending activation\
-            \ or being validated.\n  "
-          example: active
-        type:
-          type: string
-          enum:
-          - card
-          - apple_pay
-          - google_pay
-          description: "\nPayment method type.\n\n- `card`: Credit or debit card\n\
-            - `apple_pay`: Apple Pay\n- `google_pay`: Google Pay\n- `direct_debit_sepa`:\
-            \ SEPA Direct Debit\n- `direct_debit_ach`: ACH Direct Debit\n- `direct_debit_bacs`:\
-            \ Bacs Direct Debit\n- `stripe_link`: Stripe Link\n  "
-          example: card
-        last_4_digits:
+      anyOf:
+      - type: object
+        properties:
+          id:
+            type: string
+            description: Payment method ID.
+            example: pm_1xMpj5bwRqN7LM
+          status:
+            type: string
+            enum:
+            - active
+            - pending
+            - expired
+            - errored
+            description: "\nPayment method status.\n\n- `active`: The payment method\
+              \ is ready to be used.\n- `pending`: The payment method is pending activation\
+              \ or being validated.\n  "
+            example: active
           type:
-          - number
-          - 'null'
-          description: Last four digits of the card.
-          example: 2718
-        expiration_date:
+            type: string
+            enum:
+            - card
+            - apple_pay
+            - google_pay
+            description: "\nPayment method type.\n\n- `card`: Credit or debit card\n\
+              - `apple_pay`: Apple Pay\n- `google_pay`: Google Pay\n- `direct_debit_sepa`:\
+              \ SEPA Direct Debit\n- `direct_debit_ach`: ACH Direct Debit\n- `direct_debit_bacs`:\
+              \ Bacs Direct Debit\n- `stripe_link`: Stripe Link\n  "
+            example: card
+          last_4_digits:
+            type:
+            - number
+            - 'null'
+            description: Last four digits of the card.
+            example: 2718
+          expiration_date:
+            type:
+            - string
+            - 'null'
+            description: Expiration date of the card using YYYY-MM format.
+            example: 2027-11
+          brand:
+            type:
+            - string
+            - 'null'
+            description: Brand of the card.
+            examples:
+            - visa
+            - mastercard
+            - amex
+        required:
+        - id
+        - status
+        - type
+        - last_4_digits
+        - expiration_date
+        - brand
+        title: Card
+      - type: object
+        properties:
+          id:
+            type: string
+            description: Payment method ID.
+            example: pm_1xMpj5bwRqN7LM
+          status:
+            type: string
+            enum:
+            - errored
+            description: "\nPayment method status.\n\n- `errored`: The payment method\
+              \ has failed and can no longer be used.\n  "
+            example: errored
+          error_type:
+            type: string
+            enum:
+            - authentication_required
+            - authorization_error
+            - insufficient_funds
+            - declined
+            - expired
+            - fraud
+            - invalid
+            - mandate_invalid
+            - not_supported
+            - unknown
+            description: "\nPayment method error type.\n\n- `authentication_required`:\
+              \ The card was declined as the transaction requires authentication (e.g.\
+              \ 3-D Secure). The customer should go to their portal page and authenticate\
+              \ their card. If the error happened on an already authenticated transaction,\
+              \ the customer needs to contact their card issuer for more information.\n\
+              - `authorization_error`: A transaction authorization cannot be created\
+              \ for a variety of reasons such as the card issuer couldn't be reached,\
+              \ or the card requires a PIN.\n- `declined`: The payment method was\
+              \ declined for a variety of reasons such as a card reported as lost\
+              \ or stolen, insufficient funds or reaching the limit available on the\
+              \ method to complete the purchase, a payment method on a known block\
+              \ list, etc.\n- `expired`: The payment method is expired. The customer\
+              \ should go to their portal page and change their payment method.\n\
+              - `fraud`: The payment provider suspected the payment method was fraudulent\
+              \ and has been blocked. Don't report more detailed information to your\
+              \ customer, and check on your provider account.\n- `invalid`: The payment\
+              \ method is invalid in most cases because of incorrect details (card/account\
+              \ number, CVC, expiration date, postal code).\n- `not_supported`: The\
+              \ payment method doesn't support this type of purchase (e.g. currency,\
+              \ online payment).\n- `unknown`: A generic error happened on the payment\
+              \ provider side.\n  "
+            example: expired
           type:
-          - string
-          - 'null'
-          description: Expiration date of the card using YYYY-MM format.
-          example: 2027-11
-        brand:
+            type: string
+            enum:
+            - card
+            - apple_pay
+            - google_pay
+            description: "\nPayment method type.\n\n- `card`: Credit or debit card\n\
+              - `apple_pay`: Apple Pay\n- `google_pay`: Google Pay\n- `direct_debit_sepa`:\
+              \ SEPA Direct Debit\n- `direct_debit_ach`: ACH Direct Debit\n- `direct_debit_bacs`:\
+              \ Bacs Direct Debit\n- `stripe_link`: Stripe Link\n  "
+            example: card
+          last_4_digits:
+            type:
+            - number
+            - 'null'
+            description: Last four digits of the card.
+            example: 2718
+          expiration_date:
+            type:
+            - string
+            - 'null'
+            description: Expiration date of the card using YYYY-MM format.
+            example: 2027-11
+          brand:
+            type:
+            - string
+            - 'null'
+            description: Brand of the card.
+            examples:
+            - visa
+            - mastercard
+            - amex
+        required:
+        - id
+        - status
+        - error_type
+        - type
+        - last_4_digits
+        - expiration_date
+        - brand
+        title: Card (errored)
+      - type: object
+        properties:
+          id:
+            type: string
+            description: Payment method ID.
+            example: pm_1xMpj5bwRqN7LM
+          status:
+            type: string
+            enum:
+            - active
+            - pending
+            - expired
+            - errored
+            description: "\nPayment method status.\n\n- `active`: The payment method\
+              \ is ready to be used.\n- `pending`: The payment method is pending activation\
+              \ or being validated.\n  "
+            example: active
           type:
-          - string
-          - 'null'
-          description: Brand of the card.
-          examples:
-          - visa
-          - mastercard
-          - amex
-        error_type:
-          type: string
-          enum:
-          - authentication_required
-          - authorization_error
-          - insufficient_funds
-          - declined
-          - expired
-          - fraud
-          - invalid
-          - mandate_invalid
-          - not_supported
-          - unknown
-          description: "\nPayment method error type.\n\n- `authentication_required`:\
-            \ The card was declined as the transaction requires authentication (e.g.\
-            \ 3-D Secure). The customer should go to their portal page and authenticate\
-            \ their card. If the error happened on an already authenticated transaction,\
-            \ the customer needs to contact their card issuer for more information.\n\
-            - `authorization_error`: A transaction authorization cannot be created\
-            \ for a variety of reasons such as the card issuer couldn't be reached,\
-            \ or the card requires a PIN.\n- `declined`: The payment method was declined\
-            \ for a variety of reasons such as a card reported as lost or stolen,\
-            \ insufficient funds or reaching the limit available on the method to\
-            \ complete the purchase, a payment method on a known block list, etc.\n\
-            - `expired`: The payment method is expired. The customer should go to\
-            \ their portal page and change their payment method.\n- `fraud`: The payment\
-            \ provider suspected the payment method was fraudulent and has been blocked.\
-            \ Don't report more detailed information to your customer, and check on\
-            \ your provider account.\n- `invalid`: The payment method is invalid in\
-            \ most cases because of incorrect details (card/account number, CVC, expiration\
-            \ date, postal code).\n- `not_supported`: The payment method doesn't support\
-            \ this type of purchase (e.g. currency, online payment).\n- `unknown`:\
-            \ A generic error happened on the payment provider side.\n  "
-          example: expired
-        account_number_ending:
+            type: string
+            enum:
+            - direct_debit
+            - direct_debit_ach
+            - direct_debit_bacs
+            description: "\nPayment method type.\n\n- `card`: Credit or debit card\n\
+              - `apple_pay`: Apple Pay\n- `google_pay`: Google Pay\n- `direct_debit_sepa`:\
+              \ SEPA Direct Debit\n- `direct_debit_ach`: ACH Direct Debit\n- `direct_debit_bacs`:\
+              \ Bacs Direct Debit\n- `stripe_link`: Stripe Link\n  "
+            example: direct_debit
+          account_number_ending:
+            type:
+            - string
+            - 'null'
+            description: Last characters of the account number.
+            example: '6789'
+        required:
+        - id
+        - status
+        - type
+        - account_number_ending
+        title: Direct Debit
+      - type: object
+        properties:
+          id:
+            type: string
+            description: Payment method ID.
+            example: pm_1xMpj5bwRqN7LM
+          status:
+            type: string
+            enum:
+            - errored
+            description: "\nPayment method status.\n\n- `errored`: The payment method\
+              \ has failed and can no longer be used.\n  "
+            example: errored
+          error_type:
+            type: string
+            enum:
+            - authentication_required
+            - authorization_error
+            - insufficient_funds
+            - declined
+            - expired
+            - fraud
+            - invalid
+            - mandate_invalid
+            - not_supported
+            - unknown
+            description: "\nPayment method error type.\n\n- `authentication_required`:\
+              \ The card was declined as the transaction requires authentication (e.g.\
+              \ 3-D Secure). The customer should go to their portal page and authenticate\
+              \ their card. If the error happened on an already authenticated transaction,\
+              \ the customer needs to contact their card issuer for more information.\n\
+              - `authorization_error`: A transaction authorization cannot be created\
+              \ for a variety of reasons such as the card issuer couldn't be reached,\
+              \ or the card requires a PIN.\n- `declined`: The payment method was\
+              \ declined for a variety of reasons such as a card reported as lost\
+              \ or stolen, insufficient funds or reaching the limit available on the\
+              \ method to complete the purchase, a payment method on a known block\
+              \ list, etc.\n- `expired`: The payment method is expired. The customer\
+              \ should go to their portal page and change their payment method.\n\
+              - `fraud`: The payment provider suspected the payment method was fraudulent\
+              \ and has been blocked. Don't report more detailed information to your\
+              \ customer, and check on your provider account.\n- `invalid`: The payment\
+              \ method is invalid in most cases because of incorrect details (card/account\
+              \ number, CVC, expiration date, postal code).\n- `not_supported`: The\
+              \ payment method doesn't support this type of purchase (e.g. currency,\
+              \ online payment).\n- `unknown`: A generic error happened on the payment\
+              \ provider side.\n  "
+            example: expired
           type:
-          - string
-          - 'null'
-          description: Last characters of the account number.
-          example: '6789'
-      additionalProperties: true
+            type: string
+            enum:
+            - direct_debit
+            - direct_debit_ach
+            - direct_debit_bacs
+            description: "\nPayment method type.\n\n- `card`: Credit or debit card\n\
+              - `apple_pay`: Apple Pay\n- `google_pay`: Google Pay\n- `direct_debit_sepa`:\
+              \ SEPA Direct Debit\n- `direct_debit_ach`: ACH Direct Debit\n- `direct_debit_bacs`:\
+              \ Bacs Direct Debit\n- `stripe_link`: Stripe Link\n  "
+            example: direct_debit
+          account_number_ending:
+            type:
+            - string
+            - 'null'
+            description: Last characters of the account number.
+            example: '6789'
+        required:
+        - id
+        - status
+        - error_type
+        - type
+        - account_number_ending
+        title: Direct Debit (errored)
+      - type: object
+        properties:
+          id:
+            type: string
+            description: Payment method ID.
+            example: pm_1xMpj5bwRqN7LM
+          status:
+            type: string
+            enum:
+            - active
+            - pending
+            - expired
+            - errored
+            description: "\nPayment method status.\n\n- `active`: The payment method\
+              \ is ready to be used.\n- `pending`: The payment method is pending activation\
+              \ or being validated.\n  "
+            example: active
+          type:
+            type: string
+            enum:
+            - stripe_link
+            description: "\nPayment method type.\n\n- `card`: Credit or debit card\n\
+              - `apple_pay`: Apple Pay\n- `google_pay`: Google Pay\n- `direct_debit_sepa`:\
+              \ SEPA Direct Debit\n- `direct_debit_ach`: ACH Direct Debit\n- `direct_debit_bacs`:\
+              \ Bacs Direct Debit\n- `stripe_link`: Stripe Link\n  "
+            example: stripe_link
+        required:
+        - id
+        - status
+        - type
+        title: Stripe Link
+      - type: object
+        properties:
+          id:
+            type: string
+            description: Payment method ID.
+            example: pm_1xMpj5bwRqN7LM
+          status:
+            type: string
+            enum:
+            - errored
+            description: "\nPayment method status.\n\n- `errored`: The payment method\
+              \ has failed and can no longer be used.\n  "
+            example: errored
+          error_type:
+            type: string
+            enum:
+            - authentication_required
+            - authorization_error
+            - insufficient_funds
+            - declined
+            - expired
+            - fraud
+            - invalid
+            - mandate_invalid
+            - not_supported
+            - unknown
+            description: "\nPayment method error type.\n\n- `authentication_required`:\
+              \ The card was declined as the transaction requires authentication (e.g.\
+              \ 3-D Secure). The customer should go to their portal page and authenticate\
+              \ their card. If the error happened on an already authenticated transaction,\
+              \ the customer needs to contact their card issuer for more information.\n\
+              - `authorization_error`: A transaction authorization cannot be created\
+              \ for a variety of reasons such as the card issuer couldn't be reached,\
+              \ or the card requires a PIN.\n- `declined`: The payment method was\
+              \ declined for a variety of reasons such as a card reported as lost\
+              \ or stolen, insufficient funds or reaching the limit available on the\
+              \ method to complete the purchase, a payment method on a known block\
+              \ list, etc.\n- `expired`: The payment method is expired. The customer\
+              \ should go to their portal page and change their payment method.\n\
+              - `fraud`: The payment provider suspected the payment method was fraudulent\
+              \ and has been blocked. Don't report more detailed information to your\
+              \ customer, and check on your provider account.\n- `invalid`: The payment\
+              \ method is invalid in most cases because of incorrect details (card/account\
+              \ number, CVC, expiration date, postal code).\n- `not_supported`: The\
+              \ payment method doesn't support this type of purchase (e.g. currency,\
+              \ online payment).\n- `unknown`: A generic error happened on the payment\
+              \ provider side.\n  "
+            example: expired
+          type:
+            type: string
+            enum:
+            - stripe_link
+            description: "\nPayment method type.\n\n- `card`: Credit or debit card\n\
+              - `apple_pay`: Apple Pay\n- `google_pay`: Google Pay\n- `direct_debit_sepa`:\
+              \ SEPA Direct Debit\n- `direct_debit_ach`: ACH Direct Debit\n- `direct_debit_bacs`:\
+              \ Bacs Direct Debit\n- `stripe_link`: Stripe Link\n  "
+            example: stripe_link
+        required:
+        - id
+        - status
+        - error_type
+        - type
+        title: Stripe Link (errored)
+      - type: 'null'
       description: Payment method used for a card or direct debit transaction.
-      title: PaymentMethod
     BankAccount:
       anyOf:
       - $ref: '#/components/schemas/StandardBankAccount'
@@ -6831,39 +7214,97 @@ components:
         - name
         - country
         title: StandardBankAccount
-      - type: object
-        properties:
-          format:
-            type: string
-            enum:
-            - iban_bic_swift
-            description: Bank account details format.
-            example: iban_bic_swift
-          iban:
-            type: string
-            description: IBAN.
-            example: FR7630006000011234567890189
-          bic_swift:
-            type:
-            - string
-            - 'null'
-            description: BIC or SWIFT code.
-            example: BNPAFRPP
-          sort_code:
-            type: string
-            description: Sort code.
-            example: '123456'
-          account_number:
-            type: string
-            description: Account number.
-            example: 000123456789
-          routing_number:
-            type: string
-            description: Routing number.
-            example: '021000021'
-        additionalProperties: true
-        description: ''
-        title: StandardBankAccount
+      - anyOf:
+        - type: object
+          properties:
+            format:
+              type: string
+              enum:
+              - iban_bic_swift
+              description: Bank account details format.
+              example: iban_bic_swift
+            iban:
+              type: string
+              description: IBAN.
+              example: FR7630006000011234567890189
+            bic_swift:
+              type:
+              - string
+              - 'null'
+              description: BIC or SWIFT code.
+              example: BNPAFRPP
+          required:
+          - format
+          - iban
+          - bic_swift
+          title: IbanBicSwift
+        - type: object
+          properties:
+            format:
+              type: string
+              enum:
+              - sort_code_account_number
+              description: Bank account details format.
+              example: sort_code_account_number
+            sort_code:
+              type: string
+              description: Sort code.
+              example: '123456'
+            account_number:
+              type: string
+              description: Account number.
+              example: 000123456789
+          required:
+          - format
+          - sort_code
+          - account_number
+          title: SortCodeAccountNumber
+        - type: object
+          properties:
+            format:
+              type: string
+              enum:
+              - account_number_routing_number
+              description: Bank account details format.
+              example: account_number_routing_number
+            account_number:
+              type: string
+              description: Account number.
+              example: 000123456789
+            routing_number:
+              type: string
+              description: Routing number.
+              example: '021000021'
+          required:
+          - format
+          - account_number
+          - routing_number
+          title: AccountNumberRoutingNumber
+        - type: object
+          properties:
+            format:
+              type: string
+              enum:
+              - account_number_bic_swift
+              description: Bank account details format.
+              example: account_number_bic_swift
+            account_number:
+              type: string
+              description: Account number.
+              example: 000123456789
+            bic_swift:
+              type: string
+              description: BIC or SWIFT code.
+              example: BNPAFRPP
+          required:
+          - format
+          - account_number
+          - bic_swift
+          title: AccountNumberBicSwift
+        example:
+          format: iban_bic_swift
+          iban: FR7630006000011234567890189
+          bic_swift: BNPAFRPP
     ConnectedBankAccount:
       allOf:
       - type: object
@@ -7110,39 +7551,97 @@ components:
         - name
         - country
         title: ConnectedBankAccount
-      - type: object
-        properties:
-          format:
-            type: string
-            enum:
-            - iban_bic_swift
-            description: Bank account details format.
-            example: iban_bic_swift
-          iban:
-            type: string
-            description: IBAN.
-            example: FR7630006000011234567890189
-          bic_swift:
-            type:
-            - string
-            - 'null'
-            description: BIC or SWIFT code.
-            example: BNPAFRPP
-          sort_code:
-            type: string
-            description: Sort code.
-            example: '123456'
-          account_number:
-            type: string
-            description: Account number.
-            example: 000123456789
-          routing_number:
-            type: string
-            description: Routing number.
-            example: '021000021'
-        additionalProperties: true
-        description: ''
-        title: ConnectedBankAccount
+      - anyOf:
+        - type: object
+          properties:
+            format:
+              type: string
+              enum:
+              - iban_bic_swift
+              description: Bank account details format.
+              example: iban_bic_swift
+            iban:
+              type: string
+              description: IBAN.
+              example: FR7630006000011234567890189
+            bic_swift:
+              type:
+              - string
+              - 'null'
+              description: BIC or SWIFT code.
+              example: BNPAFRPP
+          required:
+          - format
+          - iban
+          - bic_swift
+          title: IbanBicSwift
+        - type: object
+          properties:
+            format:
+              type: string
+              enum:
+              - sort_code_account_number
+              description: Bank account details format.
+              example: sort_code_account_number
+            sort_code:
+              type: string
+              description: Sort code.
+              example: '123456'
+            account_number:
+              type: string
+              description: Account number.
+              example: 000123456789
+          required:
+          - format
+          - sort_code
+          - account_number
+          title: SortCodeAccountNumber
+        - type: object
+          properties:
+            format:
+              type: string
+              enum:
+              - account_number_routing_number
+              description: Bank account details format.
+              example: account_number_routing_number
+            account_number:
+              type: string
+              description: Account number.
+              example: 000123456789
+            routing_number:
+              type: string
+              description: Routing number.
+              example: '021000021'
+          required:
+          - format
+          - account_number
+          - routing_number
+          title: AccountNumberRoutingNumber
+        - type: object
+          properties:
+            format:
+              type: string
+              enum:
+              - account_number_bic_swift
+              description: Bank account details format.
+              example: account_number_bic_swift
+            account_number:
+              type: string
+              description: Account number.
+              example: 000123456789
+            bic_swift:
+              type: string
+              description: BIC or SWIFT code.
+              example: BNPAFRPP
+          required:
+          - format
+          - account_number
+          - bic_swift
+          title: AccountNumberBicSwift
+        example:
+          format: iban_bic_swift
+          iban: FR7630006000011234567890189
+          bic_swift: BNPAFRPP
     Invoice:
       type: object
       properties:
@@ -7592,9 +8091,8 @@ components:
               description: Tax identifier / VAT number of the invoicing entity
               example: FR5878986578
             address:
-              allOf:
-              - $ref: '#/components/schemas/Address'
-              - description: Seller address.
+              description: Seller address.
+              $ref: '#/components/schemas/Address'
           required:
           - id
           - name
@@ -7679,6 +8177,7 @@ components:
             - type: 'null'
           description: Key/value pairs to store any metadata useful in your context.
           example: null
+          title: InvoiceProperties
         custom_properties:
           type:
           - object
@@ -7700,40 +8199,67 @@ components:
           description: Values for custom properties defined for the `invoice` entity,
             keyed by slug.
           example: null
+          title: InvoiceCustomProperties
         additional_display_fields:
           type:
           - array
           - 'null'
           items:
-            type: object
-            properties:
-              type:
-                type: string
-                enum:
-                - standard
-                description: Display a standard invoice field.
-              field:
-                type: string
-                enum:
-                - customer_id
-                - subscription_id
-                - quote_id
-                description: Standard invoice field to display.
-              slug:
-                type: string
-                description: Slug of the invoice or customer custom property to display.
-              label:
-                type: string
-                minLength: 1
-                maxLength: 100
-                description: Label displayed on the invoice.
-              value:
-                type: string
-                maxLength: 500
-                description: Value displayed on the invoice.
-            additionalProperties: true
-            description: ''
-            title: InvoiceAdditionalDisplayField
+            oneOf:
+            - type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                  - standard
+                  description: Display a standard invoice field.
+                field:
+                  type: string
+                  enum:
+                  - customer_id
+                  - subscription_id
+                  - quote_id
+                  description: Standard invoice field to display.
+              required:
+              - type
+              - field
+              title: Standard
+            - type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                  - custom_property
+                  description: Display an invoice or customer custom property.
+                slug:
+                  type: string
+                  description: Slug of the invoice or customer custom property to
+                    display.
+              required:
+              - type
+              - slug
+              title: CustomProperty
+            - type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                  - custom
+                  description: Display a custom label and value.
+                label:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  description: Label displayed on the invoice.
+                value:
+                  type: string
+                  maxLength: 500
+                  description: Value displayed on the invoice.
+              required:
+              - type
+              - label
+              - value
+              title: Custom
           maxItems: 20
           description: Ordered additional fields displayed on the invoice PDF. Invoice
             and customer custom properties are referenced by slug.
@@ -8303,105 +8829,66 @@ components:
             - type: object
               properties:
                 payment_method_type:
-                  type: string
-                  enum:
-                  - card
-                  - direct_debit
-                  - direct_debit_ach
-                  - direct_debit_bacs
-                  description: Payment method type used for the transaction.
-                payment_method:
-                  $ref: '#/components/schemas/PaymentMethod'
-                bank_account:
-                  allOf:
-                  - $ref: '#/components/schemas/BankAccount'
-                  - anyOf:
-                    - $ref: '#/components/schemas/StandardBankAccount'
-                    - $ref: '#/components/schemas/ConnectedBankAccount'
-                    - type: 'null'
-                    description: Bank account used for a bank transfer transaction.
-                wallet_id:
-                  type: string
-                  description: ID of the wallet used for a wallet transaction.
-                  example: wal_PPpxP5d3uvgiTT
+                  anyOf:
+                  - type: string
+                    enum:
+                    - card
+                    - direct_debit
+                    - direct_debit_ach
+                    - direct_debit_bacs
+                    description: Payment method type used for the transaction.
+                  - type: string
+                    enum:
+                    - transfer
+                    - transfer_automated
+                    description: Payment method type used for the transaction.
+                  - type: string
+                    enum:
+                    - wallet
+                    description: Payment method type used for the transaction.
+                  - type: string
+                    enum:
+                    - external
+                    description: Payment method type used for the transaction.
+                payment_method: {}
+                bank_account: {}
+                wallet_id: {}
+              required:
+              - payment_method_type
               additionalProperties: true
-              description: ''
               title: InvoiceTransaction
             - type: object
               properties:
                 status:
-                  type: string
-                  enum:
-                  - scheduled
-                  - to_process
-                  - pending
-                  - settled
-                  - cancelled
-                  description: "\nTransaction status.\n\n- `scheduled`: The transaction\
-                    \ is scheduled to be processed in the future.\n- `to_process`:\
-                    \ The transaction is waiting to be processed by our system.\n\
-                    - `pending`: The transaction has been authorized by the related\
-                    \ payment processor, but the banking transaction is not yet settled.\n\
-                    - `settled`: The transaction has been cleared on the banking side,\
-                    \ the money transfer is fully completed.\n- `cancelled`: The transaction\
-                    \ has been cancelled and won't be processed again.\n  "
-                  example: settled
-                error_type:
-                  type:
-                  - string
-                  - 'null'
-                  enum:
-                  - authentication_required
-                  - declined
-                  - fraud
-                  - insufficient_funds
-                  - mandate_invalid
-                  - payment_method_authorization_error
-                  - payment_method_declined
-                  - payment_method_expired
-                  - payment_method_invalid
-                  - payment_method_not_supported
-                  - processing_error
-                  - provider_error
-                  - unknown
-                  description: "\nTransaction error type.\n\n- `authentication_required`:\
-                    \ The card was declined as the transaction requires authentication\
-                    \ (e.g. 3-D Secure). The customer should go to their portal page\
-                    \ and authenticate their card. If the error happened on an already\
-                    \ authenticated transaction, the customer needs to contact their\
-                    \ card issuer for more information.\n- `payment_method_authorization_error`:\
-                    \ A transaction authorization cannot be created for a variety\
-                    \ of reasons such as the card issuer couldn't be reached, or the\
-                    \ card requires a PIN.\n- `payment_method_declined`: The payment\
-                    \ method was declined for a variety of reasons such as a card\
-                    \ reported as lost or stolen, insufficient funds or reaching the\
-                    \ limit available on the method to complete the purchase, a payment\
-                    \ method on a known block list, etc.\n- `payment_method_expired`:\
-                    \ The payment method is expired. The customer should go to their\
-                    \ portal page and change their payment method.\n- `payment_method_invalid`:\
-                    \ The payment method is invalid in most cases because of incorrect\
-                    \ details (card/account number, CVC, expiration date, postal code).\n\
-                    - `payment_method_not_supported`: The payment method doesn't support\
-                    \ this type of purchase (e.g. currency, online payment).\n- `declined`:\
-                    \ The payment was declined for a variety of reasons such as security\
-                    \ violation, banking service not available, transaction not allowed,\
-                    \ etc.\n- `fraud`: The payment provider suspected the transaction\
-                    \ was fraudulent and has been blocked. Don't report more detailed\
-                    \ information to your customer, and check on your provider account.\n\
-                    - `processing_error`: The payment couldn't be processed by the\
-                    \ issuer for an unknown reason.\n- `provider_error`: An error\
-                    \ occurred when contacting the payment provider to initiate the\
-                    \ transaction.\n- `unknown`: A generic error happened on the payment\
-                    \ provider side.\n  "
-                  example: null
-                error_message:
-                  type:
-                  - string
-                  - 'null'
-                  description: Details of the error.
-                  example: null
+                  anyOf:
+                  - type: string
+                    enum:
+                    - scheduled
+                    - to_process
+                    - pending
+                    - settled
+                    - cancelled
+                    description: "\nTransaction status.\n\n- `scheduled`: The transaction\
+                      \ is scheduled to be processed in the future.\n- `to_process`:\
+                      \ The transaction is waiting to be processed by our system.\n\
+                      - `pending`: The transaction has been authorized by the related\
+                      \ payment processor, but the banking transaction is not yet\
+                      \ settled.\n- `settled`: The transaction has been cleared on\
+                      \ the banking side, the money transfer is fully completed.\n\
+                      - `cancelled`: The transaction has been cancelled and won't\
+                      \ be processed again.\n  "
+                    example: settled
+                  - type: string
+                    enum:
+                    - failed
+                    description: "\nTransaction status.\n\n- `failed`: The transaction\
+                      \ failed.\n  "
+                    example: failed
+                error_type: {}
+                error_message: {}
+              required:
+              - status
               additionalProperties: true
-              description: ''
               title: InvoiceTransaction
           description: List of transactions related to the invoice.
         public_url:
@@ -8838,39 +9325,97 @@ components:
             description: Bank name.
             example: Fake bank
         title: UpdateBankAccount
-      - type: object
-        properties:
-          format:
-            type: string
-            enum:
-            - iban_bic_swift
-            description: Bank account details format.
-            example: iban_bic_swift
-          iban:
-            type: string
-            description: IBAN.
-            example: FR7630006000011234567890189
-          bic_swift:
-            type:
-            - string
-            - 'null'
-            description: BIC or SWIFT code.
-            example: BNPAFRPP
-          sort_code:
-            type: string
-            description: Sort code.
-            example: '123456'
-          account_number:
-            type: string
-            description: Account number.
-            example: 000123456789
-          routing_number:
-            type: string
-            description: Routing number.
-            example: '021000021'
-        additionalProperties: true
-        description: ''
-        title: UpdateBankAccount
+      - anyOf:
+        - type: object
+          properties:
+            format:
+              type: string
+              enum:
+              - iban_bic_swift
+              description: Bank account details format.
+              example: iban_bic_swift
+            iban:
+              type: string
+              description: IBAN.
+              example: FR7630006000011234567890189
+            bic_swift:
+              type:
+              - string
+              - 'null'
+              description: BIC or SWIFT code.
+              example: BNPAFRPP
+          required:
+          - format
+          - iban
+          - bic_swift
+          title: IbanBicSwift
+        - type: object
+          properties:
+            format:
+              type: string
+              enum:
+              - sort_code_account_number
+              description: Bank account details format.
+              example: sort_code_account_number
+            sort_code:
+              type: string
+              description: Sort code.
+              example: '123456'
+            account_number:
+              type: string
+              description: Account number.
+              example: 000123456789
+          required:
+          - format
+          - sort_code
+          - account_number
+          title: SortCodeAccountNumber
+        - type: object
+          properties:
+            format:
+              type: string
+              enum:
+              - account_number_routing_number
+              description: Bank account details format.
+              example: account_number_routing_number
+            account_number:
+              type: string
+              description: Account number.
+              example: 000123456789
+            routing_number:
+              type: string
+              description: Routing number.
+              example: '021000021'
+          required:
+          - format
+          - account_number
+          - routing_number
+          title: AccountNumberRoutingNumber
+        - type: object
+          properties:
+            format:
+              type: string
+              enum:
+              - account_number_bic_swift
+              description: Bank account details format.
+              example: account_number_bic_swift
+            account_number:
+              type: string
+              description: Account number.
+              example: 000123456789
+            bic_swift:
+              type: string
+              description: BIC or SWIFT code.
+              example: BNPAFRPP
+          required:
+          - format
+          - account_number
+          - bic_swift
+          title: AccountNumberBicSwift
+        example:
+          format: iban_bic_swift
+          iban: FR7630006000011234567890189
+          bic_swift: BNPAFRPP
       description: Custom bank account for the customer. If not defined and customer
         paying by bank transfer, the bank accounts configured in your account settings
         will be used.
@@ -8935,7 +9480,6 @@ components:
               smallest unit.
             example: 24000
         additionalProperties: true
-        description: ''
         title: CreateInvoiceLineItem
     InvoiceDeprecated:
       type: object
@@ -9397,9 +9941,8 @@ components:
               description: Tax identifier / VAT number of the invoicing entity
               example: FR5878986578
             address:
-              allOf:
-              - $ref: '#/components/schemas/Address'
-              - description: Seller address.
+              description: Seller address.
+              $ref: '#/components/schemas/Address'
           required:
           - id
           - name
@@ -9489,6 +10032,7 @@ components:
             - type: 'null'
           description: Key/value pairs to store any metadata useful in your context.
           example: null
+          title: InvoiceDeprecatedProperties
         custom_properties:
           type:
           - object
@@ -9510,40 +10054,67 @@ components:
           description: Values for custom properties defined for the `invoice` entity,
             keyed by slug.
           example: null
+          title: InvoiceDeprecatedCustomProperties
         additional_display_fields:
           type:
           - array
           - 'null'
           items:
-            type: object
-            properties:
-              type:
-                type: string
-                enum:
-                - standard
-                description: Display a standard invoice field.
-              field:
-                type: string
-                enum:
-                - customer_id
-                - subscription_id
-                - quote_id
-                description: Standard invoice field to display.
-              slug:
-                type: string
-                description: Slug of the invoice or customer custom property to display.
-              label:
-                type: string
-                minLength: 1
-                maxLength: 100
-                description: Label displayed on the invoice.
-              value:
-                type: string
-                maxLength: 500
-                description: Value displayed on the invoice.
-            additionalProperties: true
-            description: ''
-            title: InvoiceDeprecatedAdditionalDisplayField
+            oneOf:
+            - type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                  - standard
+                  description: Display a standard invoice field.
+                field:
+                  type: string
+                  enum:
+                  - customer_id
+                  - subscription_id
+                  - quote_id
+                  description: Standard invoice field to display.
+              required:
+              - type
+              - field
+              title: Standard
+            - type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                  - custom_property
+                  description: Display an invoice or customer custom property.
+                slug:
+                  type: string
+                  description: Slug of the invoice or customer custom property to
+                    display.
+              required:
+              - type
+              - slug
+              title: CustomProperty
+            - type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                  - custom
+                  description: Display a custom label and value.
+                label:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  description: Label displayed on the invoice.
+                value:
+                  type: string
+                  maxLength: 500
+                  description: Value displayed on the invoice.
+              required:
+              - type
+              - label
+              - value
+              title: Custom
           maxItems: 20
           description: Ordered additional fields displayed on the invoice PDF. Invoice
             and customer custom properties are referenced by slug.
@@ -10113,105 +10684,66 @@ components:
             - type: object
               properties:
                 payment_method_type:
-                  type: string
-                  enum:
-                  - card
-                  - direct_debit
-                  - direct_debit_ach
-                  - direct_debit_bacs
-                  description: Payment method type used for the transaction.
-                payment_method:
-                  $ref: '#/components/schemas/PaymentMethod'
-                bank_account:
-                  allOf:
-                  - $ref: '#/components/schemas/BankAccount'
-                  - anyOf:
-                    - $ref: '#/components/schemas/StandardBankAccount'
-                    - $ref: '#/components/schemas/ConnectedBankAccount'
-                    - type: 'null'
-                    description: Bank account used for a bank transfer transaction.
-                wallet_id:
-                  type: string
-                  description: ID of the wallet used for a wallet transaction.
-                  example: wal_PPpxP5d3uvgiTT
+                  anyOf:
+                  - type: string
+                    enum:
+                    - card
+                    - direct_debit
+                    - direct_debit_ach
+                    - direct_debit_bacs
+                    description: Payment method type used for the transaction.
+                  - type: string
+                    enum:
+                    - transfer
+                    - transfer_automated
+                    description: Payment method type used for the transaction.
+                  - type: string
+                    enum:
+                    - wallet
+                    description: Payment method type used for the transaction.
+                  - type: string
+                    enum:
+                    - external
+                    description: Payment method type used for the transaction.
+                payment_method: {}
+                bank_account: {}
+                wallet_id: {}
+              required:
+              - payment_method_type
               additionalProperties: true
-              description: ''
               title: InvoiceDeprecatedTransaction
             - type: object
               properties:
                 status:
-                  type: string
-                  enum:
-                  - scheduled
-                  - to_process
-                  - pending
-                  - settled
-                  - cancelled
-                  description: "\nTransaction status.\n\n- `scheduled`: The transaction\
-                    \ is scheduled to be processed in the future.\n- `to_process`:\
-                    \ The transaction is waiting to be processed by our system.\n\
-                    - `pending`: The transaction has been authorized by the related\
-                    \ payment processor, but the banking transaction is not yet settled.\n\
-                    - `settled`: The transaction has been cleared on the banking side,\
-                    \ the money transfer is fully completed.\n- `cancelled`: The transaction\
-                    \ has been cancelled and won't be processed again.\n  "
-                  example: settled
-                error_type:
-                  type:
-                  - string
-                  - 'null'
-                  enum:
-                  - authentication_required
-                  - declined
-                  - fraud
-                  - insufficient_funds
-                  - mandate_invalid
-                  - payment_method_authorization_error
-                  - payment_method_declined
-                  - payment_method_expired
-                  - payment_method_invalid
-                  - payment_method_not_supported
-                  - processing_error
-                  - provider_error
-                  - unknown
-                  description: "\nTransaction error type.\n\n- `authentication_required`:\
-                    \ The card was declined as the transaction requires authentication\
-                    \ (e.g. 3-D Secure). The customer should go to their portal page\
-                    \ and authenticate their card. If the error happened on an already\
-                    \ authenticated transaction, the customer needs to contact their\
-                    \ card issuer for more information.\n- `payment_method_authorization_error`:\
-                    \ A transaction authorization cannot be created for a variety\
-                    \ of reasons such as the card issuer couldn't be reached, or the\
-                    \ card requires a PIN.\n- `payment_method_declined`: The payment\
-                    \ method was declined for a variety of reasons such as a card\
-                    \ reported as lost or stolen, insufficient funds or reaching the\
-                    \ limit available on the method to complete the purchase, a payment\
-                    \ method on a known block list, etc.\n- `payment_method_expired`:\
-                    \ The payment method is expired. The customer should go to their\
-                    \ portal page and change their payment method.\n- `payment_method_invalid`:\
-                    \ The payment method is invalid in most cases because of incorrect\
-                    \ details (card/account number, CVC, expiration date, postal code).\n\
-                    - `payment_method_not_supported`: The payment method doesn't support\
-                    \ this type of purchase (e.g. currency, online payment).\n- `declined`:\
-                    \ The payment was declined for a variety of reasons such as security\
-                    \ violation, banking service not available, transaction not allowed,\
-                    \ etc.\n- `fraud`: The payment provider suspected the transaction\
-                    \ was fraudulent and has been blocked. Don't report more detailed\
-                    \ information to your customer, and check on your provider account.\n\
-                    - `processing_error`: The payment couldn't be processed by the\
-                    \ issuer for an unknown reason.\n- `provider_error`: An error\
-                    \ occurred when contacting the payment provider to initiate the\
-                    \ transaction.\n- `unknown`: A generic error happened on the payment\
-                    \ provider side.\n  "
-                  example: null
-                error_message:
-                  type:
-                  - string
-                  - 'null'
-                  description: Details of the error.
-                  example: null
+                  anyOf:
+                  - type: string
+                    enum:
+                    - scheduled
+                    - to_process
+                    - pending
+                    - settled
+                    - cancelled
+                    description: "\nTransaction status.\n\n- `scheduled`: The transaction\
+                      \ is scheduled to be processed in the future.\n- `to_process`:\
+                      \ The transaction is waiting to be processed by our system.\n\
+                      - `pending`: The transaction has been authorized by the related\
+                      \ payment processor, but the banking transaction is not yet\
+                      \ settled.\n- `settled`: The transaction has been cleared on\
+                      \ the banking side, the money transfer is fully completed.\n\
+                      - `cancelled`: The transaction has been cancelled and won't\
+                      \ be processed again.\n  "
+                    example: settled
+                  - type: string
+                    enum:
+                    - failed
+                    description: "\nTransaction status.\n\n- `failed`: The transaction\
+                      \ failed.\n  "
+                    example: failed
+                error_type: {}
+                error_message: {}
+              required:
+              - status
               additionalProperties: true
-              description: ''
               title: InvoiceDeprecatedTransaction
           description: List of transactions related to the invoice.
         public_url:

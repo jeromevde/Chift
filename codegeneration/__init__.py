@@ -1,1 +1,1 @@
-"""OpenAPI → thin typed client (prune → normalize → datamodel-codegen → emit)."""
+"""OpenAPI → thin typed client (prune → normalize → models + emit)."""

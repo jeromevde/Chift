@@ -21,18 +21,18 @@ Four decisions, each of which costs lines somewhere if made the other way.
   arguments is how openapi-generator reaches 2,259 lines for one resource.
   Path params are positional and typed, because they are part of the URL.
 
-  Method names come from operationId.  So `get_invoice_deprecated` and
-  `list_customers_deprecated` name themselves, and the v1/v2 trap is visible at
-  the call site instead of hidden behind a URL that looks fine.
+  Method names come from operationId and are sanitized as Python identifiers. So
+  `get_invoice_deprecated` and `issues/list-for-repo` name themselves clearly.
 
-  Only $ref'd schemas become types.  normalize.hoist() lifts inline request and
-  response schemas into components first, so by the time we get here everything
-  worth naming has a name. Anything still inline is returned as None.
+  Only $ref'd schemas become types. ``normalize.hoist`` has already lifted inline
+  JSON request/response schemas into components, so by emit time everything the
+  client types has a name. Anything still inline is returned as None.
 
-  Only application/json.  A multipart or octet-stream operation silently gets no
-  body type. Worth knowing before pointing this at a file-upload endpoint.
+  Only application/json. A selected operation with another request encoding fails
+  generation instead of producing a plausible method that silently drops its body.
 """
 
+import keyword
 import re
 import sys
 from pathlib import Path
@@ -102,8 +102,12 @@ VERBS = ("get", "post", "put", "patch", "delete")
 
 
 def snake(name: str) -> str:
-    """getCustomer -> get_customer (operationIds are camelCase or already snake)."""
-    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower().replace("__", "_")
+    """Turn any operationId into a valid snake_case Python identifier."""
+    name = re.sub(r"(?<!^)(?=[A-Z])", "_", name)
+    name = re.sub(r"[^A-Za-z0-9_]+", "_", name).strip("_").lower()
+    if not name or name[0].isdigit():
+        name = f"operation_{name}"
+    return name + "_" if keyword.iskeyword(name) else name
 
 
 def model_name(schema: dict) -> str:
@@ -125,7 +129,7 @@ def returns(operation: dict) -> str:
         (
             r
             for code, r in operation.get("responses", {}).items()
-            if code.startswith("2")
+            if code.startswith("2") and json_schema(r)
         ),
         {},
     )
@@ -133,26 +137,35 @@ def returns(operation: dict) -> str:
 
 
 def body(operation: dict) -> str:
-    """Model name for the JSON request body, else None."""
-    return model_name(json_schema(operation.get("requestBody")))
+    """Model name for a JSON body; reject selected unsupported encodings."""
+    request = operation.get("requestBody")
+    schema = json_schema(request)
+    unsupported = [
+        media.get("schema", {}) for media in (request or {}).get("content", {}).values()
+    ]
+    carries_data = any(
+        item
+        and not (
+            item.get("type") == "object"
+            and not item.get("properties")
+            and item.get("additionalProperties") is False
+        )
+        for item in unsupported
+    )
+    if not schema and carries_data:
+        content_types = ", ".join(request.get("content", {})) or "$ref"
+        raise ValueError(
+            f"{operation['operationId']}: unsupported request body: {content_types}"
+        )
+    return model_name(schema)
 
 
-def path_params(operation: dict, spec: dict) -> list[str]:
-    """Names of the path parameters, resolving any that are themselves $refs."""
-    components = spec.get("components", {}).get("parameters", {})
-    names = []
-    for parameter in operation.get("parameters", []):
-        ref = parameter.get("$ref")
-        if ref:
-            parameter = components.get(ref.rsplit("/", 1)[-1], {})
-        if parameter.get("in") == "path":
-            names.append(parameter["name"])
-    return names
-
-
-def method(path: str, verb: str, operation: dict, spec: dict) -> str:
+def method(path: str, verb: str, operation: dict) -> str:
     """Render one method."""
-    args = [f", {name}: str" for name in path_params(operation, spec)]
+    parameters = re.findall(r"{([^{}]+)}", path)
+    if any(not parameter.isidentifier() for parameter in parameters):
+        raise ValueError(f"{path}: invalid path parameter")
+    args = [f", {parameter}: str" for parameter in parameters]
     request = body(operation)
     url = f'f"{path}"' if "{" in path else f'"{path}"'
     if request != "None":
@@ -171,10 +184,18 @@ def method(path: str, verb: str, operation: dict, spec: dict) -> str:
 def emit(spec: dict, cls: str) -> str:
     """Render the whole client class."""
     out = [HEAD.format(title=spec["info"]["title"], cls=cls)]
+    names = {}
     for path, operations in spec["paths"].items():
         for verb, operation in operations.items():
             if verb in VERBS and "operationId" in operation:
-                out.append(method(path, verb, operation, spec))
+                name = snake(operation["operationId"])
+                if name in names:
+                    raise ValueError(
+                        f"operationIds {names[name]!r} and "
+                        f"{operation['operationId']!r} both become {name!r}"
+                    )
+                names[name] = operation["operationId"]
+                out.append(method(path, verb, operation))
     return "".join(out)
 
 

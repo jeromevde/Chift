@@ -4,13 +4,12 @@ Chift invoicing connector against Hyperline.
 Generated client fetches Hyperline; this maps into chift.models.
 
 Provenance:
-  Skill: skills/add_connector.md v3
-  Models: generated/hyperline @ 9e803bb
+  Skill: skills/add_connector.md v6
+  Models: generated/hyperline via `python -m codegeneration.run hyperline`
 
 Written by an LLM from that skill + Hyperline models + Chift's contract, then
 reviewed and verified against the sandbox (tests/). Semantic decisions — money units,
 dates, status collapse, contact roles, pagination — stay explicit for review.
-After regenerating models, update the Models line to the new commit.
 """
 
 from __future__ import annotations
@@ -378,6 +377,8 @@ class HyperlineInvoicingConnector:
                 currency="EUR",
                 status="draft",
                 reference=reference,
+                # Mapping decision: use Hyperline's inline-item alternative (name + amount)
+                # rather than referencing a pre-existing product_id.
                 line_items=[
                     hl.CreateInvoiceLineItem(
                         name="POC consulting",

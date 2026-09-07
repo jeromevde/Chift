@@ -116,13 +116,35 @@ there. The generic normalizer does not rewrite `$ref` intersections.
 
 ### Anonymous unions
 
-`PaymentMethod` is an `anyOf` with seven inline object branches, no `$ref` names, and no
-`discriminator`. Python needs class names; the document provides none, so generators produce
-`PaymentMethod1`, `PaymentMethod8`, and complex synthetic inheritance.
+`PaymentMethod` is an `anyOf` with no discriminator, but Hyperline does provide useful branch
+titles such as `Card`, `Card (errored)`, and `Direct Debit`. Normalization preserves those titles,
+and datamodel-code-generator's parent-prefixed naming turns them into contextual classes such as
+`PaymentMethodCard` and `PaymentMethodDirectDebitErrored`.
 
-The `anonymous_union` rule merges the known properties into a free-form object and preserves
-the nullable branch. This is deliberately lossy and is acceptable only because the Chift mapper
-does not consume payment-method details. Named or discriminated unions remain untouched.
+An anonymous union with a shared unique literal already has a stable identity even when its author
+omitted titles. For example, CreateInvoice's additional-display variants use `type: standard`,
+`type: custom_property`, and `type: custom`. The lossless `literal_union_titles` rule turns those
+values into titles, producing readable classes such as `CreateInvoiceStandard` and
+`CreateInvoiceCustomProperty` while retaining the union.
+
+The remaining inline object unions have no reusable identity. `CreateInvoiceLineItem`, for
+example, combines common fields with two identical property sets whose only difference is whether
+`name + unit_amount` or `product_id` is required. Preserving that structure generated redundant
+classes such as `CreateInvoiceLineItemCreateInvoiceLineItem3 | ...4`; both accepted the same values
+because provider fields are already generated as optional.
+
+`anonymous_union` therefore widens only those unidentified object variants into one stable model.
+It takes every documented property, keeps identical schemas once, turns conflicting property
+schemas into a property-level `anyOf`, and leaves a property unconstrained when it is absent from
+any branch. It retains requirements shared by every branch, preserves null, and allows additional
+provider fields. It never uses a first-branch-wins merge, which would reject valid later enum values
+such as `direct_debit`.
+
+This transformation is intentionally lossy: it forgets branch-specific required combinations and
+may accept a request the provider rejects. That is acceptable at the soft provider-intake boundary;
+request mappers must still construct a documented alternative. References, discriminators,
+complete collision-free titles, mixed scalar unions, and unions with sibling structural constraints
+are not flattened.
 
 ### Anonymous objects and inline responses
 
@@ -130,9 +152,10 @@ An inline object such as `Invoice.customer` otherwise becomes `Customer1`. `name
 names it from its location, producing `InvoiceCustomer`. Scalar `title` values are removed so
 FastAPI-generated titles do not become pointless root models.
 
-An inline request or response has no component name for the client return annotation. `hoist`
-moves it into `components.schemas` using its `operationId`, after which both model and client
-generation can reference it.
+An inline request or response has no component name for the client annotation. `normalize.hoist`
+moves the JSON request body and first successful JSON response into `components.schemas` using
+the operation ID. Its outer title is forced to that name so the model generator and emitter agree;
+provider titles inside the schema remain untouched.
 
 ### Provider-specific schema defects
 
@@ -158,9 +181,9 @@ discarded currencies, countries, and timezones from the provider contract. It wa
 - Keeping closed enums makes provider drift loud and reviewable.
 - A specific field can be relaxed later; a global destructive rewrite is difficult to audit.
 
-OpenAPI Overlay is useful for declarative literal patches, but cannot compute a title from a
-schema's parent path. The two small Python normalization rules that require context therefore do
-not have a direct Overlay equivalent.
+OpenAPI Overlay is useful for declarative literal patches, but cannot compute titles from schema
+paths or inspect union branches to derive safe names and property unions. These small contextual
+Python normalization rules therefore do not have a direct Overlay equivalent.
 
 ## Generator choices
 
@@ -169,7 +192,8 @@ options:
 
 - Pydantic v2 models targeting Python 3.11.
 - Standard collections and `X | None` unions.
-- `title`-based class names after normalization.
+- Existing `title`-based class names, with path names only where titles are absent.
+- Losslessly inferred titles for literal-tagged variants and parent-prefixed generated names.
 - Collapsed root models.
 - Enums as `Literal[...]`, avoiding enum-object comparisons in the mapper.
 - Required fields made optional at provider intake.
@@ -297,8 +321,9 @@ document, regenerate, and surface the diff before customers encounter it.
 
 ### Generation-time checks
 
-`codegeneration/check.py` creates example payloads from the selected response schemas and
-validates them with the generated models. This catches:
+`codegeneration/check.py` creates partial payloads from documented examples, constants, defaults,
+and enums, then validates them with the generated models. Undocumented values are omitted rather
+than guessed. This catches:
 
 - missing generated response models;
 - examples contradicting declared formats or types;

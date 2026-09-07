@@ -1,9 +1,9 @@
 """
 
-Validate generated models against payloads built from the spec's own examples!
+Validate generated models against values documented by the specification.
 
 A failure means the spec contradicts itself (a `format` that its own `example`
-violates, say) — worth seeing at generate time, not in production.
+violates, say). Missing values are omitted instead of guessed.
 
 
 """
@@ -17,17 +17,7 @@ MAX_DEPTH = 12
 # Errors reported per model before truncating.
 MAX_REPORTED = 3
 
-# Placeholders for `format`ted strings the spec gives no example for.
-FORMATS = {
-    "uri": "https://example.com",
-    "url": "https://example.com",
-    "email": "a@example.com",
-    "uuid": "00000000-0000-0000-0000-000000000000",
-    "date": "2024-01-01",
-    "date-time": "2024-01-01T00:00:00Z",
-    "hostname": "example.com",
-    "ipv4": "127.0.0.1",
-}
+_MISSING = object()
 
 
 def _resolve(schema: dict, root: dict) -> dict:
@@ -37,23 +27,33 @@ def _resolve(schema: dict, root: dict) -> dict:
 
 
 def example(schema: dict, root: dict, depth: int = 0) -> Any:
-    """Build one payload a conforming server could return."""
+    """Build a partial payload using only examples, constants, and enumerations."""
     s = _resolve(schema, root)
     if depth > MAX_DEPTH:
-        return None
-    if "example" in s and "properties" not in s:
+        return _MISSING
+    if "example" in s:
         return s["example"]
+    if "const" in s:
+        return s["const"]
+    if "default" in s:
+        return s["default"]
     for kw in ("anyOf", "oneOf"):
         if kw in s:
             real = [b for b in s[kw] if _resolve(b, root).get("type") != "null"]
-            return example(real[0], root, depth + 1) if real else None
+            for branch in real:
+                value = example(branch, root, depth + 1)
+                if value is not _MISSING:
+                    return value
+            return _MISSING
     if "allOf" in s:
         merged: dict = {}
         for branch in s["allOf"]:
             value = example(branch, root, depth + 1)
             if isinstance(value, dict):
                 merged.update(value)
-        return merged
+            elif value is not _MISSING:
+                return value
+        return merged or _MISSING
     if "enum" in s:
         return s["enum"][0]
     types = s.get("type") or "object"
@@ -62,15 +62,16 @@ def example(schema: dict, root: dict, depth: int = 0) -> Any:
         "object",
     )
     if kind == "object":
-        return {
-            k: example(v, root, depth + 1)
-            for k, v in (s.get("properties") or {}).items()
-        }
+        payload = {}
+        for key, value_schema in (s.get("properties") or {}).items():
+            value = example(value_schema, root, depth + 1)
+            if value is not _MISSING:
+                payload[key] = value
+        return payload
     if kind == "array":
-        return [example(s["items"], root, depth + 1)] if "items" in s else []
-    if kind == "string":
-        return FORMATS.get(s.get("format"), "x")
-    return {"number": 1, "integer": 1, "boolean": False}.get(kind)
+        item = example(s["items"], root, depth + 1) if "items" in s else _MISSING
+        return [] if item is _MISSING else [item]
+    return _MISSING
 
 
 def check(spec: dict, models) -> list[str]:
@@ -91,8 +92,11 @@ def check(spec: dict, models) -> list[str]:
                 if model is None:
                     problems.append(f"{verb.upper()} {path} -> missing model {name}")
                     continue
+                payload = example(schema, spec)
+                if payload is _MISSING:
+                    continue
                 try:
-                    model.model_validate(example(schema, spec))
+                    model.model_validate(payload)
                 except ValidationError as exc:
                     problems.append(f"{verb.upper()} {path} -> {name}:")
                     problems += [f"    {line}" for line in _explain(exc)]
