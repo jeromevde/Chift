@@ -193,9 +193,13 @@ across providers.
 - Hyperline errors are mapped by its concrete connector: 404 and 409 remain unchanged; 400 and
   422 become 502 because Chift already accepted the call; and everything else — including
   401/403/429, which mean *our* key or *our* rate limit rather than the caller's request — becomes
-  502. Chift documents no 502. A direct `httpx.HTTPStatusError` handler in `chift/api.py` asks the
-  active connector to translate the failure and renders its `ChiftError`. Unexpected bugs are not
-  translated; FastAPI returns its ordinary 500 with no body.
+  502. Chift documents no 502. Defining a connector wraps its six Chift methods, so a provider
+  failure leaves them re-raised with that translated status and a Chift body; the connector itself
+  carries no error plumbing and `chift/api.py` only renders the result. Unexpected bugs are not
+  translated;
+  FastAPI returns its ordinary 500 with no body — including a Chift value no provider table maps,
+  such as `supplier_invoice`, which reaches the caller as an empty 500 rather than a stated
+  refusal.
 - Nine currencies Hyperline still publishes (BGN, HRK, ANG, …) have been retired from ISO 4217, so
   they have no exponent to scale amounts by. Those invoices fail by name rather than guess.
 - The pipeline requires OpenAPI 3.1 and refuses 3.0 documents by name, since 3.0 is not JSON
@@ -208,3 +212,4 @@ across providers.
   It can then pass all those 'scenarios' in the connector to see if everything works and if there is no data
   corruption. Doing this basically before any client would stumble on an edge case and complain.
   This test suite can be divided per connector vertical. In this case we would define one for *InvoicingConnector*.
+- Honestly the error catching code is not very elegant, must be a nicer way to do it.

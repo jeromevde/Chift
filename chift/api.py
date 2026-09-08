@@ -1,9 +1,10 @@
 """
 Minimal Chift invoicing API (FastAPI).
 
-Connectors map provider data and errors into Chift's contract. The API catches native
-provider HTTP failures and asks the active connector to translate them; FastAPI handles
-everything else normally, including body-shape violations with Chift's published 422.
+Connectors map provider data *and* their own failures into Chift's contract, so this
+layer only renders an already-translated result and never names a provider. FastAPI
+handles everything else normally, including body-shape violations with Chift's
+published 422, and an unexpected exception stays an ordinary 500.
 """
 
 from __future__ import annotations
@@ -68,20 +69,19 @@ def _connector(consumer_id: str) -> InvoicingConnector:
 
 
 @app.exception_handler(httpx.HTTPStatusError)
-async def provider_http_error(
-    request: Request, error: httpx.HTTPStatusError
+async def connector_error(
+    _request: Request, error: httpx.HTTPStatusError
 ) -> JSONResponse:
-    """Translate a native provider HTTP failure with the active connector."""
-    connector = _connector(request.path_params["consumer_id"])
-    operation = request.scope["route"].name
-    status, body = connector.map_error(operation, error)
-    log.warning(
-        "%s: provider %s -> Chift %s",
-        operation,
-        error.response.status_code,
-        status,
+    """Render the failure the connector already restated as Chift's.
+
+    Nothing is recovered from the request: `InvoicingConnector` translated the
+    provider's error while the connector was still in scope, so this handler needs
+    no provider, no consumer and no route name.
+    """
+    log.warning("connector error %s: %s", error.response.status_code, error)
+    return JSONResponse(
+        status_code=error.response.status_code, content=error.response.json()
     )
-    return JSONResponse(status_code=status, content=body.model_dump())
 
 
 @app.get(

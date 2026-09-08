@@ -28,9 +28,16 @@ KEEP THE CODE BRUTALLY SIMPLE. DO NOT OVERENGINEER. No new frameworks.
 **Errors**
 
 - Each concrete connector implements `map_error`, because only it understands its provider's
-  errors. Provider calls raise native `httpx.HTTPStatusError` unchanged. The direct handler in
-  `chift/api.py` asks the active connector's `map_error` for a Chift status and body, then renders
-  them. FastAPI answers the rest — 422 for schema violations, 500 for anything unexpected.
+  errors — and writes no other error handling. Defining the subclass wraps its six Chift methods,
+  so a provider `httpx.HTTPStatusError` leaves the connector re-raised with `map_error`'s Chift
+  status and body. Translation is a consequence of being a connector, not a step to repeat in one,
+  and it cannot be forgotten in a seventh method later.
+- A method left abstract is not wrapped, so Python's ABC still refuses an incomplete connector.
+- `chift/api.py` only renders what comes out. It never names a provider and never recovers one
+  from the request.
+- `map_error` takes only the error. `error.request.method` and `.url.path` already name the
+  provider call, so no operation string is threaded down from the route to identify it.
+- FastAPI answers the rest — 422 for schema violations, 500 for anything unexpected.
 - Never pre-judge what a provider will reject. Chift's input schema is the union of what every
   provider accepts, so its optional fields are mandatory for some. Let the provider refuse; its
   error names the field. If Chift accepted the request, that upstream rejection is our integration
@@ -50,7 +57,7 @@ pytest && ruff check --no-cache .
 
 # Adding a connector
 
-**version:** 37 — cite it in the connector docstring.
+**version:** 40 — cite it in the connector docstring.
 
 | | What | Who writes it | Where |
 |---|---|---|---|

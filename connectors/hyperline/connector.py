@@ -4,7 +4,7 @@ Chift invoicing connector against Hyperline.
 Generated client fetches provider JSON; this maps into chift.models.
 
 Provenance:
-  Procedure: AGENTS.md § Adding a connector v37
+  Procedure: AGENTS.md § Adding a connector v40
   Contract: python -m codegeneration contract hyperline <operationId>
 
 Written by an LLM from that skill + Hyperline's contract + Chift's contract, then
@@ -484,29 +484,22 @@ class HyperlineInvoicingConnector(InvoicingConnector):
 
     def get_contact(self, contact_id: str) -> chift.ContactItemOut:
         """Retrieve and map one Hyperline customer."""
-        raw = self.client.get_customer(id=contact_id)
-        return to_contact(raw)
+        return to_contact(self.client.get_customer(id=contact_id))
 
     def list_contacts(
         self, *, page: int, size: int
     ) -> chift.ChiftPage[chift.ContactItemOut]:
         """Retrieve and map one numbered page of Hyperline customers."""
-        raw = page_via_cursor(
-            self.client.list_customers,
-            page=page,
-            size=size,
-        )
+        raw = page_via_cursor(self.client.list_customers, page=page, size=size)
         return to_page(raw, to_contact)
 
     def create_contact(self, body: chift.ContactItemIn) -> chift.ContactItemOut:
         """Create and map one Hyperline customer."""
-        raw = self.client.create_customer(from_contact(body))
-        return to_contact(raw)
+        return to_contact(self.client.create_customer(from_contact(body)))
 
     def get_invoice(self, invoice_id: str) -> chift.InvoiceItemOut:
         """Retrieve and map one Hyperline invoice."""
-        raw = self.client.get_invoice(id=invoice_id)
-        return to_invoice(raw)
+        return to_invoice(self.client.get_invoice(id=invoice_id))
 
     def list_invoices(
         self, *, page: int, size: int
@@ -515,21 +508,15 @@ class HyperlineInvoicingConnector(InvoicingConnector):
         # Mapping decision: request every lifecycle explicitly instead of relying on
         # Hyperline's undocumented default status filter.
         raw = page_via_cursor(
-            self.client.list_invoices,
-            page=page,
-            size=size,
-            status="all",
+            self.client.list_invoices, page=page, size=size, status="all"
         )
         return to_page(raw, to_invoice)
 
     def create_invoice(self, body: chift.InvoiceItemIn) -> chift.InvoiceItemOut:
         """Create and map one Hyperline invoice."""
-        raw = self.client.create_invoice(from_invoice(body))
-        return to_invoice(raw)
+        return to_invoice(self.client.create_invoice(from_invoice(body)))
 
-    def map_error(
-        self, operation: str, error: httpx.HTTPStatusError
-    ) -> tuple[int, chift.ChiftError]:
+    def map_error(self, error: httpx.HTTPStatusError) -> tuple[int, chift.ChiftError]:
         """Map Hyperline's HTTP status and actual response into Chift's error."""
         upstream = error.response.status_code
         statuses = {
@@ -546,9 +533,11 @@ class HyperlineInvoicingConnector(InvoicingConnector):
             chift.ChiftError(
                 message="Not found" if status == 404 else "Provider request failed",
                 error_code="NotFound" if status == 404 else "ProviderError",
+                # The failure already names the call it came from, so no operation
+                # string has to be threaded down from the route to identify it.
                 detail=(
-                    f"{operation}: {error.request.url.host} {upstream} "
-                    f"{error.response.text}"
+                    f"{error.request.method} {error.request.url.path} -> "
+                    f"{upstream} {error.response.text}"
                     if status < 500
                     else ""
                 ),

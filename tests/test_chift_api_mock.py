@@ -31,7 +31,9 @@ from connectors.hyperline.connector import (
 
 CONSUMER = "11111111-1111-1111-1111-111111111111"
 OPENAPI = yaml.safe_load(
-    (Path(__file__).parents[1] / "connectors/hyperline/config/hyperline.yaml").read_text()
+    (
+        Path(__file__).parents[1] / "connectors/hyperline/config/hyperline.yaml"
+    ).read_text()
 )
 
 
@@ -67,7 +69,11 @@ class _StubClient:
         self._raw = raw
 
     def list_customers(self, **_query):
-        return {"data": self._raw["items"], "total": self._raw["total"], "next_cursor": None}
+        return {
+            "data": self._raw["items"],
+            "total": self._raw["total"],
+            "next_cursor": None,
+        }
 
 
 def _published_enum(schema_name: str, field: str) -> list[str]:
@@ -112,7 +118,6 @@ def test_invoice_mapper_uses_currency_units_or_fails_loudly():
     assert to_invoice(_invoice(currency="EUR", total_amount=100)).total == 1.0
     assert to_invoice(_invoice(currency="JPY", total_amount=100)).total == 100.0
     assert to_invoice(_invoice(currency="KWD", total_amount=100)).total == 0.1
-
 
 
 def test_currency_hyperline_documents_but_iso4217_dropped_names_the_value():
@@ -288,11 +293,26 @@ def test_missing_provider_pagination_total_is_a_provider_contract_failure():
 
 
 def test_chift_rejects_page_sizes_over_100_before_calling_a_connector():
-    with TestClient(app) as http:
-        response = http.get(
-            f"/consumers/{CONSUMER}/invoicing/invoices",
-            params={"size": 101},
-        )
+    """Chift's own bounds are enforced before the provider is ever asked.
+
+    Asserted through a client that raises if touched, rather than through a status
+    code alone: what must hold is that a rejected request never becomes a provider
+    request.
+    """
+
+    class NeverCalledClient:
+        def list_invoices(self, **_query):
+            raise AssertionError("a rejected request must not reach the provider")
+
+    CONNECTORS[CONSUMER] = HyperlineInvoicingConnector(NeverCalledClient())
+    try:
+        with TestClient(app) as http:
+            response = http.get(
+                f"/consumers/{CONSUMER}/invoicing/invoices",
+                params={"size": 101},
+            )
+    finally:
+        CONNECTORS.clear()
     assert response.status_code == 422
 
 
@@ -439,8 +459,8 @@ def test_provider_errors_are_rendered_as_chift_error(client):
     assert body["message"]
     assert body["status"] == "error"
     assert body["error_code"] == "NotFound"
-    # detail is diagnostic, not contract: it names the provider and its own error.
-    assert "hyperline.co 404" in body["detail"]
+    # detail is diagnostic, not contract: it names the provider call that failed.
+    assert "GET /v2/customers/cus_does_not_exist -> 404" in body["detail"]
 
 
 def test_unknown_consumer_is_404_without_touching_a_connector():
@@ -511,9 +531,7 @@ def test_api_resolves_a_consumer_to_its_provider_without_naming_one():
             return fake
 
         def get_contact(self, contact_id: str):
-            return to_contact(
-                {"id": contact_id, "name": "Fake", "type": "corporate"}
-            )
+            return to_contact({"id": contact_id, "name": "Fake", "type": "corporate"})
 
     consumer = "22222222-2222-2222-2222-222222222222"
     CONSUMERS[consumer] = "fake-provider"
@@ -548,6 +566,7 @@ def test_a_connector_missing_a_contract_method_cannot_be_constructed():
 
     with pytest.raises(TypeError, match="abstract.*invoice"):
         Incomplete()
+
 
 def test_an_unknown_provider_is_our_misconfiguration_not_a_bad_request():
     from chift.api import CONSUMERS
