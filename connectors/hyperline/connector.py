@@ -4,7 +4,7 @@ Chift invoicing connector against Hyperline.
 Generated client fetches provider JSON; this maps into chift.models.
 
 Provenance:
-  Procedure: AGENTS.md § Adding a connector v40
+  Procedure: AGENTS.md § Adding a connector v41
   Contract: python -m codegeneration contract hyperline <operationId>
 
 Written by an LLM from that skill + Hyperline's contract + Chift's contract, then
@@ -22,6 +22,7 @@ import httpx
 from iso4217 import Currency
 
 from chift import models as chift
+from chift import registry
 from chift.invoicing import InvoicingConnector
 from connectors.hyperline.config import get_settings
 from connectors.hyperline.generated.client import HyperlineClient
@@ -543,3 +544,6 @@ class HyperlineInvoicingConnector(InvoicingConnector):
                 ),
             ),
         )
+
+
+registry.register(InvoicingConnector, HyperlineInvoicingConnector)

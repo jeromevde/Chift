@@ -19,6 +19,7 @@ from codegeneration import (
     generate_client,
     generate_context,
 )
+from connectors.hyperline.connector import HyperlineInvoicingConnector
 from connectors.hyperline.generated.client import HyperlineClient
 
 ROOT = Path(__file__).parents[1]
@@ -368,6 +369,7 @@ def test_the_contract_exposes_only_chift_operations_and_error_mapping():
     propagate to the FastAPI handler, which delegates their meaning to `map_error`.
     """
     assert "_request" not in vars(InvoicingConnector)
+    assert "__init_subclass__" not in vars(InvoicingConnector)
     assert InvoicingConnector.__abstractmethods__ == frozenset(
         {
             "get_contact",
@@ -384,6 +386,7 @@ def test_the_contract_exposes_only_chift_operations_and_error_mapping():
     assert list(parameters) == ["self", "page", "size"]
     assert parameters["page"].kind is inspect.Parameter.KEYWORD_ONLY
     assert parameters["size"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert not hasattr(HyperlineInvoicingConnector.get_contact, "__translated__")
     assert not (ROOT / "chift/endpoint.py").exists()
 
 

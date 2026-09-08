@@ -100,7 +100,8 @@ conditional logic. Those 13 are where every defect in the review checklist actua
 1. Add `connectors/<provider>/config/<provider>.yaml` and `config/paths.yaml`, selecting only the
    provider operations the connector calls.
 2. Run `python -m codegeneration client <provider>`.
-3. Subclass `InvoicingConnector` and implement its six directly signed methods plus `map_error`.
+3. Subclass `InvoicingConnector`, implement its six signed methods plus `map_error`, and register
+   it explicitly in the connector module.
 4. Review the concrete mapper against the checklist.
 5. Verify the Chift endpoints against the provider sandbox.
 
@@ -193,10 +194,9 @@ across providers.
 - Hyperline errors are mapped by its concrete connector: 404 and 409 remain unchanged; 400 and
   422 become 502 because Chift already accepted the call; and everything else — including
   401/403/429, which mean *our* key or *our* rate limit rather than the caller's request — becomes
-  502. Chift documents no 502. Defining a connector wraps its six Chift methods, so a provider
-  failure leaves them re-raised with that translated status and a Chift body; the connector itself
-  carries no error plumbing and `chift/api.py` only renders the result. Unexpected bugs are not
-  translated;
+  502. Chift documents no 502. A direct `httpx.HTTPStatusError` handler in `chift/api.py` asks the
+  active connector to translate the failure and renders its Chift status and body. Unexpected bugs
+  are not translated;
   FastAPI returns its ordinary 500 with no body — including a Chift value no provider table maps,
   such as `supplier_invoice`, which reaches the caller as an empty 500 rather than a stated
   refusal.

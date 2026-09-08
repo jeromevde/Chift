@@ -28,13 +28,9 @@ KEEP THE CODE BRUTALLY SIMPLE. DO NOT OVERENGINEER. No new frameworks.
 **Errors**
 
 - Each concrete connector implements `map_error`, because only it understands its provider's
-  errors — and writes no other error handling. Defining the subclass wraps its six Chift methods,
-  so a provider `httpx.HTTPStatusError` leaves the connector re-raised with `map_error`'s Chift
-  status and body. Translation is a consequence of being a connector, not a step to repeat in one,
-  and it cannot be forgotten in a seventh method later.
-- A method left abstract is not wrapped, so Python's ABC still refuses an incomplete connector.
-- `chift/api.py` only renders what comes out. It never names a provider and never recovers one
-  from the request.
+  errors. Provider calls raise native `httpx.HTTPStatusError` unchanged. The direct handler in
+  `chift/api.py` resolves the active connector, asks `map_error` for a Chift status and body, and
+  renders them. FastAPI answers every other failure normally.
 - `map_error` takes only the error. `error.request.method` and `.url.path` already name the
   provider call, so no operation string is threaded down from the route to identify it.
 - FastAPI answers the rest — 422 for schema violations, 500 for anything unexpected.
@@ -57,7 +53,7 @@ pytest && ruff check --no-cache .
 
 # Adding a connector
 
-**version:** 40 — cite it in the connector docstring.
+**version:** 41 — cite it in the connector docstring.
 
 | | What | Who writes it | Where |
 |---|---|---|---|
@@ -220,9 +216,9 @@ Then run the live tests. Amount and date conversions look right and are wrong.
 
 ## 3. Expose and test
 
-Subclass `InvoicingConnector`, set `provider = "<name>"`, implement `from_env`. Defining the
-subclass registers it with `chift/registry.py`, which `chift/api.py` asks for a live connector,
-so **no file under `chift/` changes when you add one**.
+Subclass `InvoicingConnector`, set `provider = "<name>"`, implement `from_env`, then explicitly
+register the completed class with `chift/registry.py`. `chift/api.py` asks that registry for a
+live connector, so **no file under `chift/` changes when you add one**.
 
 **Each Chift operation directly implements its exact abstract method on `InvoicingConnector`.**
 
@@ -233,6 +229,9 @@ class HyperlineInvoicingConnector(InvoicingConnector):
     def get_contact(self, contact_id: str) -> chift.ContactItemOut:
         raw = self.client.get_customer(id=contact_id)
         return to_contact(raw)
+
+
+registry.register(InvoicingConnector, HyperlineInvoicingConnector)
 ```
 
 The method keeps provider invocation and mapping visible in one place. Mapping itself remains a

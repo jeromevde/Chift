@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 from iso4217 import Currency
 from pydantic import ValidationError as PydanticValidationError
 
+from chift import registry
 from chift.api import CONNECTORS, app
 from chift.invoicing import InvoicingConnector
 from chift.models import InvoiceItemIn, InvoiceStatus
@@ -533,6 +534,7 @@ def test_api_resolves_a_consumer_to_its_provider_without_naming_one():
         def get_contact(self, contact_id: str):
             return to_contact({"id": contact_id, "name": "Fake", "type": "corporate"})
 
+    registry.register(InvoicingConnector, FakeConnector)
     consumer = "22222222-2222-2222-2222-222222222222"
     CONSUMERS[consumer] = "fake-provider"
     try:
@@ -560,7 +562,7 @@ def test_a_connector_missing_a_contract_method_cannot_be_constructed():
         def get_contact(self, contact_id: str): ...
         def list_contacts(self, *, page: int, size: int): ...
         def create_contact(self, body): ...
-        def map_error(self, operation, error): ...
+        def map_error(self, error): ...
 
         # The three invoice methods are deliberately absent.
 

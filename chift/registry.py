@@ -6,11 +6,10 @@ never names a provider, and adding one touches no file under `chift/`. That is t
 job of this module, and it is deliberately separate from `chift/invoicing.py`: what a
 connector must implement is a contract, where one comes from is plumbing.
 
-Registration happens by definition — a contract's `__init_subclass__` calls `register`
-— so a connector is reachable because it exists, not because a list somewhere was
-updated. Discovery is lazy: importing `chift` must not pull in every provider's
-credentials, and the scan mirrors how `codegeneration` finds connectors, by looking at
-the directory rather than trusting a list that can go stale.
+Each connector registers itself explicitly after its class definition. Discovery is
+lazy: importing `chift` must not pull in every provider's credentials, and the scan
+mirrors how `codegeneration` finds connectors, by looking at the directory rather than
+trusting a central list that can go stale.
 
 Keyed by contract class, so an accounting or POS contract registers its own connectors
 without colliding with invoicing's.
@@ -29,15 +28,8 @@ T = TypeVar("T")
 
 
 def register(contract: type, connector: type) -> None:
-    """Record one connector against the contract it implements.
-
-    Called from the contract's `__init_subclass__`, so defining a connector registers
-    it. A subclass without a `provider` slug — an intermediate base shared by a family
-    of providers, say — is skipped rather than registered under an empty name.
-    """
-    slug = getattr(connector, "provider", None)
-    if slug:
-        _REGISTRY.setdefault(contract, {})[slug] = connector
+    """Record one connector against the contract it implements."""
+    _REGISTRY.setdefault(contract, {})[connector.provider] = connector
 
 
 def _discover() -> None:
