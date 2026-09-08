@@ -1,10 +1,10 @@
 # What to generate from Hyperline's OpenAPI, and nothing more.
 #
-# `python -m codegeneration client` discovers connectors/*/paths.yaml; the generator
+# `python -m codegeneration client` discovers connectors/*/config/paths.yaml; the generator
 # itself knows nothing about Hyperline. Adding a provider means adding a directory,
 # not editing codegeneration/.
 #
-# Output lands in generated/<connector-directory-name>/.
+# Output lands beside this directory in ../generated/.
 
 spec: hyperline.yaml
 client_class: HyperlineClient
@@ -24,3 +24,14 @@ endpoints:
   /v1/customers/{id}/archive: [put]
   /v1/invoices: [post]
   /v1/invoices/{id}: [delete]
+
+# Chift endpoint -> selected provider operation. This pairing is semantic and cannot be
+# inferred safely from path names alone; the generated base wires everything after it.
+mappers:
+  invoicing:
+    get_contact: getCustomer
+    list_contacts: listCustomers
+    create_contact: createCustomer
+    get_invoice: getInvoice
+    list_invoices: listInvoices
+    create_invoice: createInvoice

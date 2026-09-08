@@ -20,18 +20,18 @@ from chift.api import CONNECTORS, app
 from chift.invoicing_connector import InvoicingConnector
 from chift.models import InvoiceItemIn, InvoiceStatus
 from connectors.hyperline.config import get_settings
-from connectors.hyperline.invoicing_mapper import (
+from connectors.hyperline.mapper import (
     INVOICE_STATUS,
     HyperlineInvoicingConnector,
+    _page_via_cursor,
     from_invoice,
-    page_via_cursor,
     to_contact,
     to_invoice,
 )
 
 CONSUMER = "11111111-1111-1111-1111-111111111111"
 OPENAPI = yaml.safe_load(
-    (Path(__file__).parents[1] / "connectors/hyperline/hyperline.yaml").read_text()
+    (Path(__file__).parents[1] / "connectors/hyperline/config/hyperline.yaml").read_text()
 )
 
 
@@ -249,9 +249,18 @@ def test_cursor_pagination_walks_to_the_requested_page_without_stored_state():
         calls.append(query)
         return next(responses)
 
-    page = page_via_cursor(fetch, page=2, size=1, map_item=str.upper, status="all")
+    page = _page_via_cursor(
+        fetch,
+        {
+            "limit": 1,
+            "cursor": None,
+            "include_total": True,
+            "status": "all",
+        },
+        page=2,
+    )
 
-    assert page.model_dump() == {"items": ["SECOND"], "total": 2, "page": 2, "size": 1}
+    assert page == {"data": ["second"], "total": 2}
     assert calls == [
         {"limit": 1, "cursor": None, "include_total": True, "status": "all"},
         {"limit": 1, "cursor": "next", "include_total": False, "status": "all"},
@@ -268,8 +277,14 @@ def test_missing_provider_pagination_total_is_a_provider_contract_failure():
     def fetch(**_query):
         return {"data": [], "total": None, "next_cursor": None}
 
+    raw = _page_via_cursor(
+        fetch,
+        {"limit": 50, "cursor": None, "include_total": True},
+        page=1,
+    )
+    connector = HyperlineInvoicingConnector(object())
     with pytest.raises(PydanticValidationError, match="total"):
-        page_via_cursor(fetch, page=1, size=50, map_item=lambda item: item)
+        connector.map_list_contacts_return_body(raw, page=1, size=50)
 
 
 def test_chift_rejects_page_sizes_over_100_before_calling_a_connector():
@@ -444,7 +459,7 @@ def test_unknown_consumer_is_404_without_touching_a_connector():
         (401, 502, "ProviderError", False),
         (403, 502, "ProviderError", False),
         (404, 404, "NotFound", True),
-        (409, 400, "ProviderError", True),  # Chift publishes no 409
+        (409, 409, "ProviderError", True),
         (422, 400, "ProviderError", True),
         (429, 502, "ProviderError", False),
         (503, 502, "ProviderError", False),
@@ -458,11 +473,11 @@ def test_provider_http_errors_become_chift_errors(
         upstream, json={"message": "provider explanation"}, request=request
     )
 
-    class FailingConnector:
-        def get_contact(self, _contact_id):
+    class FailingClient:
+        def get_customer(self, **_arguments):
             raise httpx.HTTPStatusError("boom", request=request, response=response)
 
-    CONNECTORS[CONSUMER] = FailingConnector()
+    CONNECTORS[CONSUMER] = HyperlineInvoicingConnector(FailingClient())
     try:
         with TestClient(app) as http:
             result = http.get(f"/consumers/{CONSUMER}/invoicing/contacts/anything")

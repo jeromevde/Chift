@@ -6,8 +6,8 @@
 Every rule here has a defect behind it. They fall into two kinds, and the second is
 the one that matters:
 
-* **Structure** — sections, naming, ordering. Cheap to check, cheap to break, and the
-  failure is navigational: a reviewer looks in the wrong place.
+* **Interface** — the generated base is current and the concrete connector implements
+  every abstract mapping hook without replacing generated endpoint orchestration.
 * **Coverage** — every Chift field either mapped or declared unmappable, no silent
   defaults, tables exhaustive over the provider's published enum. These catch the
   defect this project exists to prevent: a plausible value returned instead of an
@@ -31,7 +31,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-SECTIONS = ("Constants", "Utilities", "Mapper", "Pagination", "Endpoint")
+SECTIONS = ("Constants", "Utilities", "Mapper", "Pagination", "Connector")
 
 
 def _sections(tree: ast.Module, lines: list[str]) -> dict[str, tuple[int, int]]:
@@ -155,40 +155,69 @@ def check_coverage(tree: ast.Module, module) -> list[str]:
     return problems
 
 
-def check_endpoint(tree: ast.Module, module) -> list[str]:
-    """The class implements the Chift contract and nothing else."""
+def check_connector(tree: ast.Module, module) -> list[str]:
+    """The concrete connector fills the generated base without replacing endpoints."""
     from chift.invoicing_connector import InvoicingConnector
 
     problems = []
+    connectors = [
+        value
+        for value in vars(module).values()
+        if isinstance(value, type)
+        and value.__module__ == module.__name__
+        and issubclass(value, InvoicingConnector)
+    ]
+    if len(connectors) != 1:
+        return [f"expected one concrete connector class, found {len(connectors)}"]
+    connector = connectors[0]
+    if connector.__abstractmethods__:
+        problems.append(
+            f"{connector.__name__}: missing generated mapping hooks: "
+            f"{', '.join(sorted(connector.__abstractmethods__))}"
+        )
+
+    endpoint_methods = set(InvoicingConnector.__abstractmethods__) - {"from_env"}
     for node in tree.body:
-        if not isinstance(node, ast.ClassDef):
-            continue
-        methods = {
-            n.name for n in node.body if isinstance(n, ast.FunctionDef)
-        } - {"__init__"}
-        extra = methods - set(InvoicingConnector.__abstractmethods__)
-        if extra:
-            problems.append(
-                f"{node.name}: methods beyond the Chift contract: "
-                f"{', '.join(sorted(extra))} — provider workflows that exist only for "
-                "tests call the generated client from the test instead"
-            )
+        if isinstance(node, ast.ClassDef) and node.name == connector.__name__:
+            replaced = endpoint_methods & {
+                child.name for child in node.body if isinstance(child, ast.FunctionDef)
+            }
+            if replaced:
+                problems.append(
+                    f"{connector.__name__}: endpoint methods belong in the generated base: "
+                    f"{', '.join(sorted(replaced))}"
+                )
     return problems
+
+
+def check_generated_base(provider: str, vertical: str) -> list[str]:
+    """Require the tracked runtime base to match the current generator and pairing."""
+    from codegeneration.generate_connector_base import base
+
+    path = ROOT / "connectors" / provider / "generated" / f"{vertical}_base.py"
+    if not path.is_file():
+        return [f"missing generated base: {path.relative_to(ROOT)}"]
+    if path.read_text() != base(provider, vertical):
+        return [f"stale generated base: run python -m codegeneration client {provider}"]
+    return []
 
 
 def check(provider: str, vertical: str = "invoicing") -> list[str]:
     """Every rule, against one connector mapper. Empty list means it conforms."""
-    path = ROOT / "connectors" / provider / f"{vertical}_mapper.py"
+    if vertical != "invoicing":
+        raise SystemExit("the self-contained provider layout currently supports invoicing")
+    path = ROOT / "connectors" / provider / "mapper.py"
     if not path.is_file():
         raise SystemExit(f"no mapper at {path.relative_to(ROOT)}")
     source = path.read_text()
     tree = ast.parse(source)
-    module = importlib.import_module(f"connectors.{provider}.{vertical}_mapper")
+    module = importlib.import_module(f"connectors.{provider}.mapper")
     return [
         *check_structure(tree, source.splitlines()),
         *check_no_silent_defaults(tree),
         *check_coverage(tree, module),
-        *check_endpoint(tree, module),
+        *check_connector(tree, module),
+        *check_generated_base(provider, vertical),
     ]
 
 

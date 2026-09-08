@@ -3,15 +3,14 @@
 Usage (from the repository root):
 
     python -m codegeneration client
-        Regenerate every connector found under `connectors/*/paths.yaml`.
+        Regenerate every connector found under `connectors/*/config/paths.yaml`.
 
     python -m codegeneration client <provider>
         Regenerate one. Fails if a configured path or method is missing.
 
-Writes ``generated/<provider>/client.py``: one method per selected operation.
-Method, path, and auth live in the generated code. Provider response shapes are
-not validated here — that is the mapper's job against Chift's contract. OpenAPI
-is used at generate time (and by ``contract`` / ``operations``) as documentation.
+Writes ``connectors/<provider>/generated/client.py`` and ``invoicing_base.py``.
+The client contains transport methods; the base owns Chift endpoint orchestration
+around abstract provider-specific mapping hooks.
 """
 
 from __future__ import annotations
@@ -215,14 +214,15 @@ class Connector(NamedTuple):
 def discover() -> dict[str, Connector]:
     """Discover every connector that owns a ``paths.yaml`` configuration."""
     found = {}
-    for config_path in sorted(CONNECTORS_DIR.glob("*/paths.yaml")):
-        name = config_path.parent.name
+    for config_path in sorted(CONNECTORS_DIR.glob("*/config/paths.yaml")):
+        provider_dir = config_path.parent.parent
+        name = provider_dir.name
         config = yaml.safe_load(config_path.read_text())
         try:
             found[name] = Connector(
                 name=name,
                 spec=config_path.parent / config["spec"],
-                out_pkg=ROOT / "generated" / name,
+                out_pkg=provider_dir / "generated",
                 client_class=config["client_class"],
                 endpoints={
                     path: tuple(methods)
@@ -268,17 +268,17 @@ def run(
         ["ruff", "format", str(client_path)], check=True, capture_output=True
     )
 
-    # The scaffold comes from the same paths.yaml, so refresh it here rather than leave
-    # it to drift until someone remembers to run `template`.
-    from codegeneration.generate_mapper_template import write as write_template
+    # Endpoint pairing and client methods share paths.yaml, so generate them together.
+    from codegeneration.generate_connector_base import write as write_base
 
-    write_template(out_pkg.name)
+    write_base(out_pkg.parent.name)
 
     for stale in (
         "contracts.json",
         "models.py",
         "openapi.normalized.yaml",
         "openapi.json",
+        "invoicing_mapper_template.py",
     ):
         (out_pkg / stale).unlink(missing_ok=True)
 
@@ -287,7 +287,7 @@ def main(argv: list[str] | None = None) -> None:
     """Generate named connectors, or every discovered connector when omitted."""
     connectors = discover()
     if not connectors:
-        raise SystemExit(f"no connectors/*/paths.yaml under {CONNECTORS_DIR}")
+        raise SystemExit(f"no connectors/*/config/paths.yaml under {CONNECTORS_DIR}")
 
     names = argv if argv is not None else sys.argv[1:]
     for name in names or connectors:
@@ -305,7 +305,7 @@ def main(argv: list[str] | None = None) -> None:
         )
         print(
             f"  wrote {connector.out_pkg.relative_to(ROOT)}/"
-            "client.py + invoicing_mapper_template.py"
+            "client.py + invoicing_base.py"
         )
 
 

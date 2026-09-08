@@ -4,7 +4,7 @@ Chift invoicing connector against Hyperline.
 Generated client fetches provider JSON; this maps into chift.models.
 
 Provenance:
-  Procedure: AGENTS.md § Adding a connector v29
+  Procedure: AGENTS.md § Adding a connector v32
   Contract: python -m codegeneration contract hyperline <operationId>
 
 Written by an LLM from that skill + Hyperline's contract + Chift's contract, then
@@ -16,17 +16,16 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, TypeVar
+from typing import Any
 
+import httpx
 from iso4217 import Currency
 
 from chift import models as chift
-from chift.invoicing_connector import InvoicingConnector
+from chift.errors import ConnectorError
 from connectors.hyperline.config import get_settings
-from generated.hyperline.client import HyperlineClient
-
-T = TypeVar("T")
-
+from connectors.hyperline.generated.client import HyperlineClient
+from connectors.hyperline.generated.invoicing_base import HyperlineInvoicingBase
 
 # Chift fields Hyperline does not carry. Checked by `python -m codegeneration check`,
 # which fails on any target field that is neither assigned nor listed here — so an
@@ -123,6 +122,10 @@ CREATE_INVOICE_STATUS = {
     chift.InvoiceStatusIn.draft: "draft",
     chift.InvoiceStatusIn.posted: "to_pay",
 }
+
+# Mapping decision: Hyperline's caller-actionable failures retain the closest Chift
+# status. Authentication, rate limiting, and provider failures are our gateway problem.
+PROVIDER_STATUS = {400: 400, 404: 404, 409: 409, 422: 400}
 
 
 # ----------------------------------------------------------------------------
@@ -421,24 +424,19 @@ def from_invoice(body: chift.InvoiceItemIn) -> dict[str, Any]:
 
 
 # ----------------------------------------------------------------------------
-# Pagination — provider cursors -> one numbered Chift page.
+# Pagination — provider cursors -> one raw provider page.
 # -----------------------------------------------------------------------------
 
 
-def page_via_cursor(fetch, *, page: int, size: int, map_item, **query):
-    """Reconstruct one Chift numbered page from provider cursors."""
+def _page_via_cursor(fetch, arguments: dict[str, Any], *, page: int) -> dict[str, Any]:
+    """Fetch one numbered page from Hyperline's cursor API."""
     # Mapping decision: Chift page N is reconstructed from opaque cursors without storing
     # provider state that could become stale between calls.
-    cursor = None
+    query = dict(arguments)
     total = None
     items = []
     for current in range(1, page + 1):
-        raw = fetch(
-            limit=size,
-            cursor=cursor,
-            include_total=(current == 1 and total is None),
-            **query,
-        )
+        raw = fetch(**query)
         items = list(raw["data"])
         if total is None and raw.get("total") is not None:
             total = raw["total"]
@@ -446,26 +444,24 @@ def page_via_cursor(fetch, *, page: int, size: int, map_item, **query):
             if not raw.get("next_cursor"):
                 items = []
                 break
-            cursor = raw["next_cursor"]
-    mapped = [map_item(x) for x in items]
-    # `total` is outside the envelope's `required` list — the provider sends it only when
-    # `include_total=true`, which this function always asks for. No guard here: Chift's
-    # `total` is a required int, so a missing one is a Pydantic failure with the field named.
-    return chift.ChiftPage(items=mapped, total=total, page=page, size=size)
+            query["cursor"] = raw["next_cursor"]
+            query["include_total"] = False
+    return {"data": items, "total": total}
 
 
 # ----------------------------------------------------------------------------
-# Endpoint — the Chift contract, wiring provider calls to the mappers.
+# Connector — credentials and implementations of the generated mapping hooks.
 # ----------------------------------------------------------------------------
 
 
-# Provider HTTP failures propagate to the single translator in chift.api.
-class HyperlineInvoicingConnector(InvoicingConnector):
+class HyperlineInvoicingConnector(HyperlineInvoicingBase):
+    """Hyperline semantics plugged into the generated endpoint orchestration."""
+
     provider = "hyperline"
 
     @classmethod
     def from_env(cls) -> HyperlineInvoicingConnector:
-        """Hyperline's credentials live in connectors/hyperline/config.py."""
+        """Build from credentials owned by connectors/hyperline/config/."""
         return cls()
 
     def __init__(self, client: HyperlineClient | None = None) -> None:
@@ -476,44 +472,113 @@ class HyperlineInvoicingConnector(InvoicingConnector):
             client = HyperlineClient(
                 settings.hyperline_base_url, settings.hyperline_api_key
             )
-        self.client = client
+        super().__init__(client)
 
-    def create_contact(self, body: chift.ContactItemIn) -> chift.ContactItemOut:
-        """Create and map one Hyperline customer."""
-        raw = self.client.create_customer(from_contact(body))
-        return to_contact(raw)
-
-    def create_invoice(self, body: chift.InvoiceItemIn) -> chift.InvoiceItemOut:
-        """Create and map one Hyperline invoice."""
-        raw = self.client.create_invoice(from_invoice(body))
-        return to_invoice(raw)
-
-    def get_contact(self, contact_id: str) -> chift.ContactItemOut:
-        """Retrieve and map one Hyperline customer."""
-        return to_contact(self.client.get_customer(contact_id))
-
-    def list_contacts(
-        self, *, page: int = 1, size: int = 50
-    ) -> chift.ChiftPage[chift.ContactItemOut]:
-        """Retrieve and map one numbered page of Hyperline customers."""
-        return page_via_cursor(
-            self.client.list_customers, page=page, size=size, map_item=to_contact
+    def map_error(
+        self, operation: str, error: httpx.HTTPStatusError
+    ) -> ConnectorError:
+        """Map Hyperline's HTTP status and actual response into Chift's error."""
+        upstream = error.response.status_code
+        status = PROVIDER_STATUS[upstream] if upstream in PROVIDER_STATUS else 502  # noqa: SIM401
+        return ConnectorError(
+            status,
+            chift.ChiftError(
+                message="Not found" if status == 404 else "Provider request failed",
+                error_code="NotFound" if status == 404 else "ProviderError",
+                detail=(
+                    f"{operation}: {error.request.url.host} {upstream} "
+                    f"{error.response.text}"
+                    if status < 500
+                    else ""
+                ),
+            ),
         )
 
-    def get_invoice(self, invoice_id: str) -> chift.InvoiceItemOut:
-        """Retrieve and map one Hyperline invoice."""
-        return to_invoice(self.client.get_invoice(invoice_id))
+    def request_get_contact(self, contact_id: str) -> dict[str, Any]:
+        """Map the identifier and retrieve one Hyperline customer."""
+        return self.client.get_customer(id=contact_id)
 
-    def list_invoices(
-        self, *, page: int = 1, size: int = 50
-    ) -> chift.ChiftPage[chift.InvoiceItemOut]:
-        """Retrieve and map one numbered page of Hyperline invoices."""
-        # Mapping decision: request every lifecycle explicitly instead of relying on
-        # Hyperline's undocumented default status filter.
-        return page_via_cursor(
-            self.client.list_invoices,
+    def map_get_contact_return_body(
+        self, data: dict[str, Any]
+    ) -> chift.ContactItemOut:
+        """Map Hyperline's customer response to Chift."""
+        return to_contact(data)
+
+    def request_list_contacts(self, *, page: int, size: int) -> dict[str, Any]:
+        """Map pagination and retrieve one numbered Hyperline customer page."""
+        return _page_via_cursor(
+            self.client.list_customers,
+            {"limit": size, "cursor": None, "include_total": True},
+            page=page,
+        )
+
+    def map_list_contacts_return_body(
+        self, data: dict[str, Any], *, page: int, size: int
+    ) -> chift.ChiftPage[chift.ContactItemOut]:
+        """Map one raw Hyperline customer page to Chift."""
+        return chift.ChiftPage(
+            items=[to_contact(item) for item in data["data"]],
+            total=data["total"],
             page=page,
             size=size,
-            map_item=to_invoice,
-            status="all",
         )
+
+    def request_create_contact(
+        self, body: chift.ContactItemIn
+    ) -> dict[str, Any]:
+        """Map and create one Hyperline customer."""
+        return self.client.create_customer(from_contact(body))
+
+    def map_create_contact_return_body(
+        self, data: dict[str, Any]
+    ) -> chift.ContactItemOut:
+        """Map Hyperline's created customer to Chift."""
+        return to_contact(data)
+
+    def request_get_invoice(self, invoice_id: str) -> dict[str, Any]:
+        """Map the identifier and retrieve one Hyperline invoice."""
+        return self.client.get_invoice(id=invoice_id)
+
+    def map_get_invoice_return_body(
+        self, data: dict[str, Any]
+    ) -> chift.InvoiceItemOut:
+        """Map Hyperline's invoice response to Chift."""
+        return to_invoice(data)
+
+    def request_list_invoices(self, *, page: int, size: int) -> dict[str, Any]:
+        """Map pagination and retrieve one numbered Hyperline invoice page."""
+        # Mapping decision: request every lifecycle explicitly instead of relying on
+        # Hyperline's undocumented default status filter.
+        return _page_via_cursor(
+            self.client.list_invoices,
+            {
+                "limit": size,
+                "cursor": None,
+                "include_total": True,
+                "status": "all",
+            },
+            page=page,
+        )
+
+    def map_list_invoices_return_body(
+        self, data: dict[str, Any], *, page: int, size: int
+    ) -> chift.ChiftPage[chift.InvoiceItemOut]:
+        """Map one raw Hyperline invoice page to Chift."""
+        return chift.ChiftPage(
+            items=[to_invoice(item) for item in data["data"]],
+            total=data["total"],
+            page=page,
+            size=size,
+        )
+
+    def request_create_invoice(
+        self, body: chift.InvoiceItemIn
+    ) -> dict[str, Any]:
+        """Map and create one Hyperline invoice."""
+        return self.client.create_invoice(from_invoice(body))
+
+    def map_create_invoice_return_body(
+        self, data: dict[str, Any]
+    ) -> chift.InvoiceItemOut:
+        """Map Hyperline's created invoice to Chift."""
+        return to_invoice(data)

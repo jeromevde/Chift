@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import inspect
 import json
 from io import StringIO
 from pathlib import Path
@@ -16,10 +17,11 @@ from chift.invoicing_connector import InvoicingConnector
 from codegeneration import (
     check_mapper,
     generate_client,
+    generate_connector_base,
     generate_context,
-    generate_mapper_template,
 )
-from generated.hyperline.client import HyperlineClient
+from connectors.hyperline.generated.client import HyperlineClient
+from connectors.hyperline.generated.invoicing_base import HyperlineInvoicingBase
 
 ROOT = Path(__file__).parents[1]
 
@@ -41,6 +43,17 @@ def test_codegen_fails_when_endpoint_is_missing(tmp_path):
 
     with pytest.raises(SystemExit, match="OpenAPI endpoints not found"):
         generate_client.run(spec, tmp_path / "generated", "ExampleClient", {"/nope": ("get",)})
+
+
+def test_provider_generation_stays_inside_its_package():
+    """Config, generated code, and mapper form one movable provider package."""
+    provider = ROOT / "connectors/hyperline"
+    connector = generate_client.discover()["hyperline"]
+
+    assert connector.spec == provider / "config/hyperline.yaml"
+    assert connector.out_pkg == provider / "generated"
+    assert (provider / "config/paths.yaml").is_file()
+    assert (provider / "mapper.py").is_file()
 
 
 def test_extract_inlines_every_operation_input_and_output_reference():
@@ -315,7 +328,7 @@ def test_generated_client_gets_method_and_path_from_emit():
 def test_mapper_contract_reads_the_vendored_spec():
     """Mapper context is on demand from the vendored OpenAPI."""
     spec = yaml.safe_load(
-        (ROOT / "connectors/hyperline/hyperline.yaml").read_text()
+        (ROOT / "connectors/hyperline/config/hyperline.yaml").read_text()
     )
     create_invoice = generate_context.operation(spec, "createInvoice")
     get_invoice = generate_context.operation(spec, "getInvoice")
@@ -323,9 +336,10 @@ def test_mapper_contract_reads_the_vendored_spec():
     assert "$ref" not in json.dumps(create_invoice)
     assert create_invoice["input"]["body"]
     assert get_invoice["output"]["200"]
-    assert not (ROOT / "generated/hyperline/contracts.json").exists()
-    assert not (ROOT / "generated/hyperline/models.py").exists()
-    assert not (ROOT / "generated/hyperline/openapi.json").exists()
+    generated = ROOT / "connectors/hyperline/generated"
+    assert not (generated / "contracts.json").exists()
+    assert not (generated / "models.py").exists()
+    assert not (generated / "openapi.json").exists()
 
 
 def test_the_hyperline_mapper_obeys_every_rule_the_checker_encodes():
@@ -349,11 +363,15 @@ def test_the_checker_catches_a_silent_default_and_a_missing_field():
     assert problems and "neither assigned nor declared" in problems[0]
 
 
-def test_the_template_wires_every_contract_method_from_paths_yaml():
-    """The skeleton generates what has no decisions in it, and nothing else."""
-    skeleton = generate_mapper_template.template("hyperline")
+def test_the_generated_base_wires_endpoints_and_forces_mapping_hooks():
+    """Generated orchestration cannot drift from its abstract mapper interface."""
+    source = generate_connector_base.base("hyperline")
     for method in InvoicingConnector.__abstractmethods__ - {"from_env"}:
-        assert f"def {method}(" in skeleton
-    # signatures, no field assignments: the decisions stay for a human
-    assert "raise NotImplementedError" in skeleton
-    compile(skeleton, "<template>", "exec")
+        assert f"def {method}(" in source
+    assert "def request_get_contact(" in source
+    assert "def request_create_invoice(" in source
+    assert "def map_error(" in source
+    assert "def invoke_" not in source
+    assert "_args(" not in source
+    assert inspect.isabstract(HyperlineInvoicingBase)
+    compile(source, "<generated base>", "exec")

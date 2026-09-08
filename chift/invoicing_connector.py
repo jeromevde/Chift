@@ -5,10 +5,9 @@ What a provider must implement to serve Chift's invoicing reads.
 declares its `provider` slug and is registered by defining it; `build()` resolves a
 slug to a live instance.
 
-Signatures only. No shared mapping behaviour lives here, deliberately: a subclass
-that forgets to override an inherited implementation would return plausible data and
-pass its tests, which is the failure this project exists to prevent. Omitting a
-method fails at construction instead, via `@abstractmethod`.
+Signatures only. Generated provider bases implement these endpoints as a fixed
+request/map pipeline and expose abstract semantic hooks. Omitting an endpoint or
+hook therefore fails at construction, via `@abstractmethod`.
 """
 
 from __future__ import annotations
@@ -31,7 +30,7 @@ _REGISTRY: dict[str, type[InvoicingConnector]] = {}
 
 
 class InvoicingConnector(ABC):
-    """Chift's invoicing contract: the four reads, plus how to build one."""
+    """Chift's invoicing contract: six endpoints, plus how to build one."""
 
     #: Provider slug. Matches the directory under `connectors/`.
     provider: ClassVar[str]
@@ -75,7 +74,7 @@ class InvoicingConnector(ABC):
 
 
 def _discover() -> None:
-    """Import every `connectors/<name>/*_mapper.py` so subclasses register.
+    """Import every `connectors/<name>/mapper.py` so subclasses register.
 
     Mirrors `codegeneration.run.discover()`: the runtime learns providers by
     scanning the directory, never from a list maintained here. Lazy on purpose —
@@ -86,10 +85,8 @@ def _discover() -> None:
     for module in pkgutil.iter_modules(connectors.__path__):
         if module.ispkg:
             package = importlib.import_module(f"connectors.{module.name}")
-            for mapper in pkgutil.iter_modules(package.__path__):
-                # One mapper per Chift vertical: invoicing_mapper, accounting_mapper, ...
-                if mapper.name.endswith("_mapper"):
-                    importlib.import_module(f"connectors.{module.name}.{mapper.name}")
+            if any(item.name == "mapper" for item in pkgutil.iter_modules(package.__path__)):
+                importlib.import_module(f"connectors.{module.name}.mapper")
 
 
 def providers() -> list[str]:

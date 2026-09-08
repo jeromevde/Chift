@@ -26,7 +26,7 @@ Examples:
     python -m codegeneration contract hyperline createInvoice input
     python -m codegeneration contract hyperline getCustomer response 200
 
-Reads the vendored OpenAPI named in ``connectors/<provider>/paths.yaml``. Repeated
+Reads the vendored OpenAPI named in ``connectors/<provider>/config/paths.yaml``. Repeated
 and recursive schema uses collapse to ``{"x-same-as": "SchemaName"}`` markers
 pointing at the matching ``x-schema-name``.
 
@@ -177,8 +177,8 @@ def project(contract: dict, selection: list[str]) -> Any:
 
 
 def _config(provider: str) -> dict:
-    """Load one provider's ``connectors/<provider>/paths.yaml``."""
-    config_path = ROOT / "connectors" / provider / "paths.yaml"
+    """Load one provider's ``connectors/<provider>/config/paths.yaml``."""
+    config_path = ROOT / "connectors" / provider / "config" / "paths.yaml"
     if not config_path.is_file():
         raise SystemExit(f"unknown provider {provider!r}: missing {config_path}")
     config = yaml.safe_load(config_path.read_text())
@@ -241,7 +241,7 @@ def list_operations(argv: list[str] | None = None) -> None:
 
     if not show_all:
         print(
-            f"\n{shown} selected in connectors/{provider}/paths.yaml; "
+            f"\n{shown} selected in connectors/{provider}/config/paths.yaml; "
             f"{total - shown} more published — see --all",
             file=sys.stderr,
         )

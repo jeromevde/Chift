@@ -1,20 +1,19 @@
 """
 Minimal Chift invoicing API (FastAPI).
 
-Connectors map data; they never decide Chift's HTTP contract. The provider-error
-handler below translates their HTTP failures once, while FastAPI handles everything
-else normally, including body-shape violations with Chift's published 422.
+Connectors map provider data and errors into Chift's contract. This API only renders
+their provider-independent errors, while FastAPI handles everything else normally,
+including body-shape violations with Chift's published 422.
 """
 
 from __future__ import annotations
 
 import logging
 
-import httpx
 from fastapi import FastAPI, HTTPException, Query
 
 from chift import invoicing_connector as registry
-from chift.errors import provider_http_error
+from chift.errors import ConnectorError, connector_error
 from chift.invoicing_connector import InvoicingConnector
 from chift.models import (
     ChiftPage,
@@ -37,8 +36,8 @@ CONSUMERS: dict[str, str] = {}
 # point for tests, which put a pre-built connector here and never reach `build`.
 CONNECTORS: dict[str, InvoicingConnector] = {}
 
-# The only error Chift translates; FastAPI answers everything else. See chift/errors.py.
-app.add_exception_handler(httpx.HTTPStatusError, provider_http_error)
+# Connectors interpret provider failures; this boundary only renders the result.
+app.add_exception_handler(ConnectorError, connector_error)
 
 
 def _connector(consumer_id: str) -> InvoicingConnector:

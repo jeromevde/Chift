@@ -23,8 +23,8 @@ cp .env.example .env      # add HYPERLINE_API_KEY_TEST for live tests
 pip install -e ".[dev]"
 
 python -m codegeneration client hyperline
-# Regenerates generated/hyperline/client.py, byte-identically. Regeneration
-# producing no diff is the point: generated output stays reviewable.
+# Regenerates connectors/hyperline/generated/client.py and invoicing_base.py byte-identically.
+# Regeneration producing no diff is the point: generated output stays reviewable.
 
 python -m codegeneration contract hyperline getCustomer response 200
 # Prints the exact inlined response schema used as mapper context.
@@ -39,9 +39,9 @@ Three things to look at:
 
 | Where | Why it is the interesting part |
 |---|---|
-| [`connectors/hyperline/invoicing_mapper.py`](connectors/hyperline/invoicing_mapper.py) | Grep `# Mapping decision:` and `# REVIEW:` — 41 markers. Every semantic judgement is stated beside the code it affects, so you can approve the lossy choices without reading the field renames. |
+| [`connectors/hyperline/mapper.py`](connectors/hyperline/mapper.py) | Grep `# Mapping decision:` and `# REVIEW:` — 41 markers. Every semantic judgement is stated beside the code it affects, so you can approve the lossy choices without reading the field renames. |
 | [`AGENTS.md`](AGENTS.md) § Review it against this checklist | Seven checks, each one a defect an LLM draft actually produced here. This is the reusable artefact. |
-| [`codegeneration/`](codegeneration/README.md) | Four scripts: `generate_client.py` emits, `generate_context.py` reads, `generate_mapper_template.py` scaffolds, `check_mapper.py` enforces the rules. OpenAPI in, no provider models out. |
+| [`codegeneration/`](codegeneration/README.md) | `generate_client.py` emits transport, `generate_connector_base.py` emits the enforced runtime interface, `generate_context.py` supplies mapper context, and `check_mapper.py` checks the result. |
 
 ## Supported surface
 
@@ -60,12 +60,12 @@ Three things to look at:
 ## Architecture
 
 ```text
-Hyperline OpenAPI                                  connectors/hyperline/hyperline.yaml
-  → select path + method pairs                     connectors/hyperline/paths.yaml
-  → thin JSON HTTP client                          generated/hyperline/client.py
-  → mapper scaffold, sections + wiring              generated/hyperline/invoicing_mapper_template.py
+Hyperline OpenAPI                                  connectors/hyperline/config/hyperline.yaml
+  → select path + method pairs                     connectors/hyperline/config/paths.yaml
+  → thin JSON HTTP client                          connectors/hyperline/generated/client.py
+  → abstract request/map connector base            connectors/hyperline/generated/invoicing_base.py
   → one endpoint contract, on demand               codegeneration/generate_context.py
-  → explicit Hyperline → Chift mapper              connectors/hyperline/invoicing_mapper.py
+  → concrete Hyperline mapping hooks               connectors/hyperline/mapper.py
   → InvoicingConnector contract                    chift/invoicing_connector.py
   → Chift-shaped FastAPI                           chift/api.py
       resolving consumer → provider → connector
@@ -79,8 +79,8 @@ pagination, and provider workflows. The mapper was written by an LLM from
 
 ### The connector is laid out in five sections
 
-`connectors/hyperline/invoicing_mapper.py` reads top to bottom as **constants**, **utilities**,
-**mapper**, **pagination**, **endpoint**, separated by banner comments. Sections are by kind of
+`connectors/hyperline/mapper.py` reads top to bottom as **constants**, **utilities**,
+**mapper**, **pagination**, **connector**, separated by banner comments. Sections are by kind of
 code, never by topic.
 
 The `_` prefix means *mechanical* and nothing else: anything that builds or consumes a
@@ -88,25 +88,27 @@ The `_` prefix means *mechanical* and nothing else: anything that builds or cons
 section — `to_address` and `to_line` included. That rule is checkable, and it is checked: no
 `_`-prefixed function in the file mentions `chift.`.
 
-Mappers are plain module-level functions rather than methods, so a test or a reviewer calls them
-without a client, credentials or a `.env`. That leaves the endpoint class thin enough to read as
-a table of contents.
+Resource mappers are plain module-level functions, so tests and reviewers call them without a
+client, credentials, or `.env`. The concrete connector methods implement the generated mapping
+hooks and delegate to those functions.
 
 Of 87 target-field assignments, 74 are direct renames or a single transform; 13 need real
 conditional logic. Those 13 are where every defect in the review checklist actually lived.
 
 ## Reusing the approach
 
-1. Add `connectors/<provider>/<provider>.yaml` and `paths.yaml`.
+1. Add `connectors/<provider>/config/<provider>.yaml` and `config/paths.yaml`, pairing each Chift
+   endpoint with one selected provider `operationId`.
 2. Run `python -m codegeneration client <provider>`.
-3. Write the provider → Chift mapper with the procedure in [`AGENTS.md`](AGENTS.md), then
-   review it against its checklist.
-4. Subclass `InvoicingConnector`, set `provider = "<name>"`, implement `from_env`.
-5. Verify the four Chift reads against the provider sandbox.
+3. Subclass the generated provider base and implement its `request_*`, `map_*_return_body`, and
+   `map_error` hooks with the procedure in [`AGENTS.md`](AGENTS.md).
+4. Review the concrete mapper against the checklist.
+5. Verify the Chift endpoints against the provider sandbox.
 
-No file under `chift/` changes when a provider is added. The contract is seven abstract methods
-with no shared behaviour, so a connector that omits one fails at construction rather than
-inheriting a plausible default — the same reason the mapper is reviewed rather than generated.
+No file under `chift/` changes when a provider is added. The generated base owns endpoint
+orchestration and remains abstract until every required mapping hook is implemented, so omissions
+fail at construction. Each `request_*` hook owns input mapping and its provider call, including
+multi-call workflows such as cursor pagination.
 
 ## Design decisions
 
@@ -148,8 +150,10 @@ model generation under another name — the same numbered classes, the same drif
 request is visible in reviewed code rather than assembled by a generator.
 
 ### Why no outbound request validation
-So we could instead validate against the connector vendor OpenApi but then the vendor
-will likely do that for us.
+
+The mapper builds requests from Chift's validated body and the provider validates its own
+contract. Re-validating against a known-imperfect OpenAPI would duplicate that rejection and add
+a runtime dependency on documentation we deliberately treat as generation context.
 
 ### Why not a `mapper.yaml`
 
@@ -185,12 +189,11 @@ across providers.
   the reference a reviewer can diff the models against. Nothing verifies the transcription.
 - Retrieve-one-invoice returns Chift's list shape. `InvoiceItemOutSingle` adds a base64 `pdf`
   field, and Hyperline offers a `public_url` rather than document bytes.
-- Provider errors are remapped to a status Chift publishes (`chift/errors.py`): 400/409/422
-  become 400, 404 stays 404, and everything else — including 401/403/429, which mean *our*
+- Hyperline errors are mapped by its concrete connector: 400 and 422 become 400, 404 and 409
+  remain unchanged, and everything else — including 401/403/429, which mean *our*
   key or *our* rate limit rather than the caller's request — becomes 502. Chift documents no
-  502, and that is the deliberate deviation: reporting a provider outage as the caller's bad
-  request would blame the wrong party. Unexpected bugs are not translated; FastAPI returns its
-  ordinary 500 with no body.
+  502; `chift/errors.py` only renders the provider-independent `ConnectorError`. Unexpected bugs
+  are not translated; FastAPI returns its ordinary 500 with no body.
 - Nine currencies Hyperline still publishes (BGN, HRK, ANG, …) have been retired from ISO 4217, so
   they have no exponent to scale amounts by. Those invoices fail by name rather than guess.
 - The pipeline requires OpenAPI 3.1 and refuses 3.0 documents by name, since 3.0 is not JSON

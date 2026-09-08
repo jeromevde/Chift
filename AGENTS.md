@@ -8,7 +8,8 @@ KEEP THE CODE BRUTALLY SIMPLE. DO NOT OVERENGINEER. No new frameworks.
 
 **Generation**
 
-- Prefer a maintained official provider SDK; otherwise generate into `generated/<provider>/`.
+- Prefer a maintained official provider SDK; otherwise generate into
+  `connectors/<provider>/generated/`.
 - Never hand-edit `generated/**`. Fix the emitter and regenerate.
 - Never generate a Chift client. We *implement* Chift; we never call it.
 - Never generate provider payload models. Their spec is a lossy projection of their code, so
@@ -26,9 +27,10 @@ KEEP THE CODE BRUTALLY SIMPLE. DO NOT OVERENGINEER. No new frameworks.
 
 **Errors**
 
-- `chift/errors.py` holds Chift's only translation: a provider HTTP failure restated in Chift's
-  shape, remapped to a status Chift publishes. No connector picks a status or catches a provider
-  error. FastAPI answers the rest — 422 for schema violations, 500 for anything unexpected.
+- Each concrete connector implements `map_error`, because only it understands its provider's
+  errors. The generated base catches provider HTTP failures and raises `ConnectorError`;
+  `chift/errors.py` only renders that provider-independent result. FastAPI answers the rest —
+  422 for schema violations, 500 for anything unexpected.
 - Never pre-judge what a provider will reject. Chift's input schema is the union of what every
   provider accepts, so its optional fields are mandatory for some. Let the provider refuse; its
   400 names the field and passes through.
@@ -38,7 +40,7 @@ KEEP THE CODE BRUTALLY SIMPLE. DO NOT OVERENGINEER. No new frameworks.
 # Verify
 
 ```bash
-python -m codegeneration client hyperline               # regenerate client + scaffold
+python -m codegeneration client hyperline               # regenerate client + runtime base
 python -m codegeneration operations hyperline           # this connector's operations (--all for all)
 python -m codegeneration contract hyperline getInvoice  # one endpoint, for the mapper
 python -m codegeneration check hyperline                # enforce the mapper rules
@@ -47,12 +49,12 @@ pytest && ruff check --no-cache .
 
 # Adding a connector
 
-**version:** 29 — cite it in the mapper docstring.
+**version:** 32 — cite it in the mapper docstring.
 
 | | What | Who writes it | Where |
 |---|---|---|---|
-| **Client** | JSON HTTP, transport only | an SDK, else codegen | dependency, or `generated/<provider>/` |
-| **Mapper** | provider JSON → Chift | a human or an LLM, then **reviewed** | `connectors/<provider>/<vertical>_mapper.py` |
+| **Client** | JSON HTTP, transport only | an SDK, else codegen | dependency, or `connectors/<provider>/generated/` |
+| **Mapper** | provider JSON → Chift | a human or an LLM, then **reviewed** | `connectors/<provider>/mapper.py` |
 
 They fail differently, which is the reason for everything below: a wrong client is missing a
 method; a wrong mapper *works*, and quietly reports the wrong invoice.
@@ -67,7 +69,7 @@ Otherwise:
 
 1. **Find their OpenAPI** — a documented URL, their docs site's network tab, or their SDK repo,
    which usually vendors the spec that produced it.
-2. **Vendor it** as `connectors/<name>/<name>.yaml`, never fetched at build time, so its changes
+2. **Vendor it** as `connectors/<name>/config/<name>.yaml`, never fetched at build time, so its changes
    arrive as reviewable diffs. Record source and date. Must be 3.1 — 3.0 is not JSON Schema and
    the generator refuses it by name.
 3. **Lint it**: `npx @stoplight/spectral-cli lint …`. `oas3-valid-schema-example` catches fields
@@ -76,7 +78,7 @@ Otherwise:
    live tests need fixtures, and say so in a comment. Watch for **versioned duplicates**:
    Hyperline serves `/v1` and `/v2` invoices with the issue date renamed `emitted_at` →
    `issued_at`, and nothing fails at the HTTP level.
-5. **Declare them** in `connectors/<name>/paths.yaml` — the generator discovers it, so you never
+5. **Declare them** in `connectors/<name>/config/paths.yaml` — the generator discovers it, so you never
    edit `codegeneration/`:
 
 ```yaml
@@ -88,23 +90,36 @@ endpoints:
   /v2/invoices: [get]
   /v2/invoices/{id}: [get]
   /v1/customers: [post]          # sandbox fixtures only, not the Chift surface
+
+mappers:
+  invoicing:
+    get_contact: getCustomer
+    list_contacts: listCustomers
+    create_contact: createCustomer
+    get_invoice: getInvoice
+    list_invoices: listInvoices
+    create_invoice: createInvoice
 ```
 
-6. **Generate**: `python -m codegeneration client <name>`. Unknown paths fail the run. Add
-   `config.py` mirroring Hyperline's — frozen `Settings`, `from_env()`, `@lru_cache`d, reading
-   `<NAME>_API_KEY_TEST`/`_PROD`, raising a clear error naming the missing variable. Update
-   `.env.example`; never commit `.env`.
+   `mappers` explicitly pairs Chift endpoints with provider `operationId`s. Missing, unknown,
+   or unselected pairings fail generation.
+6. **Generate**: `python -m codegeneration client <name>`. It writes the transport client and
+   `connectors/<provider>/generated/<vertical>_base.py`, which owns endpoint orchestration. Unknown paths
+   fail the run. Add `config/__init__.py` mirroring Hyperline's — frozen `Settings`, `from_env()`,
+   `@lru_cache`d, reading `<NAME>_API_KEY_TEST`/`_PROD`, and raising a clear error naming the
+   missing variable. Update `.env.example`; never commit `.env`.
 
 ## 2. The mapper
 
 Neither contract says what anything *means*, so this half cannot be generated. An LLM can write
 it — Hyperline's was — but it must then be reviewed against the seven checks below.
 
-**Start from the scaffold** that `codegeneration client` writes to
-`generated/<provider>/<vertical>_mapper_template.py`: five sections, mapper signatures, endpoint
-class wired from `paths.yaml`. Copy it to `connectors/<provider>/<vertical>_mapper.py`. It gives
-signatures only — the fields *are* the decisions, and pre-filling them turns an omission an LLM
-would leave loud into a quiet wrong value.
+**Subclass the generated base** in `connectors/<provider>/mapper.py`. It defines two hooks per
+endpoint: `request_*` maps the Chift input and performs the provider call;
+`map_*_return_body` maps the result. The connector also implements provider-wide `map_error`.
+Abstract hooks force the LLM-written class to implement the complete interface; the fields remain
+blank because they *are* the decisions. Multi-call workflows such as cursor walking live naturally
+inside the relevant `request_*` hook.
 
 **Give the LLM** `python -m codegeneration contract <provider> <operationId>` (one endpoint,
 `$ref`s inlined, **descriptions intact** — *"expressed in currency's smallest unit"* exists
@@ -114,9 +129,9 @@ nowhere else), `chift/models.py`, and a reviewed mapper as an example.
 
 `check` enforces the structure; here is only the why. Each section answers a different question —
 *what did we decide* (constants), *is the arithmetic right* (utilities), *does each field mean the
-same on both sides* (mapper), *is page N right* (pagination), *are the calls wired* (endpoint) —
-so a wrong constant is a wrong **decision**, a wrong utility a wrong **conversion**, a wrong
-mapper a wrong **meaning**.
+same on both sides* (mapper), *is page N right* (pagination), *is the generated interface fully
+implemented* (connector) — so a wrong constant is a wrong **decision**, a wrong utility a wrong
+**conversion**, and a wrong mapper a wrong **meaning**.
 
 Two rules that look arbitrary without their reason:
 
@@ -171,7 +186,7 @@ exist to expose judgement, not narrate syntax.
 
 ### Review it against this checklist
 
-Every item is a defect actually written into `connectors/hyperline/invoicing_mapper.py` and caught
+Every item is a defect actually written into `connectors/hyperline/mapper.py` and caught
 in review. An LLM mapper is a draft until it has run against real data.
 
 **1. Does a field mean the same on every endpoint you call?** The draft read `issued_at` — correct
@@ -211,14 +226,16 @@ Then run the live tests. Amount and date conversions look right and are wrong.
 
 ## 3. Expose and test
 
-Subclass `InvoicingConnector`, set `provider = "<name>"`, implement `from_env`. Defining the
+Subclass `connectors.<provider>.generated.<vertical>_base.<Provider><Vertical>Base`, set
+`provider = "<name>"`, implement `from_env`, and fill every generated mapping hook. Defining the
 subclass registers it and `chift/api.py` resolves consumer → provider → connector, so **no file
-under `chift/` changes when you add one**. A missing method is a `TypeError` at construction, not
-an `AttributeError` on the first request.
+under `chift/` changes when you add one**. A missing hook leaves the class abstract and fails at
+construction, not on the first request.
 
-Exactly one method per contract method **[check]**. A call sequence behind a published method
-belongs here; anything existing only to clean up a live fixture calls the generated client from
-the test. Live tests need the key in `.env`, create their own fixtures, clean up in a `finally`.
+Do not redefine Chift endpoint methods in the concrete connector **[check]**. Each `request_*`
+method maps input and performs exactly the provider workflow required by that Chift endpoint.
+Anything existing solely to clean up a live fixture calls the generated client from the test.
+Live tests need the key in `.env`, create their own fixtures, and clean up in a `finally`.
 
 ## Checklist
 
@@ -226,8 +243,8 @@ the test. Live tests need the key in `.env`, create their own fixtures, clean up
 
 - [ ] Official SDK researched; choice recorded either way
 - [ ] Spec vendored with source URL and date; Spectral run; provider bugs noted
-- [ ] `paths.yaml` lists only the operations the connector calls
-- [ ] `config.py` reads credentials from `.env`; `.env.example` updated
+- [ ] `config/paths.yaml` lists only the operations the connector calls
+- [ ] `config/__init__.py` reads credentials from `.env`; `.env.example` updated
 - [ ] Mapper reviewed against the seven checks, by a human, against live data
 - [ ] Mapper docstring cites this version and where the client came from
 - [ ] README note for any POC simplification introduced
