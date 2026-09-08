@@ -5,8 +5,7 @@
     python -m codegeneration contract <provider> <opId>   one endpoint, self-contained
 
 `contract` feeds an LLM writing a mapper: one operation, every reference inlined,
-from the vendored OpenAPI. Output is compact JSON by default — YAML of the same
-contract costs roughly twice the tokens. `--yaml` is for humans reading a diff.
+from the vendored OpenAPI. Terminals show YAML; redirected output stays compact JSON.
 """
 
 from __future__ import annotations
@@ -20,7 +19,7 @@ COMMANDS = ("client", "operations", "contract")
 USAGE = """usage:
   python -m codegeneration client [provider ...]
   python -m codegeneration operations <provider> [--all]
-  python -m codegeneration contract <provider> <operationId> [input | response <status>] [--yaml]
+  python -m codegeneration contract <provider> <operationId> [input | response <status>] [--yaml | --json]
 """
 
 

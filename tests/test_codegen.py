@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from io import StringIO
 from pathlib import Path
 
 import httpx
@@ -13,6 +14,14 @@ from codegeneration import generate_client, generate_context
 from generated.hyperline.client import HyperlineClient
 
 ROOT = Path(__file__).parents[1]
+
+
+class TerminalBuffer(StringIO):
+    """Capture output while behaving like an interactive terminal."""
+
+    def isatty(self):
+        """Report that this buffer represents a terminal."""
+        return True
 
 
 def test_codegen_fails_when_endpoint_is_missing(tmp_path):
@@ -128,6 +137,60 @@ def test_extract_marks_recursive_back_edges_without_leaving_references():
     assert output["x-schema-name"] == "Node"
     assert output["properties"]["child"] == {"x-same-as": "Node"}
     assert "$ref" not in json.dumps(output)
+
+
+def test_contract_prints_readable_yaml_in_a_terminal(monkeypatch):
+    """Human terminal output uses YAML with readable multiline descriptions."""
+    spec = {
+        "paths": {
+            "/things": {
+                "get": {
+                    "operationId": "getThings",
+                    "description": "First line.\nSecond line.\n  ",
+                    "responses": {},
+                }
+            }
+        }
+    }
+    output = TerminalBuffer()
+    monkeypatch.setattr(generate_context, "_vendor_spec", lambda provider: spec)
+    monkeypatch.setattr(generate_context.sys, "stdout", output)
+
+    generate_context.main(["example", "getThings"])
+
+    rendered = output.getvalue()
+    assert "operationId: getThings" in rendered
+    assert "description: |-\n  First line.\n  Second line." in rendered
+
+    output.seek(0)
+    output.truncate()
+    generate_context.main(["example", "getThings", "--json"])
+    assert json.loads(output.getvalue())["description"] == "First line.\nSecond line.\n  "
+
+
+def test_contract_keeps_redirected_output_compact_and_allows_override(
+    monkeypatch, capsys
+):
+    """Machine output remains compact JSON unless YAML is requested explicitly."""
+    spec = {
+        "paths": {
+            "/things": {
+                "get": {
+                    "operationId": "getThings",
+                    "responses": {},
+                }
+            }
+        }
+    }
+    monkeypatch.setattr(generate_context, "_vendor_spec", lambda provider: spec)
+
+    generate_context.main(["example", "getThings"])
+    compact = capsys.readouterr().out
+    assert compact.startswith('{"operationId":"getThings"')
+    assert compact.count("\n") == 1
+
+    generate_context.main(["example", "getThings", "--yaml"])
+    assert capsys.readouterr().out.startswith("operationId: getThings\n")
 
 
 def test_emit_uses_dicts_and_keeps_path_parameters():

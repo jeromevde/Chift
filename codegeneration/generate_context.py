@@ -15,10 +15,9 @@ Usage (from the repository root):
     python -m codegeneration contract <provider> <operationId> response <status>
         Narrow it to one side when the mapper only needs that half.
 
-    python -m codegeneration contract <provider> <operationId> --yaml
-        Same contract as YAML. For reading a diff by eye only: YAML costs roughly
-        twice the tokens of the compact JSON default, because indentation and block
-        scalars outweigh the punctuation they replace.
+    python -m codegeneration contract <provider> <operationId> [--yaml | --json]
+        Interactive terminals show readable YAML. Redirected output stays compact
+        JSON for an LLM or another program. Either flag overrides that choice.
 
 Examples:
 
@@ -51,6 +50,22 @@ ROOT = Path(__file__).resolve().parents[1]
 HTTP_METHODS = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
 
 
+class _ReadableYamlDumper(yaml.SafeDumper):
+    """Render multiline OpenAPI prose as readable YAML blocks."""
+
+
+def _represent_string(dumper: yaml.SafeDumper, value: str) -> yaml.ScalarNode:
+    """Use literal blocks for multiline strings and normal YAML for other strings."""
+    if "\n" in value:
+        return dumper.represent_scalar(
+            "tag:yaml.org,2002:str", value.rstrip(), style="|"
+        )
+    return dumper.represent_scalar("tag:yaml.org,2002:str", value)
+
+
+_ReadableYamlDumper.add_representer(str, _represent_string)
+
+
 def target(document: dict, ref: str) -> Any:
     """Resolve one internal JSON pointer in ``document``."""
     if not ref.startswith("#/"):
@@ -74,6 +89,7 @@ def json_schema(holder: dict | None) -> dict:
     return ((holder or {}).get("content", {}).get("application/json") or {}).get(
         "schema", {}
     )
+
 
 def inline(node: Any, document: dict, seen: set[str] | None = None) -> Any:
     """Inline each referenced schema once and mark later uses by schema name."""
@@ -235,12 +251,16 @@ def main(argv: list[str] | None = None) -> None:
     """Print one endpoint contract, self-contained, for whoever writes the mapper."""
     args = list(argv if argv is not None else sys.argv[1:])
     as_yaml = "--yaml" in args
-    if as_yaml:
-        args.remove("--yaml")
+    as_json = "--json" in args
+    if as_yaml and as_json:
+        raise SystemExit("choose only one of --yaml and --json")
+    for flag in ("--yaml", "--json"):
+        if flag in args:
+            args.remove(flag)
     if len(args) < 2 or len(args) > 4:
         raise SystemExit(
             "usage: python -m codegeneration contract <provider> <operationId> "
-            "[input | response <status>] [--yaml]"
+            "[input | response <status>] [--yaml | --json]"
         )
     provider, operation_id, *selection = args
     spec = _vendor_spec(provider)
@@ -250,8 +270,17 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(
             f"{exc}\nlist them with: python -m codegeneration operations {provider}"
         ) from exc
-    if as_yaml:
-        print(yaml.safe_dump(contract, sort_keys=False, allow_unicode=True, width=100))
+    if as_yaml or (not as_json and sys.stdout.isatty()):
+        print(
+            yaml.dump(
+                contract,
+                Dumper=_ReadableYamlDumper,
+                sort_keys=False,
+                allow_unicode=True,
+                width=100,
+            ),
+            end="",
+        )
     else:
         print(json.dumps(contract, ensure_ascii=False, separators=(",", ":")))
 

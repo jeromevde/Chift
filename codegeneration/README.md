@@ -16,6 +16,9 @@ python -m codegeneration contract hyperline getCustomer response 200
 `client` writes `generated/<provider>/client.py`. `operations` / `contract` read the vendored
 OpenAPI named in `connectors/<provider>/paths.yaml`.
 
+`contract` prints readable YAML in an interactive terminal and compact JSON when redirected or
+piped. Pass `--yaml` or `--json` to choose explicitly.
+
 ```yaml
 spec: hyperline.yaml
 client_class: HyperlineClient

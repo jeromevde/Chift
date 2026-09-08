@@ -66,7 +66,7 @@ ruff check --no-cache .
 # Adding a connector
 
 <!-- procedure version: bump when the steps or review rules change -->
-**version:** 25
+**version:** 26
 **applies to:** `connectors/<provider>/connector.py`
 
 How to onboard a new provider to Chift's unified invoicing API, end to end.
@@ -341,9 +341,9 @@ def _amount(n, currency): ...   # `_` prefix, plain values in and out, no chift.
 # ---------------------------------------------------------------------------
 # Mapper — provider JSON <-> Chift models. Every semantic decision is here.
 # ---------------------------------------------------------------------------
-def to_address(kind, raw): ...  # `to_x` / `from_x`, public, never `_`-prefixed
+def to_address(kind, raw): ...   # `to_x` / `from_x`, public, never `_`-prefixed
+def from_address(match): ...    # each inverse directly below its mapper
 def to_contact(data): ...
-def from_address(...): ...
 def from_contact(body): ...
 
 # ---------------------------------------------------------------------------
@@ -372,10 +372,16 @@ page* (pagination), *are the calls wired correctly* (endpoint). It also puts the
 separate places — a wrong constant is a wrong **decision**, a wrong utility a wrong
 **conversion**, a wrong mapper a wrong **meaning**, a wrong endpoint method a wrong **call**.
 
+**Order the mapper section as inverse pairs: `to_x` immediately followed by `from_x`.** That is
+the comparison a reviewer actually makes — check 7 asks whether the two directions are mirror
+images, and a field that survives one way but is invented the other is the defect it hunts.
+Reading them side by side is what makes that visible; anything else buries it.
+
+Sub-mapper pairs come before the pairs that use them, so `to_address`/`from_address` precede
+`to_contact`/`from_contact`, and `to_line`/`from_line` precede `to_invoice`/`from_invoice`.
+
 Do **not** split the mapper by resource. Contacts-then-invoices reads fine at two resources and
-stops working at five, and it hides the thing a reviewer actually compares: `to_x` against its
-`from_x`. Keep each inverse pair adjacent, and each sub-mapper directly above the mapper that
-uses it, so a field's whole journey reads in one place.
+stops working at five, and it separates each pair from the other half of itself.
 
 ### When to raise
 

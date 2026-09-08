@@ -4,7 +4,7 @@ Chift invoicing connector against Hyperline.
 Generated client fetches provider JSON; this maps into chift.models.
 
 Provenance:
-  Procedure: AGENTS.md § Adding a connector v25
+  Procedure: AGENTS.md § Adding a connector v26
   Contract: python -m codegeneration contract hyperline <operationId>
 
 Written by an LLM from that skill + Hyperline's contract + Chift's contract, then
@@ -184,6 +184,30 @@ def to_address(
     )
 
 
+# Mapping decision: Hyperline marks every CreateCustomer field optional, so the inverse
+# mapper sends only what the caller supplied. Nothing is defaulted on the caller's behalf:
+# an absent country stays absent rather than becoming the connector's own jurisdiction.
+# Unset fields are omitted from the JSON dictionary.
+def from_address(match: chift.AddressItemIn | None) -> dict[str, Any] | None:
+    """Map one Chift address to an optional Hyperline dictionary.
+
+    Takes the address, not the list: the inverse of `to_address`, so the pair reads as
+    mirror images and a field present in one direction but not the other stands out.
+    Selecting *which* address is the caller's job.
+    """
+    if match is None:
+        return None
+    # Mapping decision: Chift's postal fields map onto Hyperline's line1/zip names.
+    # Hyperline's `line2` has no Chift source, so it is left unset.
+    return _json(
+        name=match.name,
+        line1=match.street,
+        city=match.city,
+        zip=match.postal_code,
+        country=match.country,
+    )
+
+
 def to_contact(data: dict[str, Any]) -> chift.ContactItemOut:
     """Map a Hyperline customer dictionary to Chift."""
     # Mapping decision: only explicit entity-kind values classify the customer;
@@ -232,26 +256,6 @@ def to_contact(data: dict[str, Any]) -> chift.ContactItemOut:
     )
 
 
-# Mapping decision: Hyperline marks every CreateCustomer field optional, so the inverse
-# mapper sends only what the caller supplied. Nothing is defaulted on the caller's behalf:
-# an absent country stays absent rather than becoming the connector's own jurisdiction.
-# Unset fields are omitted from the JSON dictionary.
-def from_address(addresses, kind: chift.AddressTypeInvoicing) -> dict[str, Any] | None:
-    """Map one Chift address of ``kind`` to an optional Hyperline dictionary."""
-    match = next((a for a in addresses or [] if a.address_type == kind), None)
-    if match is None:
-        return None
-    # Mapping decision: Chift's postal fields map onto Hyperline's line1/zip names.
-    # Hyperline's `line2` has no Chift source, so it is left unset.
-    return _json(
-        name=match.name,
-        line1=match.street,
-        city=match.city,
-        zip=match.postal_code,
-        country=match.country,
-    )
-
-
 def from_contact(body: chift.ContactItemIn) -> dict[str, Any]:
     """Chift ContactItemIn -> Hyperline CreateCustomer. Inverse of `to_contact`."""
     # Mapping decision: mirror to_contact's classification. Chift's `is_company` carries the
@@ -261,7 +265,10 @@ def from_contact(body: chift.ContactItemIn) -> dict[str, Any]:
     # Mapping decision: Chift splits person names across first/last and companies use
     # company_name; Hyperline has one `name`. Prefer the slot the classification implies.
     person_name = " ".join(x for x in (body.first_name, body.last_name) if x) or None
-    billing = from_address(body.addresses, chift.AddressTypeInvoicing.invoice)
+    # Hyperline encodes address kind positionally (billing_address / shipping_address);
+    # Chift carries it as a field, so index by kind once rather than scanning per slot.
+    by_kind = {a.address_type: a for a in body.addresses or []}
+    billing = from_address(by_kind.get(chift.AddressTypeInvoicing.invoice))
     # REVIEW: Hyperline's CreateCustomer declares `required: None`, so a nameless
     # customer is legal for both contracts and is passed through unnamed rather than
     # refused on a rule neither Chift nor Hyperline states.
@@ -281,9 +288,7 @@ def from_contact(body: chift.ContactItemIn) -> dict[str, Any]:
         billing_email=body.email,
         language=body.language,
         billing_address=billing,
-        shipping_address=from_address(
-            body.addresses, chift.AddressTypeInvoicing.delivery
-        ),
+        shipping_address=from_address(by_kind.get(chift.AddressTypeInvoicing.delivery)),
     )
 
 
@@ -301,6 +306,21 @@ def to_line(item: dict[str, Any], currency: str) -> chift.InvoiceLineItemOut:
         total=_amount(item["amount"], currency),
         tax_rate=item.get("tax_rate"),
         product_id=item.get("product_id"),
+    )
+
+
+def from_line(line: chift.InvoiceLineItemIn, currency: str) -> dict[str, Any]:
+    """Map one Chift invoice line to a Hyperline request dictionary."""
+    # REVIEW: Chift requires tax_amount, untaxed_amount and total on every input line, but
+    # Hyperline derives all three from unit_amount, units_count and tax_rate. They are read
+    # and deliberately not sent; Hyperline recomputes them, and to_invoice reads back what
+    # Hyperline computed rather than what the caller stated.
+    return _json(
+        name=line.description,
+        product_id=line.product_id,
+        unit_amount=_minor(line.unit_price, currency),
+        units_count=line.quantity,
+        tax_rate=line.tax_rate,
     )
 
 
@@ -346,21 +366,6 @@ def to_invoice(data: dict[str, Any]) -> chift.InvoiceItemOut:
         customer_memo=data.get("custom_note"),
         reference=data.get("reference"),
         lines=[to_line(x, currency) for x in lines],
-    )
-
-
-def from_line(line: chift.InvoiceLineItemIn, currency: str) -> dict[str, Any]:
-    """Map one Chift invoice line to a Hyperline request dictionary."""
-    # REVIEW: Chift requires tax_amount, untaxed_amount and total on every input line, but
-    # Hyperline derives all three from unit_amount, units_count and tax_rate. They are read
-    # and deliberately not sent; Hyperline recomputes them, and to_invoice reads back what
-    # Hyperline computed rather than what the caller stated.
-    return _json(
-        name=line.description,
-        product_id=line.product_id,
-        unit_amount=_minor(line.unit_price, currency),
-        units_count=line.quantity,
-        tax_rate=line.tax_rate,
     )
 
 
