@@ -28,7 +28,8 @@ KEEP THE CODE BRUTALLY SIMPLE. DO NOT OVERENGINEER. No new frameworks.
 **Errors**
 
 - Each concrete connector implements `map_error`, because only it understands its provider's
-  errors. The generated base catches provider HTTP failures and raises `ConnectorError`;
+  errors. `InvoicingConnector._request` catches provider HTTP failures and hands them to the
+  connector's `map_error`, which raises `ConnectorError`;
   `chift/errors.py` only renders that provider-independent result. FastAPI answers the rest —
   422 for schema violations, 500 for anything unexpected.
 - Never pre-judge what a provider will reject. Chift's input schema is the union of what every
@@ -40,7 +41,7 @@ KEEP THE CODE BRUTALLY SIMPLE. DO NOT OVERENGINEER. No new frameworks.
 # Verify
 
 ```bash
-python -m codegeneration client hyperline               # regenerate client + runtime base
+python -m codegeneration client hyperline               # regenerate the transport client
 python -m codegeneration operations hyperline           # this connector's operations (--all for all)
 python -m codegeneration contract hyperline getInvoice  # one endpoint, for the mapper
 python -m codegeneration check hyperline                # enforce the mapper rules
@@ -49,12 +50,12 @@ pytest && ruff check --no-cache .
 
 # Adding a connector
 
-**version:** 32 — cite it in the mapper docstring.
+**version:** 35 — cite it in the connector docstring.
 
 | | What | Who writes it | Where |
 |---|---|---|---|
 | **Client** | JSON HTTP, transport only | an SDK, else codegen | dependency, or `connectors/<provider>/generated/` |
-| **Mapper** | provider JSON → Chift | a human or an LLM, then **reviewed** | `connectors/<provider>/mapper.py` |
+| **Connector** | provider JSON → Chift | a human or an LLM, then **reviewed** | `connectors/<provider>/connector.py` |
 
 They fail differently, which is the reason for everything below: a wrong client is missing a
 method; a wrong mapper *works*, and quietly reports the wrong invoice.
@@ -90,22 +91,10 @@ endpoints:
   /v2/invoices: [get]
   /v2/invoices/{id}: [get]
   /v1/customers: [post]          # sandbox fixtures only, not the Chift surface
-
-mappers:
-  invoicing:
-    get_contact: getCustomer
-    list_contacts: listCustomers
-    create_contact: createCustomer
-    get_invoice: getInvoice
-    list_invoices: listInvoices
-    create_invoice: createInvoice
 ```
 
-   `mappers` explicitly pairs Chift endpoints with provider `operationId`s. Missing, unknown,
-   or unselected pairings fail generation.
-6. **Generate**: `python -m codegeneration client <name>`. It writes the transport client and
-   `connectors/<provider>/generated/<vertical>_base.py`, which owns endpoint orchestration. Unknown paths
-   fail the run. Add `config/__init__.py` mirroring Hyperline's — frozen `Settings`, `from_env()`,
+6. **Generate**: `python -m codegeneration client <name>`. It writes only the transport client;
+   unknown paths fail the run. Add `config/__init__.py` mirroring Hyperline's — frozen `Settings`, `from_env()`,
    `@lru_cache`d, reading `<NAME>_API_KEY_TEST`/`_PROD`, and raising a clear error naming the
    missing variable. Update `.env.example`; never commit `.env`.
 
@@ -114,12 +103,10 @@ mappers:
 Neither contract says what anything *means*, so this half cannot be generated. An LLM can write
 it — Hyperline's was — but it must then be reviewed against the seven checks below.
 
-**Subclass the generated base** in `connectors/<provider>/mapper.py`. It defines two hooks per
-endpoint: `request_*` maps the Chift input and performs the provider call;
-`map_*_return_body` maps the result. The connector also implements provider-wide `map_error`.
-Abstract hooks force the LLM-written class to implement the complete interface; the fields remain
-blank because they *are* the decisions. Multi-call workflows such as cursor walking live naturally
-inside the relevant `request_*` hook.
+**Write `connectors/<provider>/connector.py`**: extend the matching abstract endpoint nested on
+`InvoicingConnector` for each Chift endpoint, plus `map_error`. See
+[Expose and test](#3-expose-and-test) for the shape. A provider workflow required by an endpoint —
+archive before delete, say — belongs inside that endpoint's `fetch_*`.
 
 **Give the LLM** `python -m codegeneration contract <provider> <operationId>` (one endpoint,
 `$ref`s inlined, **descriptions intact** — *"expressed in currency's smallest unit"* exists
@@ -129,7 +116,7 @@ nowhere else), `chift/models.py`, and a reviewed mapper as an example.
 
 `check` enforces the structure; here is only the why. Each section answers a different question —
 *what did we decide* (constants), *is the arithmetic right* (utilities), *does each field mean the
-same on both sides* (mapper), *is page N right* (pagination), *is the generated interface fully
+same on both sides* (mapper), *is page N right* (pagination), *is the fixed Chift interface fully
 implemented* (connector) — so a wrong constant is a wrong **decision**, a wrong utility a wrong
 **conversion**, and a wrong mapper a wrong **meaning**.
 
@@ -186,7 +173,7 @@ exist to expose judgement, not narrate syntax.
 
 ### Review it against this checklist
 
-Every item is a defect actually written into `connectors/hyperline/mapper.py` and caught
+Every item is a defect actually written into `connectors/hyperline/connector.py` and caught
 in review. An LLM mapper is a draft until it has run against real data.
 
 **1. Does a field mean the same on every endpoint you call?** The draft read `issued_at` — correct
@@ -226,16 +213,46 @@ Then run the live tests. Amount and date conversions look right and are wrong.
 
 ## 3. Expose and test
 
-Subclass `connectors.<provider>.generated.<vertical>_base.<Provider><Vertical>Base`, set
-`provider = "<name>"`, implement `from_env`, and fill every generated mapping hook. Defining the
+Subclass `InvoicingConnector`, set `provider = "<name>"`, implement `from_env`. Defining the
 subclass registers it and `chift/api.py` resolves consumer → provider → connector, so **no file
-under `chift/` changes when you add one**. A missing hook leaves the class abstract and fails at
-construction, not on the first request.
+under `chift/` changes when you add one**.
 
-Do not redefine Chift endpoint methods in the concrete connector **[check]**. Each `request_*`
-method maps input and performs exactly the provider workflow required by that Chift endpoint.
-Anything existing solely to clean up a live fixture calls the generated client from the test.
-Live tests need the key in `.env`, create their own fixtures, and clean up in a `finally`.
+**Each Chift endpoint extends its exact abstract contract on `InvoicingConnector`.**
+
+```python
+class GetContact(InvoicingConnector.GetContactEndpoint):
+    def fetch(self, client: ProviderClient, contact_id: str) -> dict[str, Any]:
+        return client.get_customer(id=contact_id)
+
+    def map(self, raw: dict[str, Any]) -> chift.ContactItemOut:
+        return to_contact(raw)
+
+
+class HyperlineInvoicingConnector(InvoicingConnector):
+    provider = "hyperline"
+
+    get_contact = GetContact()
+    list_contacts = ListContacts()
+    ...
+```
+
+The halves are named apart because they fail differently: a wrong `fetch` is a 404 or a missing
+method, loud and immediate; a wrong `map` returns plausible data, which is why mappers are
+reviewed rather than trusted. Both are ordinary methods — callable in a test with no connector,
+no client and no `.env`.
+
+The nested abstract class fixes the Chift input/output signature. `__init_subclass__` requires
+the corresponding endpoint type while `check` compares its concrete `fetch` and `map`
+signatures, so a connector cannot replace a contact ID with generic `*args` **[check]**.
+
+**Pagination is not a contract hook.** It is ordinary code in the mapper's Pagination section,
+called from the `fetch` that needs it, returning whatever that endpoint's `map` wants. A provider
+paging by offset or token writes a different function and nothing above it changes.
+
+The connector declares the six endpoints, `map_error`, `from_env` and `__init__`, and nothing
+else **[check]**. Anything existing solely to clean up a live fixture calls the generated client from
+the test. Live tests need the key in `.env`, create their own fixtures, and clean up in a
+`finally`.
 
 ## Checklist
 

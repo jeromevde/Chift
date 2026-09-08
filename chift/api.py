@@ -12,9 +12,9 @@ import logging
 
 from fastapi import FastAPI, HTTPException, Query
 
-from chift import invoicing_connector as registry
+from chift import invoicing as registry
 from chift.errors import ConnectorError, connector_error
-from chift.invoicing_connector import InvoicingConnector
+from chift.invoicing import InvoicingConnector
 from chift.models import (
     ChiftPage,
     ContactItemIn,

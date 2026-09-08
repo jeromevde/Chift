@@ -8,9 +8,8 @@ Usage (from the repository root):
     python -m codegeneration client <provider>
         Regenerate one. Fails if a configured path or method is missing.
 
-Writes ``connectors/<provider>/generated/client.py`` and ``invoicing_base.py``.
-The client contains transport methods; the base owns Chift endpoint orchestration
-around abstract provider-specific mapping hooks.
+Writes ``connectors/<provider>/generated/client.py``. The client contains transport
+methods only; ``chift.invoicing`` owns the fixed endpoint contracts.
 """
 
 from __future__ import annotations
@@ -268,11 +267,6 @@ def run(
         ["ruff", "format", str(client_path)], check=True, capture_output=True
     )
 
-    # Endpoint pairing and client methods share paths.yaml, so generate them together.
-    from codegeneration.generate_connector_base import write as write_base
-
-    write_base(out_pkg.parent.name)
-
     for stale in (
         "contracts.json",
         "models.py",
@@ -303,10 +297,7 @@ def main(argv: list[str] | None = None) -> None:
             connector.client_class,
             connector.endpoints,
         )
-        print(
-            f"  wrote {connector.out_pkg.relative_to(ROOT)}/"
-            "client.py + invoicing_base.py"
-        )
+        print(f"  wrote {connector.out_pkg.relative_to(ROOT)}/client.py")
 
 
 if __name__ == "__main__":

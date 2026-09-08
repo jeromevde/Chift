@@ -14,7 +14,7 @@ from __future__ import annotations
 import sys
 
 from codegeneration import (
-    check_mapper,
+    check_connector,
     generate_client,
     generate_context,
 )
@@ -41,7 +41,7 @@ def main(argv: list[str] | None = None) -> None:
     elif command == "contract":
         generate_context.main(args)
     elif command == "check":
-        check_mapper.main(args)
+        check_connector.main(args)
     else:  # pragma: no cover
         raise SystemExit(USAGE)
 

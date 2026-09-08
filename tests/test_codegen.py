@@ -7,21 +7,21 @@ import inspect
 import json
 from io import StringIO
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import httpx
 import pytest
 import yaml
 
-from chift.invoicing_connector import InvoicingConnector
+from chift import models as chift
+from chift.endpoint import Endpoint
+from chift.invoicing import InvoicingConnector
 from codegeneration import (
-    check_mapper,
+    check_connector,
     generate_client,
-    generate_connector_base,
     generate_context,
 )
 from connectors.hyperline.generated.client import HyperlineClient
-from connectors.hyperline.generated.invoicing_base import HyperlineInvoicingBase
 
 ROOT = Path(__file__).parents[1]
 
@@ -46,14 +46,14 @@ def test_codegen_fails_when_endpoint_is_missing(tmp_path):
 
 
 def test_provider_generation_stays_inside_its_package():
-    """Config, generated code, and mapper form one movable provider package."""
+    """Config, generated code, and connector form one movable provider package."""
     provider = ROOT / "connectors/hyperline"
     connector = generate_client.discover()["hyperline"]
 
     assert connector.spec == provider / "config/hyperline.yaml"
     assert connector.out_pkg == provider / "generated"
     assert (provider / "config/paths.yaml").is_file()
-    assert (provider / "mapper.py").is_file()
+    assert (provider / "connector.py").is_file()
 
 
 def test_extract_inlines_every_operation_input_and_output_reference():
@@ -343,14 +343,14 @@ def test_mapper_contract_reads_the_vendored_spec():
 
 
 def test_the_hyperline_mapper_obeys_every_rule_the_checker_encodes():
-    """`AGENTS.md` states the rules; `check_mapper` is what stops them drifting."""
-    assert check_mapper.check("hyperline") == []
+    """`AGENTS.md` states the rules; `check_connector` is what stops them drifting."""
+    assert check_connector.check("hyperline") == []
 
 
 def test_the_checker_catches_a_silent_default_and_a_missing_field():
     """The two rules with a real defect behind them, exercised on broken sources."""
     silent = ast.parse('x = data.get("total_amount", 0.0)\n')
-    assert check_mapper.check_no_silent_defaults(silent)
+    assert check_connector.check_no_silent_defaults(silent)
 
     class _NoDeclarations:
         UNMAPPED: ClassVar[dict[str, set[str]]] = {}
@@ -359,19 +359,51 @@ def test_the_checker_catches_a_silent_default_and_a_missing_field():
         "def to_contact(data) -> chift.ContactItemOut:\n"
         "    return chift.ContactItemOut(id=data['id'])\n"
     )
-    problems = check_mapper.check_coverage(partial, _NoDeclarations)
+    problems = check_connector.check_coverage(partial, _NoDeclarations)
     assert problems and "neither assigned nor declared" in problems[0]
 
 
-def test_the_generated_base_wires_endpoints_and_forces_mapping_hooks():
-    """Generated orchestration cannot drift from its abstract mapper interface."""
-    source = generate_connector_base.base("hyperline")
-    for method in InvoicingConnector.__abstractmethods__ - {"from_env"}:
-        assert f"def {method}(" in source
-    assert "def request_get_contact(" in source
-    assert "def request_create_invoice(" in source
-    assert "def map_error(" in source
-    assert "def invoke_" not in source
-    assert "_args(" not in source
-    assert inspect.isabstract(HyperlineInvoicingBase)
-    compile(source, "<generated base>", "exec")
+def test_the_contract_shares_only_the_request_pipeline():
+    """The base owns request flow and the six exact Chift endpoint contracts.
+
+    The pipeline is shared because it is identical for every provider: one try/except
+    delegating to `map_error`. Each endpoint's provider call and mapping stay together
+    in the mapper, while its public Chift signature stays fixed in the base.
+    """
+    assert "_request" in vars(InvoicingConnector)
+    assert Endpoint.__abstractmethods__ == frozenset({"fetch", "map"})
+    assert InvoicingConnector.ENDPOINTS == {
+        "get_contact": InvoicingConnector.GetContactEndpoint,
+        "list_contacts": InvoicingConnector.ListContactsEndpoint,
+        "create_contact": InvoicingConnector.CreateContactEndpoint,
+        "get_invoice": InvoicingConnector.GetInvoiceEndpoint,
+        "list_invoices": InvoicingConnector.ListInvoicesEndpoint,
+        "create_invoice": InvoicingConnector.CreateInvoiceEndpoint,
+    }
+    parameters = inspect.signature(
+        InvoicingConnector.ListInvoicesEndpoint.fetch
+    ).parameters
+    assert list(parameters) == ["self", "client", "page", "size"]
+    assert parameters["page"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert parameters["size"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert InvoicingConnector.__abstractmethods__ == frozenset({"from_env", "map_error"})
+    assert "paginate" not in InvoicingConnector.__abstractmethods__
+    assert not (ROOT / "codegeneration/generate_endpoints.py").exists()
+    assert not (ROOT / "connectors/hyperline/generated/invoicing.py").exists()
+
+
+def test_the_checker_rejects_an_endpoint_that_weakens_the_chift_signature():
+    """Subclassing the right endpoint cannot hide an incompatible override."""
+
+    class WrongGetContact(InvoicingConnector.GetContactEndpoint):
+        def fetch(self, client: Any) -> dict[str, Any]:
+            return {}
+
+        def map(self, raw: dict[str, Any]) -> chift.ContactItemOut:
+            return chift.ContactItemOut.model_validate(raw)
+
+    problems = check_connector.check_endpoint_signature(
+        WrongGetContact(), InvoicingConnector.GetContactEndpoint
+    )
+    assert len(problems) == 1
+    assert "contact_id" in problems[0]

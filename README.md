@@ -23,7 +23,7 @@ cp .env.example .env      # add HYPERLINE_API_KEY_TEST for live tests
 pip install -e ".[dev]"
 
 python -m codegeneration client hyperline
-# Regenerates connectors/hyperline/generated/client.py and invoicing_base.py byte-identically.
+# Regenerates connectors/hyperline/generated/client.py byte-identically.
 # Regeneration producing no diff is the point: generated output stays reviewable.
 
 python -m codegeneration contract hyperline getCustomer response 200
@@ -39,9 +39,9 @@ Three things to look at:
 
 | Where | Why it is the interesting part |
 |---|---|
-| [`connectors/hyperline/mapper.py`](connectors/hyperline/mapper.py) | Grep `# Mapping decision:` and `# REVIEW:` — 41 markers. Every semantic judgement is stated beside the code it affects, so you can approve the lossy choices without reading the field renames. |
+| [`connectors/hyperline/connector.py`](connectors/hyperline/connector.py) | Grep `# Mapping decision:` and `# REVIEW:` — 41 markers. Every semantic judgement is stated beside the code it affects, so you can approve the lossy choices without reading the field renames. |
 | [`AGENTS.md`](AGENTS.md) § Review it against this checklist | Seven checks, each one a defect an LLM draft actually produced here. This is the reusable artefact. |
-| [`codegeneration/`](codegeneration/README.md) | `generate_client.py` emits transport, `generate_connector_base.py` emits the enforced runtime interface, `generate_context.py` supplies mapper context, and `check_mapper.py` checks the result. |
+| [`codegeneration/`](codegeneration/README.md) | `generate_client.py` emits transport, `generate_context.py` supplies mapper context, and `check_connector.py` checks the result. |
 
 ## Supported surface
 
@@ -63,10 +63,9 @@ Three things to look at:
 Hyperline OpenAPI                                  connectors/hyperline/config/hyperline.yaml
   → select path + method pairs                     connectors/hyperline/config/paths.yaml
   → thin JSON HTTP client                          connectors/hyperline/generated/client.py
-  → abstract request/map connector base            connectors/hyperline/generated/invoicing_base.py
   → one endpoint contract, on demand               codegeneration/generate_context.py
-  → concrete Hyperline mapping hooks               connectors/hyperline/mapper.py
-  → InvoicingConnector contract                    chift/invoicing_connector.py
+  → endpoints: fetch + map, per Chift endpoint     connectors/hyperline/connector.py
+  → InvoicingConnector contract                    chift/invoicing.py
   → Chift-shaped FastAPI                           chift/api.py
       resolving consumer → provider → connector
 ```
@@ -77,10 +76,10 @@ Everything from the mapper right is reviewed business meaning: units, statuses, 
 pagination, and provider workflows. The mapper was written by an LLM from
 [`AGENTS.md`](AGENTS.md) § Adding a connector, then reviewed as ordinary Python.
 
-### The connector is laid out in five sections
+### The connector is laid out in six sections
 
-`connectors/hyperline/mapper.py` reads top to bottom as **constants**, **utilities**,
-**mapper**, **pagination**, **connector**, separated by banner comments. Sections are by kind of
+`connectors/hyperline/connector.py` reads top to bottom as **constants**, **utilities**,
+**mapper**, **pagination**, **endpoint**, **connector**, separated by banner comments. Sections are by kind of
 code, never by topic.
 
 The `_` prefix means *mechanical* and nothing else: anything that builds or consumes a
@@ -89,26 +88,28 @@ section — `to_address` and `to_line` included. That rule is checkable, and it 
 `_`-prefixed function in the file mentions `chift.`.
 
 Resource mappers are plain module-level functions, so tests and reviewers call them without a
-client, credentials, or `.env`. The concrete connector methods implement the generated mapping
-hooks and delegate to those functions.
+client, credentials, or `.env`. Each concrete endpoint extends the corresponding fixed abstract
+endpoint on `InvoicingConnector` and delegates to those functions.
 
 Of 87 target-field assignments, 74 are direct renames or a single transform; 13 need real
 conditional logic. Those 13 are where every defect in the review checklist actually lived.
 
 ## Reusing the approach
 
-1. Add `connectors/<provider>/config/<provider>.yaml` and `config/paths.yaml`, pairing each Chift
-   endpoint with one selected provider `operationId`.
+1. Add `connectors/<provider>/config/<provider>.yaml` and `config/paths.yaml`, selecting only the
+   provider operations the connector calls.
 2. Run `python -m codegeneration client <provider>`.
-3. Subclass the generated provider base and implement its `request_*`, `map_*_return_body`, and
-   `map_error` hooks with the procedure in [`AGENTS.md`](AGENTS.md).
+3. Extend each abstract endpoint on `InvoicingConnector`, implement its `fetch` and `map`, then
+   declare those endpoint objects plus `map_error` on the concrete connector.
 4. Review the concrete mapper against the checklist.
 5. Verify the Chift endpoints against the provider sandbox.
 
-No file under `chift/` changes when a provider is added. The generated base owns endpoint
-orchestration and remains abstract until every required mapping hook is implemented, so omissions
-fail at construction. Each `request_*` hook owns input mapping and its provider call, including
-multi-call workflows such as cursor pagination.
+No file under `chift/` changes when a provider is added. The fixed Chift endpoint subclasses live
+inside `InvoicingConnector`; each has two abstract halves — `fetch` reaches the provider, `map`
+says what the answer means — and the concrete connector declares implementations of all six. They fail differently: a wrong
+`fetch` is a 404, loud; a wrong `map` returns plausible data. A connector missing an endpoint
+cannot be defined. Pagination is not a contract hook, just code in the mapper called from the
+`fetch` that needs it.
 
 ## Design decisions
 

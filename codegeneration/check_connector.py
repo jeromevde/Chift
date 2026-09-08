@@ -1,4 +1,4 @@
-"""Check a connector mapper against the rules in AGENTS.md, so they cannot drift.
+"""Check a connector against the rules in AGENTS.md, so they cannot drift.
 
     python -m codegeneration check hyperline
     python -m codegeneration check hyperline invoicing    # one vertical
@@ -6,8 +6,8 @@
 Every rule here has a defect behind it. They fall into two kinds, and the second is
 the one that matters:
 
-* **Interface** — the generated base is current and the concrete connector implements
-  every abstract mapping hook without replacing generated endpoint orchestration.
+* **Interface** — every concrete endpoint extends the matching abstract endpoint on
+  `InvoicingConnector` and implements its exact Chift input and output signatures.
 * **Coverage** — every Chift field either mapped or declared unmappable, no silent
   defaults, tables exhaustive over the provider's published enum. These catch the
   defect this project exists to prevent: a plausible value returned instead of an
@@ -26,12 +26,15 @@ from __future__ import annotations
 
 import ast
 import importlib
+import inspect
 import sys
 from pathlib import Path
 
+from chift.endpoint import Endpoint
+
 ROOT = Path(__file__).resolve().parents[1]
 
-SECTIONS = ("Constants", "Utilities", "Mapper", "Pagination", "Connector")
+SECTIONS = ("Constants", "Utilities", "Mapper", "Pagination", "Endpoint", "Connector")
 
 
 def _sections(tree: ast.Module, lines: list[str]) -> dict[str, tuple[int, int]]:
@@ -155,9 +158,38 @@ def check_coverage(tree: ast.Module, module) -> list[str]:
     return problems
 
 
+def _signature(method) -> tuple:
+    """Return a signature contract, allowing only the provider client type to vary."""
+    signature = inspect.signature(method)
+    parameters = tuple(
+        (
+            parameter.name,
+            parameter.kind,
+            parameter.default,
+            None if parameter.name == "client" else parameter.annotation,
+        )
+        for parameter in signature.parameters.values()
+    )
+    return parameters, signature.return_annotation
+
+
+def check_endpoint_signature(endpoint: Endpoint, contract: type[Endpoint]) -> list[str]:
+    """Check one implementation against its fixed Chift endpoint contract."""
+    problems = []
+    for method in ("fetch", "map"):
+        expected = getattr(contract, method)
+        actual = getattr(type(endpoint), method)
+        if _signature(actual) != _signature(expected):
+            problems.append(
+                f"{type(endpoint).__name__}.{method}{inspect.signature(actual)}: "
+                f"expected {inspect.signature(expected)}"
+            )
+    return problems
+
+
 def check_connector(tree: ast.Module, module) -> list[str]:
-    """The concrete connector fills the generated base without replacing endpoints."""
-    from chift.invoicing_connector import InvoicingConnector
+    """Every declared endpoint implements its fixed Chift contract exactly."""
+    from chift.invoicing import InvoicingConnector
 
     problems = []
     connectors = [
@@ -172,52 +204,48 @@ def check_connector(tree: ast.Module, module) -> list[str]:
     connector = connectors[0]
     if connector.__abstractmethods__:
         problems.append(
-            f"{connector.__name__}: missing generated mapping hooks: "
+            f"{connector.__name__}: missing connector methods: "
             f"{', '.join(sorted(connector.__abstractmethods__))}"
         )
 
-    endpoint_methods = set(InvoicingConnector.__abstractmethods__) - {"from_env"}
+    for name, contract in InvoicingConnector.ENDPOINTS.items():
+        endpoint = getattr(connector, name, None)
+        if not isinstance(endpoint, contract):
+            problems.append(
+                f"{connector.__name__}.{name}: must extend "
+                f"InvoicingConnector.{contract.__name__}"
+            )
+            continue
+        problems.extend(check_endpoint_signature(endpoint, contract))
+
     for node in tree.body:
         if isinstance(node, ast.ClassDef) and node.name == connector.__name__:
-            replaced = endpoint_methods & {
-                child.name for child in node.body if isinstance(child, ast.FunctionDef)
-            }
-            if replaced:
+            methods = {c.name for c in node.body if isinstance(c, ast.FunctionDef)}
+            extra = methods - {"__init__", "from_env", "map_error"}
+            if extra:
                 problems.append(
-                    f"{connector.__name__}: endpoint methods belong in the generated base: "
-                    f"{', '.join(sorted(replaced))}"
+                    f"{connector.__name__}: methods beyond the contract: "
+                    f"{', '.join(sorted(extra))} — an endpoint is an Endpoint subclass, "
+                    "and test-only workflows call the generated client from the test"
                 )
     return problems
-
-
-def check_generated_base(provider: str, vertical: str) -> list[str]:
-    """Require the tracked runtime base to match the current generator and pairing."""
-    from codegeneration.generate_connector_base import base
-
-    path = ROOT / "connectors" / provider / "generated" / f"{vertical}_base.py"
-    if not path.is_file():
-        return [f"missing generated base: {path.relative_to(ROOT)}"]
-    if path.read_text() != base(provider, vertical):
-        return [f"stale generated base: run python -m codegeneration client {provider}"]
-    return []
 
 
 def check(provider: str, vertical: str = "invoicing") -> list[str]:
     """Every rule, against one connector mapper. Empty list means it conforms."""
     if vertical != "invoicing":
         raise SystemExit("the self-contained provider layout currently supports invoicing")
-    path = ROOT / "connectors" / provider / "mapper.py"
+    path = ROOT / "connectors" / provider / "connector.py"
     if not path.is_file():
         raise SystemExit(f"no mapper at {path.relative_to(ROOT)}")
     source = path.read_text()
     tree = ast.parse(source)
-    module = importlib.import_module(f"connectors.{provider}.mapper")
+    module = importlib.import_module(f"connectors.{provider}.connector")
     return [
         *check_structure(tree, source.splitlines()),
         *check_no_silent_defaults(tree),
         *check_coverage(tree, module),
         *check_connector(tree, module),
-        *check_generated_base(provider, vertical),
     ]
 
 

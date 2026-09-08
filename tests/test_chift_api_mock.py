@@ -17,14 +17,15 @@ from iso4217 import Currency
 from pydantic import ValidationError as PydanticValidationError
 
 from chift.api import CONNECTORS, app
-from chift.invoicing_connector import InvoicingConnector
+from chift.endpoint import Endpoint
+from chift.invoicing import InvoicingConnector
 from chift.models import InvoiceItemIn, InvoiceStatus
 from connectors.hyperline.config import get_settings
-from connectors.hyperline.mapper import (
+from connectors.hyperline.connector import (
     INVOICE_STATUS,
     HyperlineInvoicingConnector,
-    _page_via_cursor,
     from_invoice,
+    page_via_cursor,
     to_contact,
     to_invoice,
 )
@@ -58,6 +59,26 @@ def _delete_customer(client, customer_id: str) -> None:
     """
     client.archive_customer(customer_id)
     client.delete_customer(customer_id)
+
+
+class _StubClient:
+    """A client whose list call returns one prepared raw page."""
+
+    def __init__(self, raw):
+        self._raw = raw
+
+    def list_customers(self, **_query):
+        return {"data": self._raw["items"], "total": self._raw["total"], "next_cursor": None}
+
+
+class _EchoEndpoint(Endpoint):
+    """The smallest possible endpoint: returns what the provider said."""
+
+    def fetch(self, _client, *args, **kwargs):
+        return {"args": args, **kwargs}
+
+    def map(self, raw):
+        return raw
 
 
 def _published_enum(schema_name: str, field: str) -> list[str]:
@@ -249,21 +270,13 @@ def test_cursor_pagination_walks_to_the_requested_page_without_stored_state():
         calls.append(query)
         return next(responses)
 
-    page = _page_via_cursor(
-        fetch,
-        {
-            "limit": 1,
-            "cursor": None,
-            "include_total": True,
-            "status": "all",
-        },
-        page=2,
-    )
+    # Fetch only: the walk returns a neutral shape, the endpoint maps the items.
+    raw = page_via_cursor(fetch, page=2, size=1)
 
-    assert page == {"data": ["second"], "total": 2}
+    assert raw == {"items": ["second"], "total": 2, "page": 2, "size": 1}
     assert calls == [
-        {"limit": 1, "cursor": None, "include_total": True, "status": "all"},
-        {"limit": 1, "cursor": "next", "include_total": False, "status": "all"},
+        {"limit": 1, "cursor": None, "include_total": True},
+        {"limit": 1, "cursor": "next", "include_total": False},
     ]
 
 
@@ -277,14 +290,12 @@ def test_missing_provider_pagination_total_is_a_provider_contract_failure():
     def fetch(**_query):
         return {"data": [], "total": None, "next_cursor": None}
 
-    raw = _page_via_cursor(
-        fetch,
-        {"limit": 50, "cursor": None, "include_total": True},
-        page=1,
-    )
-    connector = HyperlineInvoicingConnector(object())
+    raw = page_via_cursor(fetch, page=1, size=50)
+    assert raw["total"] is None
+    # PagedEndpoint builds the ChiftPage, and Chift's `total` is a required int.
+    connector = HyperlineInvoicingConnector(_StubClient(raw))
     with pytest.raises(PydanticValidationError, match="total"):
-        connector.map_list_contacts_return_body(raw, page=1, size=50)
+        connector.list_contacts(page=1, size=50)
 
 
 def test_chift_rejects_page_sizes_over_100_before_calling_a_connector():
@@ -506,10 +517,18 @@ def test_api_resolves_a_consumer_to_its_provider_without_naming_one():
         @classmethod
         def from_env(cls) -> FakeConnector:
             calls.append("built")
-            return cls.__new__(cls)
+            fake = cls.__new__(cls)
+            fake.client = None  # this endpoint never reaches a provider
+            return fake
 
-        def get_contact(self, contact_id: str):
-            return to_contact({"id": contact_id, "name": "Fake", "type": "corporate"})
+        class _GetContact(InvoicingConnector.GetContactEndpoint):
+            def fetch(self, client, contact_id: str):
+                return {"id": contact_id, "name": "Fake", "type": "corporate"}
+
+            def map(self, raw):
+                return to_contact(raw)
+
+        get_contact = _GetContact()
 
     consumer = "22222222-2222-2222-2222-222222222222"
     CONSUMERS[consumer] = "fake-provider"
@@ -525,26 +544,22 @@ def test_api_resolves_a_consumer_to_its_provider_without_naming_one():
         CONNECTORS.pop(consumer, None)
 
 
-def test_a_connector_missing_a_contract_method_cannot_be_constructed():
-    """The seam that used to be duck-typed now fails at construction, not at request."""
+def test_a_connector_missing_an_endpoint_is_refused_at_definition():
+    """A connector that omits an endpoint cannot be defined, let alone served.
 
-    class Incomplete(InvoicingConnector):
-        provider = "incomplete"
+    Endpoints are class attributes, so `ABC` cannot police them; `__init_subclass__`
+    does, and it fires the moment the class body is read — earlier than construction
+    and far earlier than someone's first request.
+    """
+    with pytest.raises(TypeError, match="missing Endpoint declarations"):
 
-        @classmethod
-        def from_env(cls):
-            return cls()
+        class Incomplete(InvoicingConnector):
+            provider = "incomplete"
 
-        def get_contact(self, contact_id: str): ...
-        def list_contacts(self, *, page: int, size: int): ...
-        def get_invoice(self, invoice_id: str): ...
-        def create_contact(self, body): ...
-
-        # list_invoices deliberately absent.
-
-    with pytest.raises(TypeError, match="list_invoices"):
-        Incomplete.from_env()
-
+            get_contact = _EchoEndpoint()
+            list_contacts = _EchoEndpoint()
+            create_contact = _EchoEndpoint()
+            # the three invoice endpoints are deliberately absent
 
 def test_an_unknown_provider_is_our_misconfiguration_not_a_bad_request():
     from chift.api import CONSUMERS
