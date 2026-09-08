@@ -19,11 +19,12 @@ from pydantic import ValidationError as PydanticValidationError
 from chift import registry
 from chift.api import CONNECTORS, app
 from chift.invoicing import InvoicingConnector
-from chift.models import InvoiceItemIn, InvoiceStatus
+from chift.models import ContactItemIn, InvoiceItemIn, InvoiceStatus
 from connectors.hyperline.config import get_settings
 from connectors.hyperline.connector import (
     INVOICE_STATUS,
     HyperlineInvoicingConnector,
+    from_contact,
     from_invoice,
     page_via_cursor,
     to_contact,
@@ -166,6 +167,26 @@ def test_settlement_and_audit_fields_are_mapped_not_left_to_chift_defaults():
     assert to_invoice(_invoice()).last_payment_date is None
 
 
+def test_from_contact_name_follows_is_company_not_whichever_slot_is_filled():
+    person = from_contact(
+        ContactItemIn(
+            is_company=False,
+            first_name="Ada",
+            last_name="Lovelace",
+            company_name="ShouldNotWin",
+        )
+    )
+    company = from_contact(
+        ContactItemIn(
+            is_company=True,
+            company_name="Acme",
+            first_name="Ignored",
+        )
+    )
+    assert person == {"name": "Ada Lovelace", "type": "person"}
+    assert company == {"name": "Acme", "type": "corporate"}
+
+
 def test_import_source_and_registration_number_do_not_guess_customer_kind():
     imported_company = to_contact(
         {
@@ -191,6 +212,15 @@ def test_import_source_and_registration_number_do_not_guess_customer_kind():
     assert imported_unknown.is_company is None
     assert imported_unknown.company_name == "Unknown imported customer"
     assert imported_unknown.first_name is None
+
+
+def test_contact_mapper_reads_the_provider_external_id():
+    contact = to_contact(
+        {"id": "cus_x", "type": "corporate", "external_id": "erp-4471"}
+    )
+    assert contact.external_reference == "erp-4471"
+    assert to_contact({"id": "cus_x", "type": "corporate"}).external_reference is None
+    assert "external_id" not in from_contact(ContactItemIn(is_company=True))
 
 
 def test_invoice_line_maps_discount_or_fails_loudly_when_missing():
@@ -331,7 +361,6 @@ def test_create_two_contacts_and_get_them_back(client):
                     "is_company": True,
                     "company_name": f"Acme {label} {suffix}",
                     "email": f"{label.lower()}-{suffix}@example.com",
-                    "external_reference": f"ext-{label.lower()}-{suffix}",
                     "currency": "EUR",
                     "addresses": [
                         {
@@ -358,8 +387,11 @@ def test_create_two_contacts_and_get_them_back(client):
             assert body["source_ref"]["id"] == cid
             assert body["company_name"] == contact["company_name"]
             assert body["email"] == contact["email"]
-            assert body["external_reference"] == contact["external_reference"]
             assert body["is_company"] is True
+            # Chift's create body cannot set an external reference, so Hyperline has
+            # no external_id to report back. Read coverage lives offline, in
+            # test_contact_mapper_reads_the_provider_external_id.
+            assert body["external_reference"] is None
 
         listed = http.get(
             f"/consumers/{CONSUMER}/invoicing/contacts",
@@ -386,7 +418,6 @@ def test_create_two_invoices_and_get_them_back(client):
                 "is_company": True,
                 "company_name": f"Invoice Co {suffix}",
                 "email": f"inv-{suffix}@example.com",
-                "external_reference": f"ext-inv-{suffix}",
                 "currency": "EUR",
             },
         )
@@ -699,10 +730,16 @@ def _response_shapes(path_verb_status):
 
 
 def _nullable(schema: dict) -> bool:
+    """True for every OpenAPI spelling of a nullable schema."""
+    if schema.get("nullable") is True:
+        return True
     declared = schema.get("type")
     if isinstance(declared, list):
         return "null" in declared
-    return False
+    if declared == "null":
+        return True
+    branches = schema.get("anyOf") or schema.get("oneOf") or []
+    return any(_nullable(branch) for branch in branches)
 
 
 def test_response_schema_still_guarantees_every_field_the_mapper_subscripts():

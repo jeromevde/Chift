@@ -288,6 +288,12 @@ def from_contact(body: chift.ContactItemIn) -> dict[str, Any]:
     # Mapping decision: Chift splits person names across first/last and companies use
     # company_name; Hyperline has one `name`. Prefer the slot the classification implies.
     person_name = " ".join(x for x in (body.first_name, body.last_name) if x) or None
+    if body.is_company is False:
+        name = person_name
+    elif body.is_company is True:
+        name = body.company_name
+    else:
+        name = body.company_name or person_name
     # Hyperline encodes address kind positionally (billing_address / shipping_address);
     # Chift carries it as a field, so index by kind once rather than scanning per slot.
     by_kind = {a.address_type: a for a in body.addresses or []}
@@ -296,7 +302,7 @@ def from_contact(body: chift.ContactItemIn) -> dict[str, Any]:
     # customer is legal for both contracts and is passed through unnamed rather than
     # refused on a rule neither Chift nor Hyperline states.
     return _json(
-        name=body.company_name or person_name,
+        name=name,
         type=hl_type,
         currency=body.currency,
         # Mapping decision: Hyperline's top-level country is the billing country when the
@@ -307,7 +313,6 @@ def from_contact(body: chift.ContactItemIn) -> dict[str, Any]:
         # the pair round-trips. Hyperline caps the list at one and documents no ordering, so a
         # contact carrying several tax IDs cannot be represented faithfully in either direction.
         tax_ids=[{"value": body.vat}] if body.vat else None,
-        external_id=body.external_reference,
         billing_email=body.email,
         language=body.language,
         billing_address=billing,

@@ -3,6 +3,12 @@
 Aligned with the fields we use from `chift/chift.yaml` (ContactItemOut /
 InvoiceItemOut). Unused optional Chift-only blobs (Italian specificities, journal
 refs, …) are omitted on purpose.
+
+Hand-transcribed, and therefore checked: `tests/test_chift_models.py` compares every
+model below against the vendored spec — field names, `required`, and each field's kind
+— and fails on any difference not listed in `DEVIATIONS`. Chift is the one contract no
+provider can teach us, so a slip here is invisible until a caller's valid request is
+refused.
 """
 
 from __future__ import annotations
@@ -14,6 +20,35 @@ from typing import Generic, TypeVar
 from pydantic import BaseModel, Field
 
 T = TypeVar("T")
+
+# Places these models knowingly differ from `chift/chift.yaml`. Same purpose as a
+# connector's UNMAPPED: turn "I forgot" into "I decided", where a reviewer can argue
+# with it. Anything else that differs is a transcription error.
+DEVIATIONS: dict[str, set[str]] = {
+    # Chift types the create body's `status` with the full four-value InvoiceStatus,
+    # but `paid` and `cancelled` are outcomes of a lifecycle, not states an invoice can
+    # be created in, and no provider can honour them on create. Narrowing to
+    # InvoiceStatusIn means Chift's own 422 names the offending field, rather than the
+    # connector's status table raising a KeyError that reaches the caller as an empty
+    # 500. The cost is real and one-directional: a body that upstream Chift accepts is
+    # refused here. Widen this the moment a provider can create a settled invoice.
+    "InvoiceItemIn": {"status", "italian_specificities"},
+    # Omitted on purpose per this module's docstring — declared so the check can tell a
+    # deliberate omission from a missed field.
+    "InvoiceItemOut": {
+        "currency_exchange_rate",
+        "italian_specificities",
+        "journal_ref",
+        "payment_communication",
+        "payment_method_id",
+    },
+    "InvoiceLineItemOut": {
+        "analytic_distribution",
+        "tax_exemption_reason",
+        "unit_of_measure",
+    },
+    "InvoiceLineItemIn": {"tax_exemption_reason"},
+}
 
 
 class ContactType(str, Enum):
@@ -76,6 +111,14 @@ class InvoicingCreateInvoiceType(str, Enum):
 class Ref(BaseModel):
     id: str | None = None
     model: str | None = None
+
+
+class FieldRef(BaseModel):
+    """Chift's reference to a named record in the target software."""
+
+    id: str | None = None
+    model: str | None = None
+    name: str | None = None
 
 
 class AddressItemOutInvoicing(BaseModel):
@@ -161,7 +204,6 @@ class ContactItemIn(BaseModel):
     birthdate: date | None = None
     gender: ContactGender | None = None
     addresses: list[AddressItemInInvoicing] | None = Field(default_factory=list)
-    external_reference: str | None = None
 
 
 class InvoiceLineItemIn(BaseModel):
@@ -200,7 +242,7 @@ class InvoiceItemIn(BaseModel):
     reference: str | None = None
     payment_communication: str | None = None
     customer_memo: str | None = None
-    journal_ref: str | None = None
+    journal_ref: FieldRef | None = None
 
 
 class ChiftPage(BaseModel, Generic[T]):
