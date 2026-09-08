@@ -214,8 +214,8 @@ Then run the live tests. Amount and date conversions look right and are wrong.
 ## 3. Expose and test
 
 Subclass `InvoicingConnector`, set `provider = "<name>"`, implement `from_env`. Defining the
-subclass registers it and `chift/api.py` resolves consumer → provider → connector, so **no file
-under `chift/` changes when you add one**.
+subclass registers it with `chift/registry.py`, which `chift/api.py` asks for a live connector,
+so **no file under `chift/` changes when you add one**.
 
 **Each Chift endpoint extends its exact abstract contract on `InvoicingConnector`.**
 

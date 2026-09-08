@@ -66,6 +66,7 @@ Hyperline OpenAPI                                  connectors/hyperline/config/h
   → one endpoint contract, on demand               codegeneration/generate_context.py
   → endpoints: fetch + map, per Chift endpoint     connectors/hyperline/connector.py
   → InvoicingConnector contract                    chift/invoicing.py
+  → slug -> live connector                         chift/registry.py
   → Chift-shaped FastAPI                           chift/api.py
       resolving consumer → provider → connector
 ```

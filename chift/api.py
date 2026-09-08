@@ -12,7 +12,7 @@ import logging
 
 from fastapi import FastAPI, HTTPException, Query
 
-from chift import invoicing as registry
+from chift import registry
 from chift.errors import ConnectorError, connector_error
 from chift.invoicing import InvoicingConnector
 from chift.models import (
@@ -54,7 +54,7 @@ def _connector(consumer_id: str) -> InvoicingConnector:
         raise HTTPException(status_code=404, detail="Unknown consumer")
 
     try:
-        CONNECTORS[consumer_id] = registry.build(provider)
+        CONNECTORS[consumer_id] = registry.build(InvoicingConnector, provider)
     except LookupError as exc:
         # The consumer names a provider nobody implements: our configuration is
         # wrong, not the caller's request.

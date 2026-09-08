@@ -2,8 +2,8 @@
 What a provider must implement to serve Chift's invoicing API.
 
 `chift/api.py` dispatches on this contract and never names a provider. A connector
-declares its `provider` slug and is registered by defining it; `build()` resolves a
-slug to a live instance.
+declares its `provider` slug and is registered by defining it; `chift/registry.py` turns
+that slug back into a live connector.
 
 Signatures, plus the one behaviour every connector shares: `_request` runs a provider
 call and hands its HTTP failure to that connector's `map_error`. Everything else — which
@@ -17,9 +17,7 @@ this project exists to prevent; omitting a method fails at construction instead.
 
 from __future__ import annotations
 
-import importlib
 import inspect
-import pkgutil
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any, ClassVar
@@ -27,11 +25,9 @@ from typing import Any, ClassVar
 import httpx
 
 from chift import models as chift
+from chift import registry
 from chift.endpoint import Endpoint
 from chift.errors import ConnectorError
-
-# provider slug -> connector class, populated by __init_subclass__ below.
-_REGISTRY: dict[str, type[InvoicingConnector]] = {}
 
 
 def _parameters(method: Callable[..., Any]) -> tuple[tuple[object, ...], ...]:
@@ -187,38 +183,4 @@ class InvoicingConnector(ABC):
             raise TypeError(
                 f"{cls.__name__} has invalid endpoint signatures: {', '.join(wrong)}"
             )
-        _REGISTRY[slug] = cls
-
-
-def _discover() -> None:
-    """Import every `connectors/<name>/connector.py` so subclasses register.
-
-    Mirrors `codegeneration.run.discover()`: the runtime learns providers by
-    scanning the directory, never from a list maintained here. Lazy on purpose —
-    importing `chift` must not pull in every provider's credentials and models.
-    """
-    import connectors
-
-    for module in pkgutil.iter_modules(connectors.__path__):
-        if module.ispkg:
-            package = importlib.import_module(f"connectors.{module.name}")
-            if any(item.name == "connector" for item in pkgutil.iter_modules(package.__path__)):
-                importlib.import_module(f"connectors.{module.name}.connector")
-
-
-def providers() -> list[str]:
-    """Every registered provider slug."""
-    _discover()
-    return sorted(_REGISTRY)
-
-
-def build(provider: str) -> InvoicingConnector:
-    """Instantiate a connector by slug, or say which slugs exist."""
-    _discover()
-    try:
-        connector = _REGISTRY[provider]
-    except KeyError:
-        raise LookupError(
-            f"unknown provider {provider!r}; registered: {sorted(_REGISTRY)}"
-        ) from None
-    return connector.from_env()
+        registry.register(InvoicingConnector, cls)
