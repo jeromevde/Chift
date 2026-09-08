@@ -1,6 +1,6 @@
 """Canonical Chift response shapes. Connectors map into these.
 
-Aligned with the fields we use from `chift/chift.openapi.yaml` (ContactItemOut /
+Aligned with the fields we use from `chift/chift.yaml` (ContactItemOut /
 InvoiceItemOut). Unused optional Chift-only blobs (Italian specificities, journal
 refs, …) are omitted on purpose.
 """
@@ -120,7 +120,7 @@ class ContactItemOut(BaseModel):
 
 
 class AddressItemInInvoicing(BaseModel):
-    """Transcribed from chift.openapi.yaml. Unlike the Out form, Chift requires a
+    """Transcribed from chift.yaml. Unlike the Out form, Chift requires a
     full postal address here: a partial one is not accepted."""
 
     address_type: AddressTypeInvoicing
@@ -184,7 +184,7 @@ class InvoiceLineItemIn(BaseModel):
 
 
 class InvoiceItemIn(BaseModel):
-    """Chift's published create-invoice body, transcribed from chift.openapi.yaml."""
+    """Chift's published create-invoice body, transcribed from chift.yaml."""
 
     currency: str
     invoice_type: InvoicingCreateInvoiceType

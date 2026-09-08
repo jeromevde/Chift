@@ -1,9 +1,11 @@
 """
 Minimal Chift invoicing API (FastAPI).
 
-Connectors map data; they never decide Chift's HTTP contract. Provider HTTP failures
-reach this layer as `httpx.HTTPStatusError` and are translated here once. FastAPI
-handles every other error normally.
+Connectors map data; they never decide Chift's HTTP contract. A connector states what
+went wrong — a provider HTTP failure, a body this provider cannot express, a response
+that broke the provider's own schema — and the three handlers below turn each into a
+status. FastAPI handles every other error normally, including body-shape violations,
+which it already answers with Chift's published 422.
 """
 
 from __future__ import annotations
@@ -12,12 +14,11 @@ import logging
 
 import httpx
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import JSONResponse
 
-from chift import connector as registry
-from chift.connector import InvoicingConnector
+from chift import invoicing_connector as registry
+from chift.error import provider_http_error
+from chift.invoicing_connector import InvoicingConnector
 from chift.models import (
-    ChiftError,
     ChiftPage,
     ContactItemIn,
     ContactItemOut,
@@ -38,26 +39,8 @@ CONSUMERS: dict[str, str] = {}
 # point for tests, which put a pre-built connector here and never reach `build`.
 CONNECTORS: dict[str, InvoicingConnector] = {}
 
-
-@app.exception_handler(httpx.HTTPStatusError)
-async def provider_http_error(_request, exc: httpx.HTTPStatusError) -> JSONResponse:
-    """
-    Expose a provider HTTP failure using Chift's documented error shape.
-    This handles the tranlsation from connector (hyperline) error
-    to chift error !!
-    status_code=upstream means we just pass the error
-    This is a deliberate design choice for this poc,
-    But could be challenged since some of those erors might
-    be our fault, and not the client! (sending a 401 while our key is wrong for example)
-    """
-    upstream = exc.response.status_code
-    log.warning("provider %s %s", upstream, exc.request.url)
-    error = ChiftError(
-        message="Not found" if upstream == 404 else "Provider request failed",
-        error_code="NotFound" if upstream == 404 else "ProviderError",
-        detail=f"{exc.request.url.host} {upstream} {exc.response.text}".strip(),
-    )
-    return JSONResponse(status_code=upstream, content=error.model_dump())
+# The only error Chift translates; FastAPI answers everything else. See chift/error.py.
+app.add_exception_handler(httpx.HTTPStatusError, provider_http_error)
 
 
 def _connector(consumer_id: str) -> InvoicingConnector:

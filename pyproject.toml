@@ -16,12 +16,11 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
-    "datamodel-code-generator==0.76.1",
     "ruff==0.16.6",
 ]
 
 [project.scripts]
-run = "codegeneration.run:main"
+chift-codegen = "codegeneration.__main__:main"
 
 [build-system]
 requires = ["setuptools>=68"]

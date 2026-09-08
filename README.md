@@ -1,14 +1,18 @@
 # Hyperline → Chift connector POC
 
 [Chift](https://chift.eu) exposes one invoicing contract across billing and accounting tools.
-This Python POC generates a typed Hyperline client from OpenAPI and maps Hyperline resources into
-Chift models, using an approach that can be repeated for another provider.
+This Python POC generates a thin JSON HTTP client from Hyperline's OpenAPI and maps provider
+dictionaries into Chift models, in a way that repeats for the next provider.
 
 Generation is deterministic and never invokes an LLM. The mapping is reviewed code, because the
-two halves fail differently: a wrong client does not compile, but a wrong mapper *works* — it
-returns plausible Python that loses a discount or reports a status Chift's four states do not
-mean. That asymmetry decides what is generated, what is reviewed, and what the checklist in
-[`skills/add_connector.md`](skills/add_connector.md) exists to catch.
+two halves fail differently: a wrong client is missing a method or a path, but a wrong mapper
+*works* — it returns plausible Python that loses a discount or reports a status Chift's four
+states do not mean. That asymmetry decides what is generated, what is reviewed, and what the
+checklist in [`AGENTS.md`](AGENTS.md) § Adding a connector exists to catch.
+
+OpenAPI is the source of truth for **client generation** and for **mapper context**
+(`python -m codegeneration contract`). It is deliberately not a runtime gate — see
+[Why no provider-response validation](#why-no-provider-response-validation).
 
 ## Read this first
 
@@ -18,27 +22,26 @@ Python 3.11+. Three commands, in the order that shows the most:
 cp .env.example .env      # add HYPERLINE_API_KEY_TEST for live tests
 pip install -e ".[dev]"
 
-python -m codegeneration.run hyperline
-# Regenerates generated/hyperline/ byte-identically. `git status` stays clean —
-# that is the point: generated diffs are reviewable.
+python -m codegeneration client hyperline
+# Regenerates generated/hyperline/client.py, byte-identically. Regeneration
+# producing no diff is the point: generated output stays reviewable.
+
+python -m codegeneration contract hyperline getCustomer response 200
+# Prints the exact inlined response schema used as mapper context.
 
 pytest
-# 36 tests. With a key in .env, this creates real customers and invoices in the
-# Hyperline sandbox, reads them back through Chift's contract, and deletes them.
+# With a key in .env this creates real customers and invoices in the Hyperline
+# sandbox, reads them back through Chift's contract, and deletes them.
 # Without a key the offline half still runs.
-
-pytest --robustness
-# Runs the same pipeline against Stripe, GitHub, Discord and Petstore. Stripe's
-# 6.4 MB spec → ~880 importable models from one paths.yaml entry.
 ```
 
 Three things to look at:
 
 | Where | Why it is the interesting part |
 |---|---|
-| [`connectors/hyperline/connector.py`](connectors/hyperline/connector.py) | Grep `# Mapping decision:` and `# REVIEW:`. Every semantic judgement is marked beside the code, so you can approve the lossy choices without reading the field renames. |
-| [`RESEARCH.md`](RESEARCH.md) § Appendix: generator experiments | Fifteen community generators tested against these same four endpoints, with what each produced and where each broke. It is why this pipeline exists rather than `openapi-generator`. |
-| [`skills/add_connector.md`](skills/add_connector.md) § Review it against this checklist | Seven checks, each one a defect an LLM draft actually produced here. This is the reusable artefact. |
+| [`connectors/hyperline/connector.py`](connectors/hyperline/connector.py) | Grep `# Mapping decision:` and `# REVIEW:` — 41 markers. Every semantic judgement is stated beside the code it affects, so you can approve the lossy choices without reading the field renames. |
+| [`AGENTS.md`](AGENTS.md) § Review it against this checklist | Seven checks, each one a defect an LLM draft actually produced here. This is the reusable artefact. |
+| [`codegeneration/`](codegeneration/README.md) | Two scripts: `generate_client.py` emits, `generate_context.py` reads. OpenAPI in, no provider models out. |
 
 ## Supported surface
 
@@ -49,62 +52,150 @@ Three things to look at:
 | [Retrieve one invoice](https://docs.chift.eu/api-reference/endpoints/invoicing/retrieve-one-invoice) | `GET /v2/invoices/{id}` |
 | [Retrieve all invoices](https://docs.chift.eu/api-reference/endpoints/invoicing/retrieve-all-invoices) | `GET /v2/invoices` |
 
-Plus `POST` contacts and invoices, taking Chift's published `ContactItemIn` and `InvoiceItemIn`;
-the live tests use them to create their own fixtures. Delete is provider workflow (Hyperline
-archives before deleting) and stays off the contract, on the connector.
+
+
+
+
 
 ## Architecture
 
 ```text
-Hyperline OpenAPI
-  → select path + method pairs                       connectors/hyperline/paths.yaml
-  → patch known Hyperline spec defects               connectors/hyperline/patch.py
-  → normalize codegen-hostile schemas                codegeneration/
-  → Pydantic models + thin HTTP client               generated/hyperline/  (disposable)
-  → explicit Hyperline → Chift mapper                connectors/hyperline/connector.py
-  → InvoicingConnector contract                      chift/connector.py
-  → Chift-shaped FastAPI                             chift/api.py
+Hyperline OpenAPI                                  connectors/hyperline/hyperline.yaml
+  → select path + method pairs                     connectors/hyperline/paths.yaml
+  → thin JSON HTTP client                          generated/hyperline/client.py
+  → one endpoint contract, on demand               codegeneration/generate_context.py
+  → explicit Hyperline → Chift mapper              connectors/hyperline/connector.py
+  → InvoicingConnector contract                    chift/invoicing_connector.py
+  → Chift-shaped FastAPI                           chift/api.py
       resolving consumer → provider → connector
 ```
 
-Everything left of the mapper is mechanical: `python -m codegeneration.run` regenerates it
-deterministically, and generated code is disposable — never edit `generated/` by hand.
+Everything left of the mapper is mechanical: `python -m codegeneration client` regenerates it
+deterministically, and generated artifacts are disposable — never edit `generated/` by hand.
 Everything from the mapper right is reviewed business meaning: units, statuses, names,
-pagination, and provider workflows. The mapper itself was written by an LLM from
-[`skills/add_connector.md`](skills/add_connector.md), then reviewed as ordinary Python.
+pagination, and provider workflows. The mapper was written by an LLM from
+[`AGENTS.md`](AGENTS.md) § Adding a connector, then reviewed as ordinary Python.
 
-[`RESEARCH.md`](RESEARCH.md) has the experiments, normalization rationale, mapping decisions and
-sandbox evidence; [`codegeneration/README.md`](codegeneration/README.md) is the generator runbook.
+### The connector is laid out in five sections
+
+`connectors/hyperline/connector.py` reads top to bottom as **constants**, **utilities**,
+**mapper**, **pagination**, **endpoint**, separated by banner comments. Sections are by kind of
+code, never by topic.
+
+The `_` prefix means *mechanical* and nothing else: anything that builds or consumes a
+`chift.models` type is a mapper, gets a public `to_`/`from_` name, and lives in the mapper
+section — `to_address` and `to_line` included. That rule is checkable, and it is checked: no
+`_`-prefixed function in the file mentions `chift.`.
+
+Mappers are plain module-level functions rather than methods, so a test or a reviewer calls them
+without a client, credentials or a `.env`. That leaves the endpoint class thin enough to read as
+a table of contents.
+
+Of 87 target-field assignments, 74 are direct renames or a single transform; 13 need real
+conditional logic. Those 13 are where every defect in the review checklist actually lived.
 
 ## Reusing the approach
 
-1. Add `connectors/<provider>/openapi.<provider>.yaml` and `paths.yaml`.
-2. Add an asserted `patch.py` only for proven provider-spec defects.
-3. Run `python -m codegeneration.run <provider>`.
-4. Write the provider → Chift mapper with the connector skill, then review it against that
-   skill's checklist.
-5. Subclass `InvoicingConnector`, set `provider = "<name>"`, implement `from_env`.
-6. Verify the four Chift reads against the provider sandbox.
+1. Add `connectors/<provider>/<provider>.yaml` and `paths.yaml`.
+2. Run `python -m codegeneration client <provider>`.
+3. Write the provider → Chift mapper with the procedure in [`AGENTS.md`](AGENTS.md), then
+   review it against its checklist.
+4. Subclass `InvoicingConnector`, set `provider = "<name>"`, implement `from_env`.
+5. Verify the four Chift reads against the provider sandbox.
 
 No file under `chift/` changes when a provider is added. The contract is seven abstract methods
 with no shared behaviour, so a connector that omits one fails at construction rather than
 inheriting a plausible default — the same reason the mapper is reviewed rather than generated.
 
-## POC boundaries
+## Design decisions
+
+### Why no Pydantic model generation
+
+Hyperline's document is generated by [`@asteasolutions/zod-to-openapi`][zod] from Zod schemas —
+their own npm packages name the dependency. The result leans on `anyOf`, `allOf`, nullable object
+intersections and anonymous unions, and community generators turn that into thousands of lines of
+numbered classes (`CreateInvoiceLineItemCreateInvoiceLineItem3`) whose names are an artifact of
+the generator rather than of the API. Depending on those names in handwritten code means a
+regeneration can silently rebind you to a different variant.
+
+More decisively: a generated model is a *lossy projection of a lossy projection*. Generator flags
+that make provider intake tolerant also erase real constraints — one such flag flattened a
+documented `name + unit_amount` **or** `product_id` union into two identical classes that
+validated nothing. We map from the JSON the provider actually returns instead.
+
+[zod]: https://github.com/asteasolutions/zod-to-openapi
+
+### Why no provider-response validation
+
+The provider is the source of truth for its own responses; its published spec is a generated
+description of them, and this one is demonstrably wrong in places. Validating a live response
+against a document we know contains defects converts *vendor typos into outages* — a customer
+whose `state` is null failing a read has nothing to do with Chift's contract.
+
+The mapper reads roughly 14 of a customer's 39 documented fields. Gating on the whole payload
+means fields we never touch can take down an endpoint. So the mapper takes what it needs and
+fails loudly when a required *meaning* is missing, rather than policing the provider's paperwork.
+
+Requests are the mirror image and would be a fair place to validate: we author them, and a
+rejection costs nothing because the call never leaves. That is noted under Limitations.
+
+### Why no typed input arguments on the client
+
+Giving each generated method typed parameters means generating types for request bodies, which is
+model generation under another name — the same numbered classes, the same drift. The client takes
+`Mapping[str, Any]` and the mapper constructs it explicitly, so the shape of every outgoing
+request is visible in reviewed code rather than assembled by a generator.
+
+### Why no outbound request validation
+So we could instead validate against the connector vendor OpenApi but then the vendor
+will likely do that for us.
+
+### Why not a `mapper.yaml`
+
+85% of the mapper is declarative and would read well as data. The other 15% is not, and it is the
+part that breaks:
+
+```yaml
+is_company:   {table: customer_type}
+company_name: {hook: company_name}     # needs is_company, mapped above
+```
+
+A hook needs values the mapping already produced, which means ordering, which means an evaluation
+model. `_amount(x, currency)` needs a sibling field, so transforms are not pure per-field either.
+Two steps in you are designing an expression language. `_page_via_cursor` — thirty lines of
+cursor-walking state — does not fit at all.
+
+So YAML would make the safe 85% prettier and push the dangerous 15% into hooks: Python again,
+minus the surrounding context that made it reviewable. At many more connectors the trade flips,
+because a constrained format is easier to generate correctly and mappings become comparable
+across providers.
+
+
+
+## Limitations
 
 - Hyperline is the only implemented provider; discovery and generation are provider-independent.
 - Cursor-to-page translation walks from page one to the requested page; no stale cursor state is
   stored. Only `page` and `size` are implemented from Chift's broader list-filter surface.
 - Hyperline IDs pass through, because this POC has no persistent technical-ID store.
 - The generated transport supports bearer authentication and JSON only.
-- `chift/models.py` is hand-transcribed from the vendored `chift/chift.openapi.yaml`, not
-  generated. We implement Chift rather than call it, so there is no client to generate; the spec
-  is vendored as the reference a reviewer can diff the models against.
+- `chift/models.py` is hand-transcribed from the vendored `chift/chift.yaml`, not generated. We
+  implement Chift rather than call it, so there is no client to generate; the spec is vendored as
+  the reference a reviewer can diff the models against. Nothing verifies the transcription.
 - Retrieve-one-invoice returns Chift's list shape. `InvoiceItemOutSingle` adds a base64 `pdf`
   field, and Hyperline offers a `public_url` rather than document bytes.
 - A provider HTTP error keeps the provider's status and receives Chift's documented error shape.
   Unexpected bugs are not translated; FastAPI returns its ordinary 500.
 - Nine currencies Hyperline still publishes (BGN, HRK, ANG, …) have been retired from ISO 4217, so
   they have no exponent to scale amounts by. Those invoices fail by name rather than guess.
-
-The reasons for these choices and the alternatives tested are in [`RESEARCH.md`](RESEARCH.md).
+- The pipeline requires OpenAPI 3.1 and refuses 3.0 documents by name, since 3.0 is not JSON
+  Schema. Most published specs are still 3.0, so a down-conversion is the next reusability step.
+- **No static check that the mapper assigns every Chift field.** A `check.py` walking the mapper's
+  AST could collect the Chift fields it assigns and the provider fields it reads, then verify both
+  against the two contracts — every target field assigned, every source field present in the
+  OpenAPI, every constant table exhaustive over its published enum.
+- **Important** Tests should be more involved. This is probably the most important part. This Chift POC could invest heavily
+  in a custom test suite testing all possible edge cases for its own api. creation, modification, deletion...
+  It can then pass all those 'scenarios' in the connector to see if everything works and if there is no data
+  corruption. Doing this basically before any client would stumble on an edge case and complain.
+  This test suite can be divided per connector vertical. In this case we would define one for *InvoicingConnector*.

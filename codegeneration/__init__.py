@@ -1,1 +1,1 @@
-"""OpenAPI → thin typed client (prune → normalize → models + emit)."""
+"""OpenAPI → thin JSON HTTP client (emit selected methods)."""

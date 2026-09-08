@@ -7,28 +7,31 @@ They need HYPERLINE_API_KEY_TEST in .env; offline tests always run.
 from __future__ import annotations
 
 import uuid
-from types import SimpleNamespace
+from pathlib import Path
 
 import httpx
 import pytest
+import yaml
 from fastapi.testclient import TestClient
 from iso4217 import Currency
 
 from chift.api import CONNECTORS, app
-from chift.connector import InvoicingConnector
+from chift.invoicing_connector import InvoicingConnector
 from chift.models import InvoiceItemIn, InvoiceStatus
 from connectors.hyperline.config import get_settings
 from connectors.hyperline.connector import (
     INVOICE_STATUS,
     HyperlineInvoicingConnector,
-    _page_via_cursor,
     from_invoice,
+    page_via_cursor,
     to_contact,
     to_invoice,
 )
-from generated.hyperline import models as hl
 
 CONSUMER = "11111111-1111-1111-1111-111111111111"
+OPENAPI = yaml.safe_load(
+    (Path(__file__).parents[1] / "connectors/hyperline/hyperline.yaml").read_text()
+)
 
 
 @pytest.fixture
@@ -45,17 +48,29 @@ def client():
     get_settings.cache_clear()
 
 
-def _published_enum(model, field: str) -> list[str]:
+def _delete_customer(client, customer_id: str) -> None:
+    """Remove one live fixture. Hyperline requires archiving before deletion.
+
+    This is fixture plumbing, not part of Chift's contract, so it calls the provider
+    client directly rather than living on the connector — the connector implements the
+    seven methods Chift publishes and nothing else.
+    """
+    client.archive_customer(customer_id)
+    client.delete_customer(customer_id)
+
+
+def _published_enum(schema_name: str, field: str) -> list[str]:
     """The values the provider's own schema declares for a field."""
-    schema = model.model_json_schema()["properties"][field]
-    return next(branch["enum"] for branch in schema["anyOf"] if "enum" in branch)
+    schema = OPENAPI["components"]["schemas"][schema_name]["properties"][field]
+    return schema["enum"]
 
 
 def _published_currencies() -> list[str]:
-    return _published_enum(hl.Invoice, "currency")
+    """Return Hyperline's published invoice currencies."""
+    return _published_enum("Invoice", "currency")
 
 
-def _invoice(**changes) -> hl.Invoice:
+def _invoice(**changes) -> dict:
     """Build the smallest valid provider invoice needed by mapper tests."""
     values = {
         "id": "inv_test",
@@ -69,11 +84,11 @@ def _invoice(**changes) -> hl.Invoice:
         "tax_amount": 2100,
         "line_items": [],
     }
-    return hl.Invoice(**(values | changes))
+    return values | changes
 
 
 def test_every_published_invoice_status_has_an_explicit_mapping():
-    assert set(INVOICE_STATUS) == set(_published_enum(hl.Invoice, "status"))
+    assert set(INVOICE_STATUS) == set(_published_enum("Invoice", "status"))
     assert INVOICE_STATUS["closed"] is InvoiceStatus.cancelled
     assert INVOICE_STATUS["open"] is InvoiceStatus.draft
     assert INVOICE_STATUS["grace_period"] is InvoiceStatus.posted
@@ -87,21 +102,6 @@ def test_invoice_mapper_uses_currency_units_or_fails_loudly():
     assert to_invoice(_invoice(currency="JPY", total_amount=100)).total == 100.0
     assert to_invoice(_invoice(currency="KWD", total_amount=100)).total == 0.1
 
-    with pytest.raises(
-        ValueError, match="Missing required provider field"
-    ) as missing_amount:
-        to_invoice(_invoice(total_amount=None))
-    assert str(missing_amount.value) == (
-        "Missing required provider field: invoice.total_amount"
-    )
-
-    with pytest.raises(
-        ValueError, match="Missing required provider field"
-    ) as missing_date:
-        to_invoice(_invoice(issued_at=None))
-    assert (
-        str(missing_date.value) == "Missing required provider field: invoice.issue_date"
-    )
 
 
 def test_currency_hyperline_documents_but_iso4217_dropped_names_the_value():
@@ -150,19 +150,19 @@ def test_settlement_and_audit_fields_are_mapped_not_left_to_chift_defaults():
 
 def test_import_source_and_registration_number_do_not_guess_customer_kind():
     imported_company = to_contact(
-        hl.Customer(
-            id="cus_imported",
-            name="Imported customer",
-            type="automatically_created",
-            registration_number="BE0123456789",
-        )
+        {
+            "id": "cus_imported",
+            "name": "Imported customer",
+            "type": "automatically_created",
+            "registration_number": "BE0123456789",
+        }
     )
     imported_unknown = to_contact(
-        hl.Customer(
-            id="cus_unknown",
-            name="Unknown imported customer",
-            type="automatically_created",
-        )
+        {
+            "id": "cus_unknown",
+            "name": "Unknown imported customer",
+            "type": "automatically_created",
+        }
     )
 
     # Entity kind stays unknown, but the provider's name is preserved rather than dropped.
@@ -176,34 +176,24 @@ def test_import_source_and_registration_number_do_not_guess_customer_kind():
 
 
 def test_invoice_line_maps_discount_or_fails_loudly_when_missing():
-    line = hl.InvoiceLineItem(
-        name="Discounted service",
-        unit_amount=10000,
-        units_count=1,
-        discount_amount=500,
-        tax_amount=1995,
-        amount_excluding_tax=9500,
-        amount=11495,
-    )
+    line = {
+        "name": "Discounted service",
+        "unit_amount": 10000,
+        "units_count": 1,
+        "discount_amount": 500,
+        "tax_amount": 1995,
+        "amount_excluding_tax": 9500,
+        "amount": 11495,
+    }
 
     assert to_invoice(_invoice(line_items=[line])).lines[0].discount_amount == 5.0
-
-    with pytest.raises(
-        ValueError, match="Missing required provider field"
-    ) as missing_discount:
-        to_invoice(
-            _invoice(line_items=[line.model_copy(update={"discount_amount": None})])
-        )
-    assert str(missing_discount.value) == (
-        "Missing required provider field: invoice.line_items[].discount_amount"
-    )
 
 
 def test_cursor_pagination_walks_to_the_requested_page_without_stored_state():
     responses = iter(
         [
-            SimpleNamespace(data=["first"], total=2, next_cursor="next"),
-            SimpleNamespace(data=["second"], total=None, next_cursor=None),
+            {"data": ["first"], "total": 2, "next_cursor": "next"},
+            {"data": ["second"], "total": None, "next_cursor": None},
         ]
     )
     calls = []
@@ -212,7 +202,7 @@ def test_cursor_pagination_walks_to_the_requested_page_without_stored_state():
         calls.append(query)
         return next(responses)
 
-    page = _page_via_cursor(fetch, page=2, size=1, map_item=str.upper, status="all")
+    page = page_via_cursor(fetch, page=2, size=1, map_item=str.upper, status="all")
 
     assert page.model_dump() == {"items": ["SECOND"], "total": 2, "page": 2, "size": 1}
     assert calls == [
@@ -221,13 +211,14 @@ def test_cursor_pagination_walks_to_the_requested_page_without_stored_state():
     ]
 
 
-def test_missing_provider_pagination_total_fails_loudly():
-    def fetch(**_query):
-        return SimpleNamespace(data=[], total=None, next_cursor=None)
+def test_missing_provider_pagination_total_is_a_provider_contract_failure():
+    """`total` is outside the envelope's `required`, so the mapper still checks it."""
 
-    with pytest.raises(ValueError, match="Missing required provider field") as error:
-        _page_via_cursor(fetch, page=1, size=50, map_item=lambda item: item)
-    assert str(error.value) == "Missing required provider field: pagination.total"
+    def fetch(**_query):
+        return {"data": [], "total": None, "next_cursor": None}
+
+    with pytest.raises(ValueError, match="no total"):
+        page_via_cursor(fetch, page=1, size=50, map_item=lambda item: item)
 
 
 def test_chift_rejects_page_sizes_over_100_before_calling_a_connector():
@@ -292,7 +283,7 @@ def test_create_two_contacts_and_get_them_back(client):
         assert set(created_ids).issubset(listed_ids)
     finally:
         for cid in created_ids:
-            connector.delete_contact(cid)
+            _delete_customer(connector.client, cid)
 
 
 def test_create_two_invoices_and_get_them_back(client):
@@ -368,9 +359,9 @@ def test_create_two_invoices_and_get_them_back(client):
         assert set(invoice_ids).issubset(listed_ids)
     finally:
         for iid in invoice_ids:
-            connector.delete_invoice(iid)
+            connector.client.delete_invoice(iid)
         if customer_id:
-            connector.delete_contact(customer_id)
+            _delete_customer(connector.client, customer_id)
 
 
 def test_provider_errors_are_rendered_as_chift_error(client):
@@ -439,7 +430,7 @@ def test_api_resolves_a_consumer_to_its_provider_without_naming_one():
             return cls.__new__(cls)
 
         def get_contact(self, contact_id: str):
-            return to_contact(hl.Customer(id=contact_id, name="Fake", type="corporate"))
+            return to_contact({"id": contact_id, "name": "Fake", "type": "corporate"})
 
     consumer = "22222222-2222-2222-2222-222222222222"
     CONSUMERS[consumer] = "fake-provider"
@@ -469,6 +460,7 @@ def test_a_connector_missing_a_contract_method_cannot_be_constructed():
         def list_contacts(self, *, page: int, size: int): ...
         def get_invoice(self, invoice_id: str): ...
         def create_contact(self, body): ...
+
         # list_invoices deliberately absent.
 
     with pytest.raises(TypeError, match="list_invoices"):
@@ -517,21 +509,28 @@ def _chift_invoice(**over):
 def test_create_invoice_scales_to_the_currency_smallest_unit():
     """The inverse of _amount: JPY has no minor unit, EUR has two."""
     eur = from_invoice(_chift_invoice())
-    assert eur.line_items[0].unit_amount == 100_000
+    assert eur["line_items"][0]["unit_amount"] == 100_000
 
-    jpy = from_invoice(
-        _chift_invoice(currency="JPY")
-    )
-    assert jpy.line_items[0].unit_amount == 1000
+    jpy = from_invoice(_chift_invoice(currency="JPY"))
+    assert jpy["line_items"][0]["unit_amount"] == 1000
+
+
+def test_create_invoice_does_not_invent_a_rounding_policy():
+    invoice = _chift_invoice()
+    invoice.lines[0].unit_price = 1.005
+
+    with pytest.raises(ValueError, match="more precision than EUR supports"):
+        from_invoice(invoice)
 
 
 def test_create_invoice_sends_nothing_the_caller_did_not_state():
-    sent = from_invoice(_chift_invoice()).model_dump(mode="json", exclude_none=True)
+    sent = from_invoice(_chift_invoice())
     # No invented currency, address, tax rate or line description.
     assert sent["customer_id"] == "cus_1"
     assert sent["currency"] == "EUR"
     assert sent["type"] == "invoice"
     assert sent["status"] == "draft"
+    assert sent["emitted_at"] == "2026-01-15T00:00:00Z"
     assert sent["line_items"][0]["name"] == "Consulting"
     assert "number" not in sent and "reference" not in sent
 
@@ -542,12 +541,107 @@ def test_create_invoice_refuses_a_document_hyperline_cannot_represent():
         from_invoice(_chift_invoice(invoice_type="supplier_invoice"))
 
 
-def test_create_invoice_refuses_an_invoice_with_no_lines():
-    with pytest.raises(ValueError, match="invoice.lines"):
-        from_invoice(_chift_invoice(lines=[]))
+def test_create_invoice_sends_what_the_caller_gave_and_lets_hyperline_refuse():
+    """Chift publishes `partner_id` and `lines` as optional; Hyperline requires both.
+
+    The mapper does not predict that. It sends what the caller gave, Hyperline answers
+    400 naming the field, and the single passthrough handler in `chift/api.py` forwards
+    that status. Pre-judging the provider's request contract is the same mistake as
+    validating their responses against their own document.
+    """
+    assert "customer_id" not in from_invoice(_chift_invoice(partner_id=None))
+    assert from_invoice(_chift_invoice(lines=[]))["line_items"] == []
 
 
 def test_posted_maps_to_the_hyperline_state_that_reads_back_as_posted():
     """from_invoice and INVOICE_STATUS must agree, or a create/read round trip drifts."""
-    hl_status = from_invoice(_chift_invoice(status="posted")).status
+    hl_status = from_invoice(_chift_invoice(status="posted"))["status"]
     assert INVOICE_STATUS[hl_status] is InvoiceStatus.posted
+
+
+def _response_shapes(path_verb_status):
+    """Merged properties and `required` for one 2xx response, allOf included."""
+    path, verb, status = path_verb_status
+
+    def resolve(node):
+        while isinstance(node, dict) and "$ref" in node:
+            value = OPENAPI
+            for part in node["$ref"][2:].split("/"):
+                value = value[part]
+            node = value
+        return node
+
+    def merge(schema):
+        schema = resolve(schema)
+        props = dict(schema.get("properties") or {})
+        required = set(schema.get("required") or [])
+        for branch in schema.get("allOf", []):
+            child_props, child_required = merge(branch)
+            props.update(child_props)
+            required |= child_required
+        return props, required
+
+    response = resolve(OPENAPI["paths"][path][verb]["responses"][status])
+    schema = resolve(response["content"]["application/json"]["schema"])
+    props, required = merge(schema)
+    if "data" in props:  # paginated envelope: describe the item, not the wrapper
+        items = resolve(props["data"])
+        if items.get("type") == "array":
+            props, required = merge(items["items"])
+    return props, required
+
+
+def _nullable(schema: dict) -> bool:
+    declared = schema.get("type")
+    if isinstance(declared, list):
+        return "null" in declared
+    return False
+
+
+def test_response_schema_still_guarantees_every_field_the_mapper_subscripts():
+    """`to_invoice` and `_line` subscript instead of `.get()`.
+
+    That is only safe while the provider's response schema marks these `required` and
+    non-nullable, because the client validator rejects the response otherwise. If a
+    spec refresh weakens either guarantee, this fails here rather than as a KeyError
+    on one customer's invoice in production.
+    """
+    sources = [
+        ("/v2/invoices/{id}", "get", "200"),
+        ("/v2/invoices", "get", "200"),
+        ("/v1/invoices", "post", "201"),
+    ]
+    subscripted = [
+        "id",
+        "currency",
+        "line_items",
+        "total_amount",
+        "amount_excluding_tax",
+        "tax_amount",
+    ]
+    for source in sources:
+        props, required = _response_shapes(source)
+        for field in subscripted:
+            assert field in required, f"{source}: {field} is no longer required"
+            assert not _nullable(props[field]), f"{source}: {field} became nullable"
+        # The issue date is required under whichever name that version publishes.
+        assert ("issued_at" in required) or ("emitted_at" in required), source
+
+
+def test_a_body_hyperline_refuses_passes_its_400_through(client):
+    """Chift publishes `partner_id` as optional; Hyperline requires a customer.
+
+    Nothing predicts that. The mapper sends what the caller gave, Hyperline answers 400
+    naming its own field, and the single handler in `chift/error.py` restates it in
+    Chift's error shape without changing the status. This is the whole of Chift's error
+    translation — every other failure is FastAPI's.
+    """
+    http, _ = client
+    body = _chift_invoice(partner_id=None).model_dump(mode="json")
+
+    response = http.post(f"/consumers/{CONSUMER}/invoicing/invoices", json=body)
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error_code"] == "ProviderError"
+    assert "customer_id" in payload["detail"]
