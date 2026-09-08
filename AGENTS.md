@@ -50,7 +50,7 @@ pytest && ruff check --no-cache .
 
 # Adding a connector
 
-**version:** 35 — cite it in the connector docstring.
+**version:** 36 — cite it in the connector docstring.
 
 | | What | Who writes it | Where |
 |---|---|---|---|
@@ -103,10 +103,10 @@ endpoints:
 Neither contract says what anything *means*, so this half cannot be generated. An LLM can write
 it — Hyperline's was — but it must then be reviewed against the seven checks below.
 
-**Write `connectors/<provider>/connector.py`**: extend the matching abstract endpoint nested on
-`InvoicingConnector` for each Chift endpoint, plus `map_error`. See
-[Expose and test](#3-expose-and-test) for the shape. A provider workflow required by an endpoint —
-archive before delete, say — belongs inside that endpoint's `fetch_*`.
+**Write `connectors/<provider>/connector.py`**: subclass `InvoicingConnector` and implement its
+six exact Chift methods plus `map_error`. See [Expose and test](#3-expose-and-test) for the shape.
+A required provider workflow — archive before delete, say — belongs inside the Chift method that
+needs it.
 
 **Give the LLM** `python -m codegeneration contract <provider> <operationId>` (one endpoint,
 `$ref`s inlined, **descriptions intact** — *"expressed in currency's smallest unit"* exists
@@ -217,39 +217,28 @@ Subclass `InvoicingConnector`, set `provider = "<name>"`, implement `from_env`. 
 subclass registers it with `chift/registry.py`, which `chift/api.py` asks for a live connector,
 so **no file under `chift/` changes when you add one**.
 
-**Each Chift endpoint extends its exact abstract contract on `InvoicingConnector`.**
+**Each Chift operation directly implements its exact abstract method on `InvoicingConnector`.**
 
 ```python
-class GetContact(InvoicingConnector.GetContactEndpoint):
-    def fetch(self, client: ProviderClient, contact_id: str) -> dict[str, Any]:
-        return client.get_customer(id=contact_id)
-
-    def map(self, raw: dict[str, Any]) -> chift.ContactItemOut:
-        return to_contact(raw)
-
-
 class HyperlineInvoicingConnector(InvoicingConnector):
     provider = "hyperline"
 
-    get_contact = GetContact()
-    list_contacts = ListContacts()
-    ...
+    def get_contact(self, contact_id: str) -> chift.ContactItemOut:
+        raw = self._request("get_contact", self.client.get_customer, id=contact_id)
+        return to_contact(raw)
 ```
 
-The halves are named apart because they fail differently: a wrong `fetch` is a 404 or a missing
-method, loud and immediate; a wrong `map` returns plausible data, which is why mappers are
-reviewed rather than trusted. Both are ordinary methods — callable in a test with no connector,
-no client and no `.env`.
-
-The nested abstract class fixes the Chift input/output signature. `__init_subclass__` requires
-the corresponding endpoint type while `check` compares its concrete `fetch` and `map`
-signatures, so a connector cannot replace a contact ID with generic `*args` **[check]**.
+The method keeps provider invocation and mapping visible in one place. Mapping itself remains a
+module-level `to_x`/`from_x` function, so it is independently testable without a client,
+credentials, or `.env`. Python's ABC rejects a missing method; `check` also compares every
+concrete signature to the base, so a connector cannot replace a contact ID with generic
+`*args` **[check]**.
 
 **Pagination is not a contract hook.** It is ordinary code in the mapper's Pagination section,
-called from the `fetch` that needs it, returning whatever that endpoint's `map` wants. A provider
-paging by offset or token writes a different function and nothing above it changes.
+called from the list method that needs it. A provider paging by offset or token writes a different
+function and nothing above it changes.
 
-The connector declares the six endpoints, `map_error`, `from_env` and `__init__`, and nothing
+The connector declares the six methods, `map_error`, `from_env` and `__init__`, and nothing
 else **[check]**. Anything existing solely to clean up a live fixture calls the generated client from
 the test. Live tests need the key in `.env`, create their own fixtures, and clean up in a
 `finally`.

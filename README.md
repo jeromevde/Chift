@@ -64,7 +64,7 @@ Hyperline OpenAPI                                  connectors/hyperline/config/h
   → select path + method pairs                     connectors/hyperline/config/paths.yaml
   → thin JSON HTTP client                          connectors/hyperline/generated/client.py
   → one endpoint contract, on demand               codegeneration/generate_context.py
-  → endpoints: fetch + map, per Chift endpoint     connectors/hyperline/connector.py
+  → request + mapping, per Chift method            connectors/hyperline/connector.py
   → InvoicingConnector contract                    chift/invoicing.py
   → slug -> live connector                         chift/registry.py
   → Chift-shaped FastAPI                           chift/api.py
@@ -77,10 +77,10 @@ Everything from the mapper right is reviewed business meaning: units, statuses, 
 pagination, and provider workflows. The mapper was written by an LLM from
 [`AGENTS.md`](AGENTS.md) § Adding a connector, then reviewed as ordinary Python.
 
-### The connector is laid out in six sections
+### The connector is laid out in five sections
 
 `connectors/hyperline/connector.py` reads top to bottom as **constants**, **utilities**,
-**mapper**, **pagination**, **endpoint**, **connector**, separated by banner comments. Sections are by kind of
+**mapper**, **pagination**, **connector**, separated by banner comments. Sections are by kind of
 code, never by topic.
 
 The `_` prefix means *mechanical* and nothing else: anything that builds or consumes a
@@ -89,8 +89,8 @@ section — `to_address` and `to_line` included. That rule is checkable, and it 
 `_`-prefixed function in the file mentions `chift.`.
 
 Resource mappers are plain module-level functions, so tests and reviewers call them without a
-client, credentials, or `.env`. Each concrete endpoint extends the corresponding fixed abstract
-endpoint on `InvoicingConnector` and delegates to those functions.
+client, credentials, or `.env`. Each concrete Chift method performs its provider request and
+delegates the returned dictionary to those functions.
 
 Of 87 target-field assignments, 74 are direct renames or a single transform; 13 need real
 conditional logic. Those 13 are where every defect in the review checklist actually lived.
@@ -100,17 +100,16 @@ conditional logic. Those 13 are where every defect in the review checklist actua
 1. Add `connectors/<provider>/config/<provider>.yaml` and `config/paths.yaml`, selecting only the
    provider operations the connector calls.
 2. Run `python -m codegeneration client <provider>`.
-3. Extend each abstract endpoint on `InvoicingConnector`, implement its `fetch` and `map`, then
-   declare those endpoint objects plus `map_error` on the concrete connector.
+3. Subclass `InvoicingConnector` and implement its six directly signed methods plus `map_error`.
 4. Review the concrete mapper against the checklist.
 5. Verify the Chift endpoints against the provider sandbox.
 
-No file under `chift/` changes when a provider is added. The fixed Chift endpoint subclasses live
-inside `InvoicingConnector`; each has two abstract halves — `fetch` reaches the provider, `map`
-says what the answer means — and the concrete connector declares implementations of all six. They fail differently: a wrong
-`fetch` is a 404, loud; a wrong `map` returns plausible data. A connector missing an endpoint
-cannot be defined. Pagination is not a contract hook, just code in the mapper called from the
-`fetch` that needs it.
+No file under `chift/` changes when a provider is added. `InvoicingConnector` fixes the six Chift
+method signatures; the concrete connector implements each complete provider request and mapping.
+The mapper functions remain separate because their semantic mistakes can return plausible data,
+while request mistakes usually fail loudly. Python's ABC rejects a missing method, and the
+checker rejects a changed signature. Pagination is ordinary connector code called by the list
+method that needs it.
 
 ## Design decisions
 

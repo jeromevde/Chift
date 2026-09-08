@@ -9,7 +9,7 @@ Usage (from the repository root):
         Regenerate one. Fails if a configured path or method is missing.
 
 Writes ``connectors/<provider>/generated/client.py``. The client contains transport
-methods only; ``chift.invoicing`` owns the fixed endpoint contracts.
+methods only; ``chift.invoicing`` owns the fixed Chift method signatures.
 """
 
 from __future__ import annotations

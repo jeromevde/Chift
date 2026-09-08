@@ -40,15 +40,15 @@ paths.yaml
 |---|---|
 | `generate_client.py` | Discover connectors and emit bearer JSON methods |
 | `generate_context.py` | OpenAPI helpers + inlined endpoint contracts |
-| `check_connector.py` | Enforce mapping coverage and the fixed Chift endpoint signatures |
+| `check_connector.py` | Enforce mapping coverage and the fixed Chift method signatures |
 
 The generated client does **not** validate provider JSON against OpenAPI. It sends HTTP and
-returns dictionaries. `InvoicingConnector` owns the fixed Chift endpoint contracts and shared
-request/error pipeline. Each concrete endpoint keeps its provider invocation in `fetch` and its
-business meaning in `map`; OpenAPI remains generation and LLM context only.
+returns dictionaries. `InvoicingConnector` owns the fixed Chift method signatures and shared
+request/error pipeline. Each concrete method performs the provider invocation and then calls its
+reviewed mapper; OpenAPI remains generation and LLM context only.
 
-The LLM fills `connectors/<provider>/connector.py`. There is deliberately no generated endpoint
-module, provider `models.py`, or `patch.py`. Do not edit `generated/`
+The LLM fills `connectors/<provider>/connector.py`. There is deliberately no endpoint abstraction,
+provider `models.py`, or `patch.py`. Do not edit `generated/`
 by hand.
 
 ## Client scope

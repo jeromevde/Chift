@@ -6,8 +6,8 @@
 Every rule here has a defect behind it. They fall into two kinds, and the second is
 the one that matters:
 
-* **Interface** — every concrete endpoint extends the matching abstract endpoint on
-  `InvoicingConnector` and implements its exact Chift input and output signatures.
+* **Interface** — every concrete connector implements `InvoicingConnector`'s exact
+  Chift input and output signatures.
 * **Coverage** — every Chift field either mapped or declared unmappable, no silent
   defaults, tables exhaustive over the provider's published enum. These catch the
   defect this project exists to prevent: a plausible value returned instead of an
@@ -30,11 +30,9 @@ import inspect
 import sys
 from pathlib import Path
 
-from chift.endpoint import Endpoint
-
 ROOT = Path(__file__).resolve().parents[1]
 
-SECTIONS = ("Constants", "Utilities", "Mapper", "Pagination", "Endpoint", "Connector")
+SECTIONS = ("Constants", "Utilities", "Mapper", "Pagination", "Connector")
 
 
 def _sections(tree: ast.Module, lines: list[str]) -> dict[str, tuple[int, int]]:
@@ -158,37 +156,17 @@ def check_coverage(tree: ast.Module, module) -> list[str]:
     return problems
 
 
-def _signature(method) -> tuple:
-    """Return a signature contract, allowing only the provider client type to vary."""
-    signature = inspect.signature(method)
-    parameters = tuple(
-        (
-            parameter.name,
-            parameter.kind,
-            parameter.default,
-            None if parameter.name == "client" else parameter.annotation,
-        )
-        for parameter in signature.parameters.values()
-    )
-    return parameters, signature.return_annotation
-
-
-def check_endpoint_signature(endpoint: Endpoint, contract: type[Endpoint]) -> list[str]:
-    """Check one implementation against its fixed Chift endpoint contract."""
-    problems = []
-    for method in ("fetch", "map"):
-        expected = getattr(contract, method)
-        actual = getattr(type(endpoint), method)
-        if _signature(actual) != _signature(expected):
-            problems.append(
-                f"{type(endpoint).__name__}.{method}{inspect.signature(actual)}: "
-                f"expected {inspect.signature(expected)}"
-            )
-    return problems
+def check_method_signature(connector: type, contract: type, method: str) -> list[str]:
+    """Check one concrete method against its exact Chift signature."""
+    expected = inspect.signature(getattr(contract, method))
+    actual = inspect.signature(getattr(connector, method))
+    if actual == expected:
+        return []
+    return [f"{connector.__name__}.{method}{actual}: expected {expected}"]
 
 
 def check_connector(tree: ast.Module, module) -> list[str]:
-    """Every declared endpoint implements its fixed Chift contract exactly."""
+    """The connector implements every fixed Chift method exactly."""
     from chift.invoicing import InvoicingConnector
 
     problems = []
@@ -208,25 +186,20 @@ def check_connector(tree: ast.Module, module) -> list[str]:
             f"{', '.join(sorted(connector.__abstractmethods__))}"
         )
 
-    for name, contract in InvoicingConnector.ENDPOINTS.items():
-        endpoint = getattr(connector, name, None)
-        if not isinstance(endpoint, contract):
-            problems.append(
-                f"{connector.__name__}.{name}: must extend "
-                f"InvoicingConnector.{contract.__name__}"
-            )
-            continue
-        problems.extend(check_endpoint_signature(endpoint, contract))
+    contract_methods = InvoicingConnector.__abstractmethods__ - {"from_env", "map_error"}
+    for method in sorted(contract_methods):
+        problems.extend(check_method_signature(connector, InvoicingConnector, method))
 
     for node in tree.body:
         if isinstance(node, ast.ClassDef) and node.name == connector.__name__:
             methods = {c.name for c in node.body if isinstance(c, ast.FunctionDef)}
-            extra = methods - {"__init__", "from_env", "map_error"}
+            allowed = InvoicingConnector.__abstractmethods__ | {"__init__"}
+            extra = methods - allowed
             if extra:
                 problems.append(
                     f"{connector.__name__}: methods beyond the contract: "
-                    f"{', '.join(sorted(extra))} — an endpoint is an Endpoint subclass, "
-                    "and test-only workflows call the generated client from the test"
+                    f"{', '.join(sorted(extra))} — test-only workflows call the "
+                    "generated client from the test"
                 )
     return problems
 

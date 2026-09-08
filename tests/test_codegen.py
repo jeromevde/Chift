@@ -7,14 +7,12 @@ import inspect
 import json
 from io import StringIO
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import ClassVar
 
 import httpx
 import pytest
 import yaml
 
-from chift import models as chift
-from chift.endpoint import Endpoint
 from chift.invoicing import InvoicingConnector
 from codegeneration import (
     check_connector,
@@ -364,46 +362,41 @@ def test_the_checker_catches_a_silent_default_and_a_missing_field():
 
 
 def test_the_contract_shares_only_the_request_pipeline():
-    """The base owns request flow and the six exact Chift endpoint contracts.
+    """The base owns request flow and six directly callable Chift methods.
 
     The pipeline is shared because it is identical for every provider: one try/except
-    delegating to `map_error`. Each endpoint's provider call and mapping stay together
-    in the mapper, while its public Chift signature stays fixed in the base.
+    delegating to `map_error`. Each concrete method owns its provider call and mapping,
+    while its public signature stays fixed in the base.
     """
     assert "_request" in vars(InvoicingConnector)
-    assert Endpoint.__abstractmethods__ == frozenset({"fetch", "map"})
-    assert InvoicingConnector.ENDPOINTS == {
-        "get_contact": InvoicingConnector.GetContactEndpoint,
-        "list_contacts": InvoicingConnector.ListContactsEndpoint,
-        "create_contact": InvoicingConnector.CreateContactEndpoint,
-        "get_invoice": InvoicingConnector.GetInvoiceEndpoint,
-        "list_invoices": InvoicingConnector.ListInvoicesEndpoint,
-        "create_invoice": InvoicingConnector.CreateInvoiceEndpoint,
-    }
-    parameters = inspect.signature(
-        InvoicingConnector.ListInvoicesEndpoint.fetch
-    ).parameters
-    assert list(parameters) == ["self", "client", "page", "size"]
+    assert InvoicingConnector.__abstractmethods__ == frozenset(
+        {
+            "get_contact",
+            "list_contacts",
+            "create_contact",
+            "get_invoice",
+            "list_invoices",
+            "create_invoice",
+            "from_env",
+            "map_error",
+        }
+    )
+    parameters = inspect.signature(InvoicingConnector.list_invoices).parameters
+    assert list(parameters) == ["self", "page", "size"]
     assert parameters["page"].kind is inspect.Parameter.KEYWORD_ONLY
     assert parameters["size"].kind is inspect.Parameter.KEYWORD_ONLY
-    assert InvoicingConnector.__abstractmethods__ == frozenset({"from_env", "map_error"})
-    assert "paginate" not in InvoicingConnector.__abstractmethods__
-    assert not (ROOT / "codegeneration/generate_endpoints.py").exists()
-    assert not (ROOT / "connectors/hyperline/generated/invoicing.py").exists()
+    assert not (ROOT / "chift/endpoint.py").exists()
 
 
-def test_the_checker_rejects_an_endpoint_that_weakens_the_chift_signature():
-    """Subclassing the right endpoint cannot hide an incompatible override."""
+def test_the_checker_rejects_a_method_that_weakens_the_chift_signature():
+    """Python's ABC checks presence; our checker also checks the signature."""
 
-    class WrongGetContact(InvoicingConnector.GetContactEndpoint):
-        def fetch(self, client: Any) -> dict[str, Any]:
-            return {}
+    class WrongConnector:
+        def get_contact(self):
+            return None
 
-        def map(self, raw: dict[str, Any]) -> chift.ContactItemOut:
-            return chift.ContactItemOut.model_validate(raw)
-
-    problems = check_connector.check_endpoint_signature(
-        WrongGetContact(), InvoicingConnector.GetContactEndpoint
+    problems = check_connector.check_method_signature(
+        WrongConnector, InvoicingConnector, "get_contact"
     )
     assert len(problems) == 1
     assert "contact_id" in problems[0]

@@ -17,7 +17,6 @@ from iso4217 import Currency
 from pydantic import ValidationError as PydanticValidationError
 
 from chift.api import CONNECTORS, app
-from chift.endpoint import Endpoint
 from chift.invoicing import InvoicingConnector
 from chift.models import InvoiceItemIn, InvoiceStatus
 from connectors.hyperline.config import get_settings
@@ -40,7 +39,7 @@ OPENAPI = yaml.safe_load(
 def client():
     get_settings.cache_clear()
     try:
-        connector = HyperlineInvoicingConnector()
+        connector = HyperlineInvoicingConnector.from_env()
     except ValueError:
         pytest.skip("Hyperline credentials not in .env")
     CONNECTORS[CONSUMER] = connector
@@ -55,7 +54,7 @@ def _delete_customer(client, customer_id: str) -> None:
 
     This is fixture plumbing, not part of Chift's contract, so it calls the provider
     client directly rather than living on the connector — the connector implements the
-    seven methods Chift publishes and nothing else.
+    six invoicing operations Chift publishes and nothing else.
     """
     client.archive_customer(customer_id)
     client.delete_customer(customer_id)
@@ -69,16 +68,6 @@ class _StubClient:
 
     def list_customers(self, **_query):
         return {"data": self._raw["items"], "total": self._raw["total"], "next_cursor": None}
-
-
-class _EchoEndpoint(Endpoint):
-    """The smallest possible endpoint: returns what the provider said."""
-
-    def fetch(self, _client, *args, **kwargs):
-        return {"args": args, **kwargs}
-
-    def map(self, raw):
-        return raw
 
 
 def _published_enum(schema_name: str, field: str) -> list[str]:
@@ -270,7 +259,7 @@ def test_cursor_pagination_walks_to_the_requested_page_without_stored_state():
         calls.append(query)
         return next(responses)
 
-    # Fetch only: the walk returns a neutral shape, the endpoint maps the items.
+    # The walk returns a neutral shape; the connector method maps the items.
     raw = page_via_cursor(fetch, page=2, size=1)
 
     assert raw == {"items": ["second"], "total": 2, "page": 2, "size": 1}
@@ -292,7 +281,7 @@ def test_missing_provider_pagination_total_is_a_provider_contract_failure():
 
     raw = page_via_cursor(fetch, page=1, size=50)
     assert raw["total"] is None
-    # PagedEndpoint builds the ChiftPage, and Chift's `total` is a required int.
+    # The connector builds the ChiftPage, and Chift's `total` is a required int.
     connector = HyperlineInvoicingConnector(_StubClient(raw))
     with pytest.raises(PydanticValidationError, match="total"):
         connector.list_contacts(page=1, size=50)
@@ -518,17 +507,13 @@ def test_api_resolves_a_consumer_to_its_provider_without_naming_one():
         def from_env(cls) -> FakeConnector:
             calls.append("built")
             fake = cls.__new__(cls)
-            fake.client = None  # this endpoint never reaches a provider
+            fake.client = None  # this method never reaches a provider
             return fake
 
-        class _GetContact(InvoicingConnector.GetContactEndpoint):
-            def fetch(self, client, contact_id: str):
-                return {"id": contact_id, "name": "Fake", "type": "corporate"}
-
-            def map(self, raw):
-                return to_contact(raw)
-
-        get_contact = _GetContact()
+        def get_contact(self, contact_id: str):
+            return to_contact(
+                {"id": contact_id, "name": "Fake", "type": "corporate"}
+            )
 
     consumer = "22222222-2222-2222-2222-222222222222"
     CONSUMERS[consumer] = "fake-provider"
@@ -544,22 +529,25 @@ def test_api_resolves_a_consumer_to_its_provider_without_naming_one():
         CONNECTORS.pop(consumer, None)
 
 
-def test_a_connector_missing_an_endpoint_is_refused_at_definition():
-    """A connector that omits an endpoint cannot be defined, let alone served.
+def test_a_connector_missing_a_contract_method_cannot_be_constructed():
+    """Python's ABC refuses a connector that omits part of Chift's contract."""
 
-    Endpoints are class attributes, so `ABC` cannot police them; `__init_subclass__`
-    does, and it fires the moment the class body is read — earlier than construction
-    and far earlier than someone's first request.
-    """
-    with pytest.raises(TypeError, match="missing Endpoint declarations"):
+    class Incomplete(InvoicingConnector):
+        provider = ""
 
-        class Incomplete(InvoicingConnector):
-            provider = "incomplete"
+        @classmethod
+        def from_env(cls):
+            return cls()
 
-            get_contact = _EchoEndpoint()
-            list_contacts = _EchoEndpoint()
-            create_contact = _EchoEndpoint()
-            # the three invoice endpoints are deliberately absent
+        def get_contact(self, contact_id: str): ...
+        def list_contacts(self, *, page: int, size: int): ...
+        def create_contact(self, body): ...
+        def map_error(self, operation, error): ...
+
+        # The three invoice methods are deliberately absent.
+
+    with pytest.raises(TypeError, match="abstract.*invoice"):
+        Incomplete()
 
 def test_an_unknown_provider_is_our_misconfiguration_not_a_bad_request():
     from chift.api import CONSUMERS
