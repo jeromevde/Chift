@@ -43,9 +43,10 @@ paths.yaml
 | `check_connector.py` | Enforce mapping coverage and the fixed Chift method signatures |
 
 The generated client does **not** validate provider JSON against OpenAPI. It sends HTTP and
-returns dictionaries. `InvoicingConnector` owns the fixed Chift method signatures and shared
-request/error pipeline. Each concrete method performs the provider invocation and then calls its
-reviewed mapper; OpenAPI remains generation and LLM context only.
+returns dictionaries. `InvoicingConnector` owns the fixed Chift method signatures and requires
+provider-specific error mapping. Each concrete method performs the provider invocation and then
+calls its reviewed mapper; native HTTP failures propagate to the direct handler in `chift/api.py`.
+OpenAPI remains generation and LLM context only.
 
 The LLM fills `connectors/<provider>/connector.py`. There is deliberately no endpoint abstraction,
 provider `models.py`, or `patch.py`. Do not edit `generated/`

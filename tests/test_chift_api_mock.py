@@ -455,12 +455,12 @@ def test_unknown_consumer_is_404_without_touching_a_connector():
 @pytest.mark.parametrize(
     ("upstream", "expected_status", "expected_code", "exposes_detail"),
     [
-        (400, 400, "ProviderError", True),
+        (400, 502, "ProviderError", False),
         (401, 502, "ProviderError", False),
         (403, 502, "ProviderError", False),
         (404, 404, "NotFound", True),
         (409, 409, "ProviderError", True),
-        (422, 400, "ProviderError", True),
+        (422, 502, "ProviderError", False),
         (429, 502, "ProviderError", False),
         (503, 502, "ProviderError", False),
     ],
@@ -631,9 +631,9 @@ def test_create_invoice_sends_what_the_caller_gave_and_lets_hyperline_refuse():
     """Chift publishes `partner_id` and `lines` as optional; Hyperline requires both.
 
     The mapper does not predict that. It sends what the caller gave, Hyperline answers
-    400 naming the field, and the single passthrough handler in `chift/api.py` forwards
-    that status. Pre-judging the provider's request contract is the same mistake as
-    validating their responses against their own document.
+    with its own validation error, and the API treats that post-Chift rejection as an
+    integration failure. Pre-judging the provider's request contract is the same mistake
+    as validating their responses against their own document.
     """
     assert "customer_id" not in from_invoice(_chift_invoice(partner_id=None))
     assert from_invoice(_chift_invoice(lines=[]))["line_items"] == []
@@ -714,20 +714,19 @@ def test_response_schema_still_guarantees_every_field_the_mapper_subscripts():
         assert ("issued_at" in required) or ("emitted_at" in required), source
 
 
-def test_a_body_hyperline_refuses_passes_its_400_through(client):
+def test_a_body_chift_accepts_but_hyperline_refuses_is_our_failure(client):
     """Chift publishes `partner_id` as optional; Hyperline requires a customer.
 
     Nothing predicts that. The mapper sends what the caller gave, Hyperline answers 400
-    naming its own field, and the single handler in `chift/errors.py` restates it in
-    Chift's error shape without changing the status. This is the whole of Chift's error
-    translation — every other failure is FastAPI's.
+    naming its own field, and the direct HTTP handler maps that to 502 because Chift had
+    already accepted the request. Every non-provider failure remains FastAPI's.
     """
     http, _ = client
     body = _chift_invoice(partner_id=None).model_dump(mode="json")
 
     response = http.post(f"/consumers/{CONSUMER}/invoicing/invoices", json=body)
 
-    assert response.status_code == 400
+    assert response.status_code == 502
     payload = response.json()
     assert payload["error_code"] == "ProviderError"
-    assert "customer_id" in payload["detail"]
+    assert payload["detail"] == ""

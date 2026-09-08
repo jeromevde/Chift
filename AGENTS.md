@@ -28,13 +28,13 @@ KEEP THE CODE BRUTALLY SIMPLE. DO NOT OVERENGINEER. No new frameworks.
 **Errors**
 
 - Each concrete connector implements `map_error`, because only it understands its provider's
-  errors. `InvoicingConnector._request` catches provider HTTP failures and hands them to the
-  connector's `map_error`, which raises `ConnectorError`;
-  `chift/errors.py` only renders that provider-independent result. FastAPI answers the rest —
-  422 for schema violations, 500 for anything unexpected.
+  errors. Provider calls raise native `httpx.HTTPStatusError` unchanged. The direct handler in
+  `chift/api.py` asks the active connector's `map_error` for a Chift status and body, then renders
+  them. FastAPI answers the rest — 422 for schema violations, 500 for anything unexpected.
 - Never pre-judge what a provider will reject. Chift's input schema is the union of what every
   provider accepts, so its optional fields are mandatory for some. Let the provider refuse; its
-  400 names the field and passes through.
+  error names the field. If Chift accepted the request, that upstream rejection is our integration
+  failure and maps to 502.
 - Never validate provider responses against their OpenAPI at runtime. Their document is wrong
   often enough that gating on it turns vendor typos into outages.
 
@@ -50,7 +50,7 @@ pytest && ruff check --no-cache .
 
 # Adding a connector
 
-**version:** 36 — cite it in the connector docstring.
+**version:** 37 — cite it in the connector docstring.
 
 | | What | Who writes it | Where |
 |---|---|---|---|
@@ -224,7 +224,7 @@ class HyperlineInvoicingConnector(InvoicingConnector):
     provider = "hyperline"
 
     def get_contact(self, contact_id: str) -> chift.ContactItemOut:
-        raw = self._request("get_contact", self.client.get_customer, id=contact_id)
+        raw = self.client.get_customer(id=contact_id)
         return to_contact(raw)
 ```
 
@@ -232,7 +232,7 @@ The method keeps provider invocation and mapping visible in one place. Mapping i
 module-level `to_x`/`from_x` function, so it is independently testable without a client,
 credentials, or `.env`. Python's ABC rejects a missing method; `check` also compares every
 concrete signature to the base, so a connector cannot replace a contact ID with generic
-`*args` **[check]**.
+`*args` **[check]**. Native provider HTTP failures propagate to the API handler without a wrapper.
 
 **Pagination is not a contract hook.** It is ordinary code in the mapper's Pagination section,
 called from the list method that needs it. A provider paging by offset or token writes a different

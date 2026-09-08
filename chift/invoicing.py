@@ -3,29 +3,18 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable
-from typing import Any, ClassVar
+from typing import ClassVar
 
 import httpx
 
 from chift import models as chift
 from chift import registry
-from chift.errors import ConnectorError
 
 
 class InvoicingConnector(ABC):
     """Six Chift operations, provider construction, and HTTP error mapping."""
 
     provider: ClassVar[str]
-
-    def _request(
-        self, operation: str, call: Callable[..., Any], *args: Any, **kwargs: Any
-    ) -> Any:
-        """Run one provider call and delegate its HTTP failure to `map_error`."""
-        try:
-            return call(*args, **kwargs)
-        except httpx.HTTPStatusError as error:
-            raise self.map_error(operation, error) from error
 
     @abstractmethod
     def get_contact(self, contact_id: str) -> chift.ContactItemOut:
@@ -56,7 +45,9 @@ class InvoicingConnector(ABC):
         """Create one invoice from Chift's request body."""
 
     @abstractmethod
-    def map_error(self, operation: str, error: httpx.HTTPStatusError) -> ConnectorError:
+    def map_error(
+        self, operation: str, error: httpx.HTTPStatusError
+    ) -> tuple[int, chift.ChiftError]:
         """Restate one provider HTTP failure as Chift's error."""
 
     @classmethod

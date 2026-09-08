@@ -1,19 +1,20 @@
 """
 Minimal Chift invoicing API (FastAPI).
 
-Connectors map provider data and errors into Chift's contract. This API only renders
-their provider-independent errors, while FastAPI handles everything else normally,
-including body-shape violations with Chift's published 422.
+Connectors map provider data and errors into Chift's contract. The API catches native
+provider HTTP failures and asks the active connector to translate them; FastAPI handles
+everything else normally, including body-shape violations with Chift's published 422.
 """
 
 from __future__ import annotations
 
 import logging
 
-from fastapi import FastAPI, HTTPException, Query
+import httpx
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 
 from chift import registry
-from chift.errors import ConnectorError, connector_error
 from chift.invoicing import InvoicingConnector
 from chift.models import (
     ChiftPage,
@@ -35,9 +36,6 @@ CONSUMERS: dict[str, str] = {}
 # consumer_id → live connector. Cache for resolved consumers, and the injection
 # point for tests, which put a pre-built connector here and never reach `build`.
 CONNECTORS: dict[str, InvoicingConnector] = {}
-
-# Connectors interpret provider failures; this boundary only renders the result.
-app.add_exception_handler(ConnectorError, connector_error)
 
 
 def _connector(consumer_id: str) -> InvoicingConnector:
@@ -67,6 +65,23 @@ def _connector(consumer_id: str) -> InvoicingConnector:
             status_code=500, detail=f"{provider} is not configured"
         ) from exc
     return CONNECTORS[consumer_id]
+
+
+@app.exception_handler(httpx.HTTPStatusError)
+async def provider_http_error(
+    request: Request, error: httpx.HTTPStatusError
+) -> JSONResponse:
+    """Translate a native provider HTTP failure with the active connector."""
+    connector = _connector(request.path_params["consumer_id"])
+    operation = request.scope["route"].name
+    status, body = connector.map_error(operation, error)
+    log.warning(
+        "%s: provider %s -> Chift %s",
+        operation,
+        error.response.status_code,
+        status,
+    )
+    return JSONResponse(status_code=status, content=body.model_dump())
 
 
 @app.get(

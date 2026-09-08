@@ -4,7 +4,7 @@ Chift invoicing connector against Hyperline.
 Generated client fetches provider JSON; this maps into chift.models.
 
 Provenance:
-  Procedure: AGENTS.md § Adding a connector v36
+  Procedure: AGENTS.md § Adding a connector v37
   Contract: python -m codegeneration contract hyperline <operationId>
 
 Written by an LLM from that skill + Hyperline's contract + Chift's contract, then
@@ -22,7 +22,6 @@ import httpx
 from iso4217 import Currency
 
 from chift import models as chift
-from chift.errors import ConnectorError
 from chift.invoicing import InvoicingConnector
 from connectors.hyperline.config import get_settings
 from connectors.hyperline.generated.client import HyperlineClient
@@ -122,11 +121,6 @@ CREATE_INVOICE_STATUS = {
     chift.InvoiceStatusIn.draft: "draft",
     chift.InvoiceStatusIn.posted: "to_pay",
 }
-
-# Mapping decision: Hyperline's caller-actionable failures retain the closest Chift
-# status. Authentication, rate limiting, and provider failures are our gateway problem.
-PROVIDER_STATUS = {400: 400, 404: 404, 409: 409, 422: 400}
-
 
 # ----------------------------------------------------------------------------
 # Utilities — mechanical helpers. No Chift semantics, no provider judgement.
@@ -490,16 +484,14 @@ class HyperlineInvoicingConnector(InvoicingConnector):
 
     def get_contact(self, contact_id: str) -> chift.ContactItemOut:
         """Retrieve and map one Hyperline customer."""
-        raw = self._request("get_contact", self.client.get_customer, id=contact_id)
+        raw = self.client.get_customer(id=contact_id)
         return to_contact(raw)
 
     def list_contacts(
         self, *, page: int, size: int
     ) -> chift.ChiftPage[chift.ContactItemOut]:
         """Retrieve and map one numbered page of Hyperline customers."""
-        raw = self._request(
-            "list_contacts",
-            page_via_cursor,
+        raw = page_via_cursor(
             self.client.list_customers,
             page=page,
             size=size,
@@ -508,14 +500,12 @@ class HyperlineInvoicingConnector(InvoicingConnector):
 
     def create_contact(self, body: chift.ContactItemIn) -> chift.ContactItemOut:
         """Create and map one Hyperline customer."""
-        raw = self._request(
-            "create_contact", self.client.create_customer, from_contact(body)
-        )
+        raw = self.client.create_customer(from_contact(body))
         return to_contact(raw)
 
     def get_invoice(self, invoice_id: str) -> chift.InvoiceItemOut:
         """Retrieve and map one Hyperline invoice."""
-        raw = self._request("get_invoice", self.client.get_invoice, id=invoice_id)
+        raw = self.client.get_invoice(id=invoice_id)
         return to_invoice(raw)
 
     def list_invoices(
@@ -524,9 +514,7 @@ class HyperlineInvoicingConnector(InvoicingConnector):
         """Retrieve and map one numbered page of Hyperline invoices."""
         # Mapping decision: request every lifecycle explicitly instead of relying on
         # Hyperline's undocumented default status filter.
-        raw = self._request(
-            "list_invoices",
-            page_via_cursor,
+        raw = page_via_cursor(
             self.client.list_invoices,
             page=page,
             size=size,
@@ -536,18 +524,24 @@ class HyperlineInvoicingConnector(InvoicingConnector):
 
     def create_invoice(self, body: chift.InvoiceItemIn) -> chift.InvoiceItemOut:
         """Create and map one Hyperline invoice."""
-        raw = self._request(
-            "create_invoice", self.client.create_invoice, from_invoice(body)
-        )
+        raw = self.client.create_invoice(from_invoice(body))
         return to_invoice(raw)
 
     def map_error(
         self, operation: str, error: httpx.HTTPStatusError
-    ) -> ConnectorError:
+    ) -> tuple[int, chift.ChiftError]:
         """Map Hyperline's HTTP status and actual response into Chift's error."""
         upstream = error.response.status_code
-        status = PROVIDER_STATUS[upstream] if upstream in PROVIDER_STATUS else 502  # noqa: SIM401
-        return ConnectorError(
+        statuses = {
+            400: 502,  # Chift accepted the call; Hyperline's rejection is our failure.
+            404: 404,  # The requested resource does not exist in either API.
+            409: 409,  # The request conflicts with provider state in either API.
+            422: 502,  # Chift accepted the call; its upstream rejection is our failure.
+        }
+        # Authentication, rate limiting, and provider 5xx failures belong to Chift's
+        # connection with Hyperline, not to its caller, so unlisted statuses become 502.
+        status = statuses[upstream] if upstream in statuses else 502  # noqa: SIM401
+        return (
             status,
             chift.ChiftError(
                 message="Not found" if status == 404 else "Provider request failed",

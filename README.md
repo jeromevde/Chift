@@ -190,11 +190,12 @@ across providers.
   the reference a reviewer can diff the models against. Nothing verifies the transcription.
 - Retrieve-one-invoice returns Chift's list shape. `InvoiceItemOutSingle` adds a base64 `pdf`
   field, and Hyperline offers a `public_url` rather than document bytes.
-- Hyperline errors are mapped by its concrete connector: 400 and 422 become 400, 404 and 409
-  remain unchanged, and everything else — including 401/403/429, which mean *our*
-  key or *our* rate limit rather than the caller's request — becomes 502. Chift documents no
-  502; `chift/errors.py` only renders the provider-independent `ConnectorError`. Unexpected bugs
-  are not translated; FastAPI returns its ordinary 500 with no body.
+- Hyperline errors are mapped by its concrete connector: 404 and 409 remain unchanged; 400 and
+  422 become 502 because Chift already accepted the call; and everything else — including
+  401/403/429, which mean *our* key or *our* rate limit rather than the caller's request — becomes
+  502. Chift documents no 502. A direct `httpx.HTTPStatusError` handler in `chift/api.py` asks the
+  active connector to translate the failure and renders its `ChiftError`. Unexpected bugs are not
+  translated; FastAPI returns its ordinary 500 with no body.
 - Nine currencies Hyperline still publishes (BGN, HRK, ANG, …) have been retired from ISO 4217, so
   they have no exponent to scale amounts by. Those invoices fail by name rather than guess.
 - The pipeline requires OpenAPI 3.1 and refuses 3.0 documents by name, since 3.0 is not JSON

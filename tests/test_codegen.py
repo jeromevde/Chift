@@ -361,14 +361,13 @@ def test_the_checker_catches_a_silent_default_and_a_missing_field():
     assert problems and "neither assigned nor declared" in problems[0]
 
 
-def test_the_contract_shares_only_the_request_pipeline():
-    """The base owns request flow and six directly callable Chift methods.
+def test_the_contract_exposes_only_chift_operations_and_error_mapping():
+    """The base fixes the public methods without wrapping provider invocation.
 
-    The pipeline is shared because it is identical for every provider: one try/except
-    delegating to `map_error`. Each concrete method owns its provider call and mapping,
-    while its public signature stays fixed in the base.
+    Each concrete method owns its provider call and mapping. Native HTTP failures
+    propagate to the FastAPI handler, which delegates their meaning to `map_error`.
     """
-    assert "_request" in vars(InvoicingConnector)
+    assert "_request" not in vars(InvoicingConnector)
     assert InvoicingConnector.__abstractmethods__ == frozenset(
         {
             "get_contact",
