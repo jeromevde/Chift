@@ -39,9 +39,9 @@ Three things to look at:
 
 | Where | Why it is the interesting part |
 |---|---|
-| [`connectors/hyperline/connector.py`](connectors/hyperline/connector.py) | Grep `# Mapping decision:` and `# REVIEW:` — 41 markers. Every semantic judgement is stated beside the code it affects, so you can approve the lossy choices without reading the field renames. |
+| [`connectors/hyperline/invoicing_mapper.py`](connectors/hyperline/invoicing_mapper.py) | Grep `# Mapping decision:` and `# REVIEW:` — 41 markers. Every semantic judgement is stated beside the code it affects, so you can approve the lossy choices without reading the field renames. |
 | [`AGENTS.md`](AGENTS.md) § Review it against this checklist | Seven checks, each one a defect an LLM draft actually produced here. This is the reusable artefact. |
-| [`codegeneration/`](codegeneration/README.md) | Two scripts: `generate_client.py` emits, `generate_context.py` reads. OpenAPI in, no provider models out. |
+| [`codegeneration/`](codegeneration/README.md) | Four scripts: `generate_client.py` emits, `generate_context.py` reads, `generate_mapper_template.py` scaffolds, `check_mapper.py` enforces the rules. OpenAPI in, no provider models out. |
 
 ## Supported surface
 
@@ -63,8 +63,9 @@ Three things to look at:
 Hyperline OpenAPI                                  connectors/hyperline/hyperline.yaml
   → select path + method pairs                     connectors/hyperline/paths.yaml
   → thin JSON HTTP client                          generated/hyperline/client.py
+  → mapper scaffold, sections + wiring              generated/hyperline/invoicing_mapper_template.py
   → one endpoint contract, on demand               codegeneration/generate_context.py
-  → explicit Hyperline → Chift mapper              connectors/hyperline/connector.py
+  → explicit Hyperline → Chift mapper              connectors/hyperline/invoicing_mapper.py
   → InvoicingConnector contract                    chift/invoicing_connector.py
   → Chift-shaped FastAPI                           chift/api.py
       resolving consumer → provider → connector
@@ -78,7 +79,7 @@ pagination, and provider workflows. The mapper was written by an LLM from
 
 ### The connector is laid out in five sections
 
-`connectors/hyperline/connector.py` reads top to bottom as **constants**, **utilities**,
+`connectors/hyperline/invoicing_mapper.py` reads top to bottom as **constants**, **utilities**,
 **mapper**, **pagination**, **endpoint**, separated by banner comments. Sections are by kind of
 code, never by topic.
 

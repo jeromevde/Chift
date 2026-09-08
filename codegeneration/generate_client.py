@@ -268,6 +268,12 @@ def run(
         ["ruff", "format", str(client_path)], check=True, capture_output=True
     )
 
+    # The scaffold comes from the same paths.yaml, so refresh it here rather than leave
+    # it to drift until someone remembers to run `template`.
+    from codegeneration.generate_mapper_template import write as write_template
+
+    write_template(out_pkg.name)
+
     for stale in (
         "contracts.json",
         "models.py",
@@ -297,7 +303,10 @@ def main(argv: list[str] | None = None) -> None:
             connector.client_class,
             connector.endpoints,
         )
-        print(f"  wrote {connector.out_pkg.relative_to(ROOT)}/client.py")
+        print(
+            f"  wrote {connector.out_pkg.relative_to(ROOT)}/"
+            "client.py + invoicing_mapper_template.py"
+        )
 
 
 if __name__ == "__main__":

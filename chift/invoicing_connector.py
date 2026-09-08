@@ -75,7 +75,7 @@ class InvoicingConnector(ABC):
 
 
 def _discover() -> None:
-    """Import every `connectors/<name>/connector.py` so subclasses register.
+    """Import every `connectors/<name>/*_mapper.py` so subclasses register.
 
     Mirrors `codegeneration.run.discover()`: the runtime learns providers by
     scanning the directory, never from a list maintained here. Lazy on purpose —
@@ -85,7 +85,11 @@ def _discover() -> None:
 
     for module in pkgutil.iter_modules(connectors.__path__):
         if module.ispkg:
-            importlib.import_module(f"connectors.{module.name}.connector")
+            package = importlib.import_module(f"connectors.{module.name}")
+            for mapper in pkgutil.iter_modules(package.__path__):
+                # One mapper per Chift vertical: invoicing_mapper, accounting_mapper, ...
+                if mapper.name.endswith("_mapper"):
+                    importlib.import_module(f"connectors.{module.name}.{mapper.name}")
 
 
 def providers() -> list[str]:

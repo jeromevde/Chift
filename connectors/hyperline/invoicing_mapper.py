@@ -4,7 +4,7 @@ Chift invoicing connector against Hyperline.
 Generated client fetches provider JSON; this maps into chift.models.
 
 Provenance:
-  Procedure: AGENTS.md § Adding a connector v26
+  Procedure: AGENTS.md § Adding a connector v29
   Contract: python -m codegeneration contract hyperline <operationId>
 
 Written by an LLM from that skill + Hyperline's contract + Chift's contract, then
@@ -26,6 +26,31 @@ from connectors.hyperline.config import get_settings
 from generated.hyperline.client import HyperlineClient
 
 T = TypeVar("T")
+
+
+# Chift fields Hyperline does not carry. Checked by `python -m codegeneration check`,
+# which fails on any target field that is neither assigned nor listed here — so an
+# omission has to be a decision someone wrote down, not something nobody noticed.
+# Verified against the vendored spec: Hyperline's Customer has no phone, gender or
+# split names, its Address has no contact details or house number, and its invoice
+# lines carry a product_id but no product code, name or tax id.
+UNMAPPED = {
+    "AddressItemOutInvoicing": {"box", "email", "mobile", "number", "phone"},
+    "ContactItemOut": {
+        "birthdate",
+        "comment",
+        "company_id",
+        "customer_account_number",
+        "gender",
+        "last_name",
+        "mobile",
+        "phone",
+        "supplier_account_number",
+    },
+    "InvoiceLineItemOut": {"account_number", "product_code", "product_name", "tax_id"},
+    # Hyperline has no accounting period; `issued_at` is the only date it states.
+    "InvoiceItemOut": {"accounting_date"},
+}
 
 
 # ----------------------------------------------------------------------------

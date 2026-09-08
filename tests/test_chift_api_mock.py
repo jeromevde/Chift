@@ -20,7 +20,7 @@ from chift.api import CONNECTORS, app
 from chift.invoicing_connector import InvoicingConnector
 from chift.models import InvoiceItemIn, InvoiceStatus
 from connectors.hyperline.config import get_settings
-from connectors.hyperline.connector import (
+from connectors.hyperline.invoicing_mapper import (
     INVOICE_STATUS,
     HyperlineInvoicingConnector,
     from_invoice,

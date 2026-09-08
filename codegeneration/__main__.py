@@ -3,6 +3,8 @@
     python -m codegeneration client [provider ...]        generate HTTP clients
     python -m codegeneration operations <provider> [--all]        the connector's operations
     python -m codegeneration contract <provider> <opId>   one endpoint, self-contained
+    python -m codegeneration template <provider>          a new mapper's skeleton
+    python -m codegeneration check <provider>             enforce the mapper rules
 
 `contract` feeds an LLM writing a mapper: one operation, every reference inlined,
 from the vendored OpenAPI. Terminals show YAML; redirected output stays compact JSON.
@@ -12,9 +14,14 @@ from __future__ import annotations
 
 import sys
 
-from codegeneration import generate_client, generate_context
+from codegeneration import (
+    check_mapper,
+    generate_client,
+    generate_context,
+    generate_mapper_template,
+)
 
-COMMANDS = ("client", "operations", "contract")
+COMMANDS = ("client", "operations", "contract", "template", "check")
 
 USAGE = """usage:
   python -m codegeneration client [provider ...]
@@ -34,6 +41,10 @@ def main(argv: list[str] | None = None) -> None:
         generate_context.list_operations(args)
     elif command == "contract":
         generate_context.main(args)
+    elif command == "template":
+        generate_mapper_template.main(args)
+    elif command == "check":
+        check_mapper.main(args)
     else:  # pragma: no cover
         raise SystemExit(USAGE)
 

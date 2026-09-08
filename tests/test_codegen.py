@@ -2,15 +2,23 @@
 
 from __future__ import annotations
 
+import ast
 import json
 from io import StringIO
 from pathlib import Path
+from typing import ClassVar
 
 import httpx
 import pytest
 import yaml
 
-from codegeneration import generate_client, generate_context
+from chift.invoicing_connector import InvoicingConnector
+from codegeneration import (
+    check_mapper,
+    generate_client,
+    generate_context,
+    generate_mapper_template,
+)
 from generated.hyperline.client import HyperlineClient
 
 ROOT = Path(__file__).parents[1]
@@ -318,3 +326,34 @@ def test_mapper_contract_reads_the_vendored_spec():
     assert not (ROOT / "generated/hyperline/contracts.json").exists()
     assert not (ROOT / "generated/hyperline/models.py").exists()
     assert not (ROOT / "generated/hyperline/openapi.json").exists()
+
+
+def test_the_hyperline_mapper_obeys_every_rule_the_checker_encodes():
+    """`AGENTS.md` states the rules; `check_mapper` is what stops them drifting."""
+    assert check_mapper.check("hyperline") == []
+
+
+def test_the_checker_catches_a_silent_default_and_a_missing_field():
+    """The two rules with a real defect behind them, exercised on broken sources."""
+    silent = ast.parse('x = data.get("total_amount", 0.0)\n')
+    assert check_mapper.check_no_silent_defaults(silent)
+
+    class _NoDeclarations:
+        UNMAPPED: ClassVar[dict[str, set[str]]] = {}
+
+    partial = ast.parse(
+        "def to_contact(data) -> chift.ContactItemOut:\n"
+        "    return chift.ContactItemOut(id=data['id'])\n"
+    )
+    problems = check_mapper.check_coverage(partial, _NoDeclarations)
+    assert problems and "neither assigned nor declared" in problems[0]
+
+
+def test_the_template_wires_every_contract_method_from_paths_yaml():
+    """The skeleton generates what has no decisions in it, and nothing else."""
+    skeleton = generate_mapper_template.template("hyperline")
+    for method in InvoicingConnector.__abstractmethods__ - {"from_env"}:
+        assert f"def {method}(" in skeleton
+    # signatures, no field assignments: the decisions stay for a human
+    assert "raise NotImplementedError" in skeleton
+    compile(skeleton, "<template>", "exec")
