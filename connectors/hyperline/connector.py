@@ -4,7 +4,7 @@ Chift invoicing connector against Hyperline.
 Generated client fetches provider JSON; this maps into chift.models.
 
 Provenance:
-  Procedure: AGENTS.md § Adding a connector v24
+  Procedure: AGENTS.md § Adding a connector v25
   Contract: python -m codegeneration contract hyperline <operationId>
 
 Written by an LLM from that skill + Hyperline's contract + Chift's contract, then
@@ -65,6 +65,14 @@ INVOICE_STATUS = {
     "archived": chift.InvoiceStatus.cancelled,
 }
 
+# Mapping decision: only explicit entity-kind values classify the customer;
+# `automatically_created` is provenance, so entity kind stays unknown.
+CUSTOMER_IS_COMPANY = {
+    "corporate": True,
+    "person": False,
+    "automatically_created": None,
+}
+
 # Mapping decision: Hyperline documents and child references still represent customer-side
 # invoices; only credit-note variants become Chift refunds.
 INVOICE_TYPE = {
@@ -97,13 +105,6 @@ CREATE_INVOICE_STATUS = {
 # ----------------------------------------------------------------------------
 
 
-def _require_map(table: dict, key: str | None, *, kind: str):
-    """Map one provider value and reject values without an explicit decision."""
-    if key is None or key not in table:
-        raise ValueError(f"Unmapped provider {kind}: {key}")
-    return table[key]
-
-
 def _json(**values: Any) -> dict[str, Any]:
     """Build a JSON object without fields the Chift caller did not supply."""
     return {key: value for key, value in values.items() if value is not None}
@@ -113,13 +114,10 @@ def _json(**values: Any) -> dict[str, Any]:
 # two (EUR=2, JPY=0, KWD=3); ISO 4217 owns that vocabulary.
 def _amount(n: float, currency: str) -> float:
     """Convert provider minor units to Chift decimal currency units."""
-    # Mapping decision: a code outside ISO 4217 has no exponent, so the amount cannot be
-    # scaled. Name the offending value like every other unmapped provider value rather
-    # than letting iso4217's ValueError escape as an anonymous integration failure.
-    try:
-        exponent = Currency(currency).exponent
-    except ValueError as exc:
-        raise ValueError(f"Unmapped provider currency: {currency}") from exc
+    # A code outside ISO 4217 has no exponent, so the amount cannot be scaled. iso4217
+    # already raises `'BGN' is not a valid Currency`; re-wrapping it would only add a
+    # second wording for one condition.
+    exponent = Currency(currency).exponent
     return float(Decimal(str(n)).scaleb(-exponent))
 
 
@@ -129,10 +127,7 @@ def _amount(n: float, currency: str) -> float:
 # silently changed.
 def _minor(n: float, currency: str) -> int:
     """Convert Chift decimal currency units to provider minor units."""
-    try:
-        exponent = Currency(currency).exponent
-    except ValueError as exc:
-        raise ValueError(f"Unmappable currency: {currency}") from exc
+    exponent = Currency(currency).exponent
     minor = Decimal(str(n)).scaleb(exponent)
     if minor != minor.to_integral_value():
         raise ValueError(f"{n} has more precision than {currency} supports")
@@ -194,11 +189,7 @@ def to_contact(data: dict[str, Any]) -> chift.ContactItemOut:
     # Mapping decision: only explicit entity-kind values classify the customer;
     # `automatically_created` is provenance and therefore remains unknown.
     customer_type = data.get("type")
-    company = _require_map(
-        {"corporate": True, "person": False, "automatically_created": None},
-        customer_type,
-        kind="customer type",
-    )
+    company = CUSTOMER_IS_COMPANY[customer_type]
     # REVIEW: Chift exposes one VAT and Hyperline documents no priority for its tax-ID list;
     # the current mapper uses the first value.
     taxes = data.get("tax_ids") or []
@@ -326,8 +317,8 @@ def to_invoice(data: dict[str, Any]) -> chift.InvoiceItemOut:
         id=invoice_id,
         source_ref=chift.Ref(id=invoice_id, model="invoice"),
         currency=currency,
-        invoice_type=_require_map(INVOICE_TYPE, data.get("type"), kind="invoice type"),
-        status=_require_map(INVOICE_STATUS, data.get("status"), kind="invoice status"),
+        invoice_type=INVOICE_TYPE[data["type"]],
+        status=INVOICE_STATUS[data["status"]],
         invoice_number=data.get("number"),
         invoice_date=invoice_date,
         due_date=_day(data.get("due_at")),
@@ -386,8 +377,8 @@ def from_invoice(body: chift.InvoiceItemIn) -> dict[str, Any]:
         # that 400 pass through rather than predicting their request contract here.
         customer_id=body.partner_id,
         currency=currency,
-        type=_require_map(CREATE_INVOICE_TYPE, body.invoice_type, kind="invoice type"),
-        status=_require_map(CREATE_INVOICE_STATUS, body.status, kind="invoice status"),
+        type=CREATE_INVOICE_TYPE[body.invoice_type],
+        status=CREATE_INVOICE_STATUS[body.status],
         number=body.invoice_number,
         reference=body.reference,
         custom_note=body.customer_memo,
@@ -427,11 +418,9 @@ def page_via_cursor(fetch, *, page: int, size: int, map_item, **query):
                 break
             cursor = raw["next_cursor"]
     mapped = [map_item(x) for x in items]
-    if total is None:
-        # Unlike `data`, `total` is absent from the envelope's `required` list: the
-        # provider documents it as present only when `include_total=true`, which this
-        # function always asks for. A page with no total cannot be expressed in Chift.
-        raise ValueError("provider returned no total for a page it was asked to count")
+    # `total` is outside the envelope's `required` list — the provider sends it only when
+    # `include_total=true`, which this function always asks for. No guard here: Chift's
+    # `total` is a required int, so a missing one is a Pydantic failure with the field named.
     return chift.ChiftPage(items=mapped, total=total, page=page, size=size)
 
 

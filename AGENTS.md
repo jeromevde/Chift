@@ -22,7 +22,9 @@ These are the invariants. The procedure that applies them starts at
 
 **Mapping**
 
-- Unknown provider values raise `ValueError`. No silent `.get(x, default)` fallbacks.
+- Unknown provider values must fail loudly. No silent `.get(x, default)` fallbacks.
+- **Raise only to prevent a silent wrong answer, never to restate a failure that already
+  happens.** See "When to raise" below.
 - Never hardcode a value the caller should supply — country, currency, address, tax rate, entity
   kind. Send only what the caller gave. If the provider requires a field the caller omitted,
   raise for it; do not invent one.
@@ -37,9 +39,9 @@ These are the invariants. The procedure that applies them starts at
   errors are never caught there; they propagate to the API boundary. HTTP-error tolerance and
   retries do not belong in the mapper.
 - No connector picks an HTTP status code, and connectors never catch provider HTTP errors.
-  `chift/error.py` holds Chift's *only* error translation: a provider `httpx.HTTPStatusError`
-  restated in Chift's documented shape, status passed through. FastAPI answers everything else —
-  a schema violation with Chift's 422, anything unexpected with an ordinary 500.
+  `chift/errors.py` holds Chift's *only* error translation: provider 400/404/409/422 responses
+  become Chift 400/404/409 errors and everything else becomes 502. FastAPI answers everything
+  else — a schema violation with Chift's 422, anything unexpected with an ordinary 500.
 - Never pre-judge what a provider will reject. Chift's published input schema is the union of
   what every provider accepts, so fields it marks optional are mandatory for some of them. Send
   what the caller gave and let the provider refuse it; its 400 names the field and passes through.
@@ -64,7 +66,7 @@ ruff check --no-cache .
 # Adding a connector
 
 <!-- procedure version: bump when the steps or review rules change -->
-**version:** 24
+**version:** 25
 **applies to:** `connectors/<provider>/connector.py`
 
 How to onboard a new provider to Chift's unified invoicing API, end to end.
@@ -375,13 +377,47 @@ stops working at five, and it hides the thing a reviewer actually compares: `to_
 `from_x`. Keep each inverse pair adjacent, and each sub-mapper directly above the mapper that
 uses it, so a field's whole journey reads in one place.
 
+### When to raise
+
+**A raise exists to turn a silent wrong answer into a loud one. Nothing else.**
+
+Before adding one, run the failure without it. If Python, Pydantic or a library already refuses
+the same input, the guard adds a sentence and subtracts nothing — and hand-written sentences
+drift. This connector had two spellings of one condition (`"Unmapped provider currency: BGN"` and
+`"Unmappable currency: BGN"`) for exactly that reason.
+
+Already loud — do **not** wrap:
+
+| instead of | you get, for free |
+|---|---|
+| `_require_map(TABLE, k, kind=...)` | `TABLE[k]` → `KeyError: 'consolidated'` |
+| catching a library's own error | `iso4217` → `'BGN' is not a valid Currency` |
+| checking a value Chift requires | Pydantic → `ValidationError`, field named |
+| checking a field the response promises | `data["total_amount"]` → `KeyError` |
+
+Silent — **do** raise:
+
+```python
+minor = Decimal(str(n)).scaleb(exponent)
+if minor != minor.to_integral_value():
+    raise ValueError(f"{n} has more precision than {currency} supports")
+```
+
+`round()` would return `1001` for `10.005 * 100` and report nothing. Chift defines no rounding
+policy, so a value below the currency's precision has no correct answer — that is a wrong amount
+shipped confidently, which is the failure this whole procedure exists to prevent.
+
+The Hyperline mapper has **one** raise. If yours has many, most are probably restating something
+Python already said. Use a subscript, not `.get()`, wherever the value is required: it fails on
+its own and distinguishes a missing field from an unmapped value.
+
 ### What it must produce
 
 | Piece | Role |
 |---|---|
 | `to_contact` / `to_invoice` | provider dictionary → `chift.models`, as module-level functions |
 | Status/type tables | explicit dicts, **no `.get(x, default)`** — unknown values raise |
-| `_require_map` | the raiser: unmapped value → descriptive `ValueError` |
+| Lookups | plain subscripts — `TABLE[value]`, `data["field"]`. The `KeyError` names it |
 | `_page_via_cursor` | provider cursor pagination → Chift `page`/`size` |
 | IDs | POC pass-through: Chift `id` == provider id, also in `source_ref.id` |
 | Decision comments | every non-obvious mapper choice, beside the code it affects |
@@ -394,7 +430,7 @@ not become `None`. That is mapper strictness about *our* contract, not policing 
 | Failure | Answered by | Result |
 |---|---|---|
 | Body violates Chift's schema | FastAPI | 422 `HTTPValidationError` |
-| Provider HTTP error | `chift/error.py` | provider's status, restated as `ChiftError` |
+| Provider HTTP error | `chift/errors.py` | caller-actionable 4xx or Chift 502 |
 | Anything else — unmapped value, unbuildable page | FastAPI | ordinary 500 |
 
 The middle row is the whole of Chift's error translation, and it is the reason no connector may

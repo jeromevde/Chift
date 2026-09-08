@@ -14,6 +14,7 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 from iso4217 import Currency
+from pydantic import ValidationError as PydanticValidationError
 
 from chift.api import CONNECTORS, app
 from chift.invoicing_connector import InvoicingConnector
@@ -119,9 +120,10 @@ def test_currency_hyperline_documents_but_iso4217_dropped_names_the_value():
     ]
     assert "BGN" in retired, "expected Hyperline to still publish retired currencies"
 
-    with pytest.raises(ValueError, match="Unmapped provider currency") as error:
+    with pytest.raises(ValueError, match="BGN") as error:
         to_invoice(_invoice(currency="BGN", total_amount=1000))
-    assert str(error.value) == "Unmapped provider currency: BGN"
+    # iso4217 names the offending code itself; the mapper does not restate it.
+    assert str(error.value) == "'BGN' is not a valid Currency"
 
 
 def test_settlement_and_audit_fields_are_mapped_not_left_to_chift_defaults():
@@ -189,6 +191,51 @@ def test_invoice_line_maps_discount_or_fails_loudly_when_missing():
     assert to_invoice(_invoice(line_items=[line])).lines[0].discount_amount == 5.0
 
 
+def test_every_chift_output_field_has_a_mapping_decision():
+    """New or accidentally omitted optional fields must receive an explicit decision."""
+    contact = to_contact({"id": "cus_test", "type": "corporate"})
+    invoice = to_invoice(
+        _invoice(
+            line_items=[
+                {
+                    "unit_amount": 10000,
+                    "units_count": 1,
+                    "discount_amount": 500,
+                    "tax_amount": 1995,
+                    "amount_excluding_tax": 9500,
+                    "amount": 11495,
+                }
+            ]
+        )
+    )
+
+    expected = (
+        (
+            contact,
+            {
+                "birthdate",
+                "comment",
+                "company_id",
+                "customer_account_number",
+                "gender",
+                "last_name",
+                "mobile",
+                "phone",
+                "supplier_account_number",
+            },
+        ),
+        (invoice, {"accounting_date"}),
+        (
+            invoice.lines[0],
+            {"account_number", "product_code", "product_name", "tax_id"},
+        ),
+    )
+    for resource, intentionally_unmapped in expected:
+        assert set(type(resource).model_fields) - resource.model_fields_set == (
+            intentionally_unmapped
+        )
+
+
 def test_cursor_pagination_walks_to_the_requested_page_without_stored_state():
     responses = iter(
         [
@@ -212,12 +259,16 @@ def test_cursor_pagination_walks_to_the_requested_page_without_stored_state():
 
 
 def test_missing_provider_pagination_total_is_a_provider_contract_failure():
-    """`total` is outside the envelope's `required`, so the mapper still checks it."""
+    """`total` is outside the envelope's `required`, so a page can arrive without one.
+
+    No guard in the mapper: Chift's `total` is a required int, so Pydantic refuses the
+    page and names the field. Raising first would only restate that.
+    """
 
     def fetch(**_query):
         return {"data": [], "total": None, "next_cursor": None}
 
-    with pytest.raises(ValueError, match="no total"):
+    with pytest.raises(PydanticValidationError, match="total"):
         page_via_cursor(fetch, page=1, size=50, map_item=lambda item: item)
 
 
@@ -387,11 +438,20 @@ def test_unknown_consumer_is_404_without_touching_a_connector():
 
 
 @pytest.mark.parametrize(
-    ("upstream", "expected_status", "expected_code"),
-    [(404, 404, "NotFound"), (503, 503, "ProviderError")],
+    ("upstream", "expected_status", "expected_code", "exposes_detail"),
+    [
+        (400, 400, "ProviderError", True),
+        (401, 502, "ProviderError", False),
+        (403, 502, "ProviderError", False),
+        (404, 404, "NotFound", True),
+        (409, 400, "ProviderError", True),  # Chift publishes no 409
+        (422, 400, "ProviderError", True),
+        (429, 502, "ProviderError", False),
+        (503, 502, "ProviderError", False),
+    ],
 )
 def test_provider_http_errors_become_chift_errors(
-    upstream, expected_status, expected_code
+    upstream, expected_status, expected_code, exposes_detail
 ):
     request = httpx.Request("GET", "https://sandbox.api.hyperline.co/v2/customers")
     response = httpx.Response(
@@ -411,8 +471,12 @@ def test_provider_http_errors_become_chift_errors(
 
     assert result.status_code == expected_status
     assert result.json()["error_code"] == expected_code
-    assert str(upstream) in result.json()["detail"]
-    assert "provider explanation" in result.json()["detail"]
+    detail = result.json()["detail"]
+    if exposes_detail:
+        assert str(upstream) in detail
+        assert "provider explanation" in detail
+    else:
+        assert detail == ""
 
 
 def test_api_resolves_a_consumer_to_its_provider_without_naming_one():
@@ -536,8 +600,12 @@ def test_create_invoice_sends_nothing_the_caller_did_not_state():
 
 
 def test_create_invoice_refuses_a_document_hyperline_cannot_represent():
-    """Hyperline bills a vendor's customers; it has no accounts-payable side."""
-    with pytest.raises(ValueError, match="invoice type"):
+    """Hyperline bills a vendor's customers; it has no accounts-payable side.
+
+    The table simply has no entry, so the lookup raises `KeyError` naming the value.
+    A hand-written guard would add a sentence and nothing else.
+    """
+    with pytest.raises(KeyError, match="supplier_invoice"):
         from_invoice(_chift_invoice(invoice_type="supplier_invoice"))
 
 
@@ -632,7 +700,7 @@ def test_a_body_hyperline_refuses_passes_its_400_through(client):
     """Chift publishes `partner_id` as optional; Hyperline requires a customer.
 
     Nothing predicts that. The mapper sends what the caller gave, Hyperline answers 400
-    naming its own field, and the single handler in `chift/error.py` restates it in
+    naming its own field, and the single handler in `chift/errors.py` restates it in
     Chift's error shape without changing the status. This is the whole of Chift's error
     translation — every other failure is FastAPI's.
     """

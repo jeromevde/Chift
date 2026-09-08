@@ -184,16 +184,19 @@ across providers.
   the reference a reviewer can diff the models against. Nothing verifies the transcription.
 - Retrieve-one-invoice returns Chift's list shape. `InvoiceItemOutSingle` adds a base64 `pdf`
   field, and Hyperline offers a `public_url` rather than document bytes.
-- A provider HTTP error keeps the provider's status and receives Chift's documented error shape.
-  Unexpected bugs are not translated; FastAPI returns its ordinary 500.
+- Provider errors are remapped to a status Chift publishes (`chift/errors.py`): 400/409/422
+  become 400, 404 stays 404, and everything else — including 401/403/429, which mean *our*
+  key or *our* rate limit rather than the caller's request — becomes 502. Chift documents no
+  502, and that is the deliberate deviation: reporting a provider outage as the caller's bad
+  request would blame the wrong party. Unexpected bugs are not translated; FastAPI returns its
+  ordinary 500 with no body.
 - Nine currencies Hyperline still publishes (BGN, HRK, ANG, …) have been retired from ISO 4217, so
   they have no exponent to scale amounts by. Those invoices fail by name rather than guess.
 - The pipeline requires OpenAPI 3.1 and refuses 3.0 documents by name, since 3.0 is not JSON
   Schema. Most published specs are still 3.0, so a down-conversion is the next reusability step.
-- **No static check that the mapper assigns every Chift field.** A `check.py` walking the mapper's
-  AST could collect the Chift fields it assigns and the provider fields it reads, then verify both
-  against the two contracts — every target field assigned, every source field present in the
-  OpenAPI, every constant table exhaustive over its published enum.
+- Mapper coverage tests require every Chift output field to be explicitly assigned or named as
+  intentionally unmapped. This catches omissions and contract drift, but semantic correctness
+  still depends on focused fixtures and live tests.
 - **Important** Tests should be more involved. This is probably the most important part. This Chift POC could invest heavily
   in a custom test suite testing all possible edge cases for its own api. creation, modification, deletion...
   It can then pass all those 'scenarios' in the connector to see if everything works and if there is no data
