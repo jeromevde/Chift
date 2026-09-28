@@ -1,0 +1,9 @@
+httpx
+fastapi
+pyyaml
+deepagents==0.7.19
+langchain-openai
+iso4217
+pytest
+jsonschema
+python-dotenv
