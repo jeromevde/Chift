@@ -14,14 +14,15 @@ about the provider, decides whether it works.
    LLM_MODEL=deepseek/deepseek-v4-pro
    ```
 
-   DeepSeek V4 Pro costs about $0.50 a run; any OpenRouter model with tool calling works.
+   DeepSeek V4 Pro costs about $0.30–0.60 a run; any OpenRouter model with tool calling works.
 
 ## Add a connector
 
+In short: put the spec in `providers/<name>/openapi.yaml`, run `python -m chift.generator <name>`,
+paste a sandbox key into the `.env` it creates, and run it again. Follow the run live in
+`providers/<name>/generated/logs/trace.html`.
 
-Basically put your openapi spec under `providers/<name>/openapi.yaml` and then run `python -m chift.generator <name>`. A `.env` file will appear where you have to paste your API keys, then run again `python -m chift.generator <name>`. Follow proggress by reloading the html logs.
-
-#### (In more details:)
+Step by step:
 
 Hyperline's spec is already in `providers/hyperline/`, so for it start at step 2.
 
@@ -54,7 +55,7 @@ Hyperline's spec is already in `providers/hyperline/`, so for it start at step 2
    capability rather than drop data. Then review the mapping decisions and `UNMAPPED` in
    `connector.py`.
 
-To rerun Chift's suite alone: `CHIFT_PROVIDER=<name> pytest tests`
+To rerun Chift's suite alone: `CHIFT_PROVIDER=<name> pytest tests`.
 
 Both `.env` files are git-ignored.
 
@@ -64,7 +65,28 @@ Both `.env` files are git-ignored.
   cannot create (paid, cancelled, credit notes): those rest on reviewing the mapping decisions.
   A separate, adversarial agent writing provider-tailored tests of the middle of the round trip
   (what the provider actually stored) would close that gap.
-- Declined capabilities and their justifications appear in the linked test output: review them.
+- Declined capabilities and their justifications are listed in the report: review them.
 - Test records stay in the sandbox: Chift has no DELETE, and the pipeline does not clean up.
 - List filters and PDFs are not implemented.
+- Numbered pages walk the provider's cursors from the start each time: page N costs N calls.
+- Only Hyperline has been generated so far; a second provider would turn "any OpenAPI with bearer
+  or header-key auth" from a claim into a demonstration.
 - LLM output varies between runs; a run can hit the call cap and fail.
+
+## Review of the Hyperline run
+
+The committed run is accepted (37 passed, 14 skipped) and the connector is left as generated.
+It still has mistakes the suite cannot see. A few:
+
+- Hyperline's `open`, `pending_parent_concat` and `pending_consolidation` statuses are mapped to
+  `posted`, but Hyperline describes all three as invoices not yet issued: Chift's `draft`. They
+  were placed by name, not by description.
+- A discounted line without a description gets an invented coupon name, `f"Line {idx + 1} discount"`:
+  a placeholder the no-defaults rule misses because it is an f-string, not a constant.
+- A company sent without `company_name` takes the person's name.
+- Creating a `cancelled` invoice sends Hyperline `voided`, which its create endpoint does not
+  accept: a 502 where the contract promises a 400.
+- Dates are sliced and concatenated as strings rather than parsed.
+
+An adversarial agent writing provider-tailored tests would in all likelihood have caught these;
+a round trip cannot.

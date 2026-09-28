@@ -117,6 +117,11 @@ def money(value: float) -> Any:
     return pytest.approx(value, abs=0.005)
 
 
+# Shown on every mismatch: the agent reads this exactly where it chooses between a fix and a hack.
+HONEST = ("If the provider has no field meaning the same thing, raise Unsupported (the test is then "
+          "skipped, which is correct); never store the value elsewhere to make it read back.")
+
+
 def assert_sent(sent: dict, got: dict, where: str) -> None:
     """Every field the caller sent reads back with that value; numbers to the cent."""
     for key, value in sent.items():
@@ -128,12 +133,12 @@ def assert_sent(sent: dict, got: dict, where: str) -> None:
         elif key == "addresses":
             for address in value:
                 same = [a for a in got.get(key) or [] if a["address_type"] == address["address_type"]]
-                assert same, f"{at}: no {address['address_type']} address in {got.get(key)}"
+                assert same, f"{at}: no {address['address_type']} address in {got.get(key)}. {HONEST}"
                 assert_sent(address, same[0], f"{at}[{address['address_type']}]")
         elif isinstance(value, (int, float)) and not isinstance(value, bool):
-            assert got.get(key) == money(value), f"{at}: sent {value}, read {got.get(key)}"
+            assert got.get(key) == money(value), f"{at}: sent {value}, read {got.get(key)}. {HONEST}"
         else:
-            assert got.get(key) == value, f"{at}: sent {value!r}, read {got.get(key)!r}"
+            assert got.get(key) == value, f"{at}: sent {value!r}, read {got.get(key)!r}. {HONEST}"
 
 
 # ── request bodies ──────────────────────────────────────────────────────────

@@ -1,6 +1,9 @@
 """A short run summary; detailed evidence stays in the test logs and trace."""
 
+import re
 from collections import Counter
+
+from chift.providers import ROOT
 
 
 def render(provider: str, model: str, usage: Counter, error: str | None,
@@ -16,7 +19,7 @@ def render(provider: str, model: str, usage: Counter, error: str | None,
         "| Suite | Result | Exit code | Evidence |",
         "|---|---|---|---|",
         f"| Chift acceptance | {tally} | {result['exit_code']} | [Full output]({result['log']}) |",
-        "", "## Failures and limitations", "",
+        "", *review_first(provider), "## Failures and limitations", "",
         *[f"- {line}" for line in details if line.startswith(("FAILED", "ERROR", "SKIPPED"))],
         "",
         ("Acceptance is decided by Chift's suite; a skip leaves a capability unverified. Round trips "
@@ -26,6 +29,23 @@ def render(provider: str, model: str, usage: Counter, error: str | None,
          "[Run trace and agent account (unverified)](logs/trace.html)"), "",
     ]
     return "\n".join(lines)
+
+
+GENERIC = re.compile(r"""["'](properties|custom_properties|metadata|custom_fields|notes)["']""")
+
+
+def review_first(provider: str) -> list[str]:
+    """Every connector line touching a free-form container: where a value can be parked to make a
+    round trip pass. Not a failure (some providers keep real data there), but read these first."""
+    connector = ROOT / "providers" / provider / "generated" / "connector.py"
+    lines = connector.read_text().splitlines() if connector.is_file() else []
+    hits = [f"- [connector.py:{n}](connector.py#L{n}) `{line.strip()[:100]}`"
+            for n, line in enumerate(lines, start=1) if GENERIC.search(line)]
+    if not hits:
+        return []
+    return ["## Review first: values in free-form containers", "",
+            "A round trip cannot tell a real mapping from a value parked here to read back.", "",
+            *hits, ""]
 
 
 def pytest_lines(output: str) -> tuple[str, list[str]]:

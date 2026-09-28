@@ -15,8 +15,10 @@ from abc import ABC, abstractmethod
 class Unsupported(Exception):
     """Raise when the provider cannot represent what the caller asked for.
 
-    The app answers Chift's 400 with this message. Declining is always better than storing
-    something different from what the caller sent, such as dropping a discount.
+    The app answers Chift's 400 with "Not supported by this provider: " followed by this message,
+    so pass only the reason, e.g. `Unsupported("contact phone: Hyperline customers have no phone")`.
+    Declining is always better than storing something different from what the caller sent, such as
+    dropping a discount.
     """
 
 

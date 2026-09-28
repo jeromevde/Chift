@@ -5,7 +5,6 @@ import hashlib
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import time
@@ -202,8 +201,6 @@ def provider_tools(provider: str) -> list:
             cwd=ROOT, env=env, capture_output=True, text=True, timeout=900, check=False,
         )
         output = redactor(provider)(result.stdout + result.stderr)
-        if result.returncode == 0:  # the harness can fall back to the last passing connector
-            shutil.copy(folder / "connector.py", folder / "logs" / "connector.passing.py")
         log = folder / "logs" / f"tests-{stamp}.json"
         log.parent.mkdir(exist_ok=True)
         log.write_text(json.dumps({"timestamp": stamp, "source_sha256": digest,

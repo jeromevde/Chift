@@ -7,7 +7,6 @@ import os
 import shutil
 import time
 from collections import Counter
-from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -48,14 +47,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("provider")
     parser.add_argument("--max-calls", type=int, default=60)
-    parser.add_argument("--report-only", action="store_true",
-                        help="rerun both suites and save a separate verification report; no agent")
     args = parser.parse_args()
     if not (ROOT / "providers" / args.provider / "openapi.yaml").is_file():
         parser.error(f"put the provider's OpenAPI in providers/{args.provider}/openapi.yaml")
     ensure_env(args.provider, load_spec(args.provider))
-    with single_run(args.provider):
-        (rejudge if args.report_only else run)(args)
+    run(args)
 
 
 def run(args) -> None:
@@ -75,7 +71,7 @@ def run(args) -> None:
     agent = create_deep_agent(
         model=ChatOpenAI(model=model_name, api_key=os.environ["OPENROUTER_API_KEY"],
                          base_url="https://openrouter.ai/api/v1", max_retries=0,
-                         timeout=120, max_tokens=16000),
+                         timeout=600, max_tokens=16000),
         tools=tools,
         system_prompt=system_prompt,
         # The agent sees the repository with the same paths the tests print. It may read
@@ -88,8 +84,7 @@ def run(args) -> None:
             FilesystemPermission(["read", "write"], ["/providers/*/generated.previous/**",
                                                      "/.git/**"], "deny"),
             FilesystemPermission(["write"], [f"/providers/{args.provider}/generated/logs/**",
-                                             f"/providers/{args.provider}/generated/report.md",
-                                             f"/providers/{args.provider}/generated/recheck-*.md"],
+                                             f"/providers/{args.provider}/generated/report.md"],
                                  "deny"),
             FilesystemPermission(["write"], [f"/providers/{args.provider}/generated/**"]),
             FilesystemPermission(["write"], ["/**"], "deny"),
@@ -133,19 +128,10 @@ def run(args) -> None:
             lines.append(redact(json.dumps({"type": "system", "content": f"Run stopped: {error}"})))
             trace.write(lines[-1] + "\n")
     write_trace(lines, folder, stamp, args.provider, live=False)
-    stamp_header(folder / "connector.py", args.provider, model_name, stamp)
-    # The harness reruns both suites after the agent stops; only Chift's suite decides success.
+    # The harness reruns Chift's suite after the agent stops; only that decides success.
     result = run_tests.invoke({})
     if error is None and usage["calls"] >= args.max_calls + REPORT_CALLS:
         error = f"the call cap ({args.max_calls} + {REPORT_CALLS} for the report)"
-    passing = folder / "logs" / "connector.passing.py"
-    if result["exit_code"] != 0 and passing.is_file():
-        # A late edit broke a connector that had passed: judge the last passing one instead.
-        shutil.copy(passing, folder / "connector.py")
-        stamp_header(folder / "connector.py", args.provider, model_name, stamp)
-        result = run_tests.invoke({})
-        error = (error or "the agent finishing") + "; its last edits broke Chift's suite, so the " \
-            "last connector.py that passed was restored"
     # Only Chift's suite decides; running out of calls is noted in the report, not a failure.
     accepted = result["exit_code"] == 0
     (folder / "report.md").write_text(report.render(
@@ -155,24 +141,6 @@ def run(args) -> None:
     print(f"{'ACCEPTED' if accepted else 'NOT ACCEPTED'}, ${usage['cost']:.2f}. "
           f"Report: {(folder / 'report.md').relative_to(ROOT)}")
     raise SystemExit(0 if accepted else 1)
-
-
-def rejudge(args) -> None:
-    """Save a separate verification with full test logs; preserve generation evidence."""
-    load_dotenv(ROOT / ".env")
-    folder = ROOT / "providers" / args.provider / "generated"
-    run_tests = next(t for t in provider_tools(args.provider) if t.name == "run_tests")
-    started = time.monotonic()
-    result = run_tests.invoke({})
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
-    path = folder / f"recheck-{stamp}.md"
-    lines = [f"# Verification {stamp}", "", "Separate from the generation run; report.md is unchanged.", ""]
-    tally = report.pytest_lines(result["output"])[0]
-    lines.append(f"- Chift suite: exit {result['exit_code']}, {tally}; [full output]({result['log']}).")
-    lines.append(f"\nVerification duration: {time.monotonic() - started:.1f}s.\n")
-    path.write_text("\n".join(lines))
-    print(f"Verification: {path.relative_to(ROOT)}")
-    raise SystemExit(0 if result["exit_code"] == 0 else 1)
 
 
 def write_trace(lines: list[str], folder: Path, stamp: str, provider: str, live: bool) -> None:
@@ -262,25 +230,6 @@ def fill(path: Path, defaults: dict[str, str]) -> list[str]:
     return [f"{path.relative_to(ROOT)}: {key}" for key in defaults if not values.get(key)]
 
 
-@contextmanager
-def single_run(provider: str):
-    """Refuse to start while another run for this provider is alive: both would write generated/."""
-    lock = ROOT / "providers" / provider / ".generator.lock"
-    if lock.is_file():
-        pid = int(lock.read_text() or 0)
-        try:
-            os.kill(pid, 0)
-        except (OSError, ValueError):
-            pass  # a stale lock from a run that died
-        else:
-            raise SystemExit(f"a run for {provider} is already going (pid {pid}); wait for it")
-    lock.write_text(str(os.getpid()))
-    try:
-        yield
-    finally:
-        lock.unlink(missing_ok=True)
-
-
 def fresh_start(folder: Path) -> None:
     """Start empty, keeping the previous run in generated.previous/ so nothing is lost uncommitted."""
     previous = folder.with_name("generated.previous")
@@ -288,18 +237,6 @@ def fresh_start(folder: Path) -> None:
         shutil.rmtree(previous, ignore_errors=True)
         folder.rename(previous)
     (folder / "logs").mkdir(parents=True)
-
-
-def stamp_header(connector: Path, provider: str, model: str, stamp: str) -> None:
-    """Head the connector with the facts of this run, replacing any header the agent wrote."""
-    if not connector.is_file():
-        return
-    lines = connector.read_text().splitlines()
-    while lines and lines[0].startswith("#"):
-        lines.pop(0)
-    header = (f"# Generated by `python -m chift.generator {provider}` with {model}, run {stamp}.\n"
-              f"# Machine output: do not edit; change the generator or prompt and rerun.\n")
-    connector.write_text(header + "\n".join(lines).lstrip("\n") + "\n")
 
 
 def show(message, usage: Counter) -> None:

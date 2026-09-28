@@ -69,13 +69,55 @@ def test_out_of_range_paging_is_a_chift_422(chift, params):
     assert_schema(chift.get("/contacts", **params), "HTTPValidationError", 422)
 
 
-@pytest.mark.parametrize("fields", [
-    {"company_number": "123456789", "vat": "BE0123456789"},
-    {"is_customer": True, "is_supplier": False, "is_prospect": False},
-])
-def test_contact_identity_is_preserved_or_declined(chift, fields):
-    """Distinct legal identifiers and explicit roles must survive a contact round trip."""
-    sent = company_body(**fields)
-    created = created_or_declined(chift.post("/contacts", sent), "ContactItemOut", ", ".join(fields))
+# Every optional create field, sent alone: it must read back as sent, or the create must be
+# declined with Chift's 400. A field that is silently dropped fails; each decline is one skip.
+CONTACT_EXTRAS = {
+    "phone": "+32 2 123 45 67", "mobile": "+32 470 12 34 56", "comment": "Chift test",
+    "birthdate": "1990-01-15", "gender": "F", "language": "fr",
+    "vat": "BE0123456789", "company_number": "0123456789", "customer_account_number": "400001",
+    "supplier_account_number": "440001", "is_supplier": True, "is_prospect": True,
+}
+ADDRESS = {"address_type": "invoice", "street": "Rue de la Loi 16", "city": "Brussels",
+           "postal_code": "1000", "country": "BE"}
+ADDRESS_EXTRAS = {"number": "16", "box": "B", "name": "Head office", "phone": "+32 2 123 45 67",
+                  "address_type": "other"}
+
+
+# Filled by the per-field tests with what round-tripped alone; the collision test below sends
+# them together (pytest runs a module's tests in definition order).
+ACCEPTED: dict = {}
+ACCEPTED_ADDRESS: dict = {}
+
+
+@pytest.mark.parametrize(("field", "value"), CONTACT_EXTRAS.items(), ids=list(CONTACT_EXTRAS))
+def test_contact_field_round_trips_or_is_declined(chift, field, value):
+    sent = company_body(**{field: value})
+    created = created_or_declined(chift.post("/contacts", sent), "ContactItemOut", f"contact {field}")
+    got = assert_schema(chift.get(f"/contacts/{created['id']}"), "ContactItemOut")
+    assert_sent(sent, got, "contact")
+    ACCEPTED[field] = value
+
+
+@pytest.mark.parametrize(("field", "value"), ADDRESS_EXTRAS.items(), ids=list(ADDRESS_EXTRAS))
+def test_address_field_round_trips_or_is_declined(chift, field, value):
+    sent = company_body(addresses=[ADDRESS | {field: value}])
+    created = created_or_declined(chift.post("/contacts", sent), "ContactItemOut", f"address {field}")
+    got = assert_schema(chift.get(f"/contacts/{created['id']}"), "ContactItemOut")
+    assert_sent(sent, got, "contact")
+    if field != "address_type":
+        ACCEPTED_ADDRESS[field] = value
+
+
+def test_accepted_fields_do_not_collide(chift):
+    """Every field accepted alone, sent together with distinct values: each still reads back.
+
+    Two Chift fields mapped to one provider field pass the per-field tests and lose one value
+    here. A connector may instead decline the combination, which shows as a skip.
+    """
+    if len(ACCEPTED) + len(ACCEPTED_ADDRESS) < 2:
+        pytest.skip("fewer than two extra fields accepted alone")
+    sent = company_body(**ACCEPTED, addresses=[ADDRESS | ACCEPTED_ADDRESS])
+    created = created_or_declined(chift.post("/contacts", sent), "ContactItemOut",
+                                  "all accepted contact fields together")
     got = assert_schema(chift.get(f"/contacts/{created['id']}"), "ContactItemOut")
     assert_sent(sent, got, "contact")

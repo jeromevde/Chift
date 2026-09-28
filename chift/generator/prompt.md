@@ -21,16 +21,28 @@ Mapping rules:
   map is_customer=True, is_supplier=False, is_prospect=False, and accept those values on create.
 - Money: scale by the ISO 4217 exponent (never a hard-coded 100), both ways; refuse extra precision
   and unknown currencies.
-- Statuses: map every documented value explicitly; unknown values fail. `draft` = not yet issued
-  (prepared, awaiting approval, accumulating); `posted` = issued, not fully paid (incl. overdue,
-  written off); `paid` = fully settled; `cancelled` = voided or replaced.
-- No silent defaults: required fields as `data["key"]`, optional as `data.get("key")`. Never
-  `.get(key, default)` or `x or ""`.
-- Send what the caller sent. If the provider can't represent it, raise `Unsupported` saying what
-  you checked; never drop or change a value silently. A discount may be a coupon that can target
-  a line; check the whole create schema before declining.
+- Statuses: map every documented value explicitly, and put the provider's own description of
+  each value in a comment next to it; place it by that description, not its name. `draft` = not
+  yet issued (prepared, awaiting approval, accumulating); `posted` = issued, not fully paid
+  (incl. overdue, written off); `paid` = fully settled; `cancelled` = voided or replaced. An
+  unmapped value read back raises KeyError (`MAP[value]`), never falls back to a status or type.
+- A value the provider did not send stays None: required fields as `data["key"]`, optional as
+  `data.get("key")`. A value you cannot map raises (`MAP[value]`, or `Unsupported`). Never write
+  a fallback in any spelling (`.get(k, "x")`, `x or "x"`, `v if c else "x"`, `if v is None:
+  v = "x"`) and never invent a placeholder like "Unnamed": when /tests/test_code_rules.py names
+  a line, remove the substitute value, do not respell it.
+- Translate, never validate or recompute: the provider owns totals, so return what it stored.
+  Send what the caller sent; leave an unsent field out rather than choosing a value. If the
+  provider can't represent a value, raise `Unsupported` before any write (a raise after a create
+  leaves a record behind). A discount may be a coupon that can target a line; check the whole
+  create schema before declining.
+- When no provider field means the same thing, decline with `Unsupported`. A skipped test is a
+  correct, honest result; a passing test bought with a workaround is cheating and is worse than any
+  skip. Never keep markers, copies or originals in properties, metadata, notes or custom fields,
+  and never put a value in a field that means something else, to make a read return what was sent.
 - A person's name never goes in company_name. Keep billing vs delivery addresses. Walk cursors for
-  numbered pages. Trim timestamps only for Chift date fields.
+  numbered pages. Convert dates and datetimes with `datetime`, not string slicing or concatenation.
+- Keep it short: one-to-one field maps and declined fields as tables, not a block per field.
 - Put a `# Mapping decision:` comment on each mapping table and judgment call; add `REVIEW:` when
   unsure.
 

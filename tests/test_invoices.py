@@ -54,6 +54,41 @@ def test_invoice_partner_is_a_readable_contact(chift, invoice):
     assert_schema(chift.get(f"/contacts/{partner}"), "ContactItemOut")
 
 
+# Every optional create field, sent alone: it reads back as sent, or the create is declined.
+INVOICE_EXTRAS = {
+    "payment_communication": "+++123/4567/89002+++", "reference": "PO-2026-001",
+    "customer_memo": "Thank you for your business", "invoice_number": f"CHIFT-{uuid.uuid4().hex[:8]}",
+}
+
+
+ACCEPTED: dict = {}  # what round-tripped alone; the collision test below sends it together
+
+
+@pytest.mark.parametrize(("field", "value"), INVOICE_EXTRAS.items(), ids=list(INVOICE_EXTRAS))
+def test_invoice_field_round_trips_or_is_declined(chift, company, field, value):
+    sent = invoice_body(company[1]["id"], [line(40.00, 1, 21)], **{field: value})
+    created = created_or_declined(chift.post("/invoices", sent), "InvoiceItemOut", f"invoice {field}")
+    assert_sent(sent, read_back(chift, created), "invoice")
+    ACCEPTED[field] = value
+
+
+def test_accepted_fields_do_not_collide(chift, company):
+    """Every field accepted alone, sent together with distinct values: each still reads back.
+
+    Two Chift fields mapped to one provider field (say reference and payment_communication)
+    pass the per-field tests and lose one value here. Declining the combination is a skip.
+    """
+    if len(ACCEPTED) < 2:
+        pytest.skip("fewer than two extra fields accepted alone")
+    extras = dict(ACCEPTED)
+    if "invoice_number" in extras:  # a number is unique per invoice
+        extras["invoice_number"] = f"CHIFT-{uuid.uuid4().hex[:8]}"
+    sent = invoice_body(company[1]["id"], [line(40.00, 1, 21)], **extras)
+    created = created_or_declined(chift.post("/invoices", sent), "InvoiceItemOut",
+                                  "all accepted invoice fields together")
+    assert_sent(sent, read_back(chift, created), "invoice")
+
+
 def test_line_discount_is_kept(chift, company):
     sent = invoice_body(company[1]["id"], [line(100.00, 1, 21, discount=10.00)])
     created = created_or_declined(chift.post("/invoices", sent), "InvoiceItemOut", "line discounts")
