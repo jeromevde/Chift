@@ -25,7 +25,7 @@ from fastapi.responses import JSONResponse
 from jsonschema import Draft202012Validator, FormatChecker
 
 from chift import providers
-from chift.contract import Connector, Unsupported
+from chift.contract import InvoicingConnector, Unsupported
 
 ROOT = Path(__file__).parents[1]
 load_dotenv(ROOT / ".env")
@@ -56,15 +56,19 @@ def validated(body: dict, schema_name: str) -> dict:
 
 
 @cache
-def connector(provider: str) -> Connector:
+def connector(provider: str) -> InvoicingConnector:
     base_url, credential = providers.connection(provider)
     client = importlib.import_module(f"providers.{provider}.generated.client").Client(
         base_url, credential, timeout=providers.TIMEOUT
     )
-    return importlib.import_module(f"providers.{provider}.generated.connector").Connector(client)
+    implementation = importlib.import_module(f"providers.{provider}.generated.connector").Connector
+    if not issubclass(implementation, InvoicingConnector):
+        raise TypeError(f"providers/{provider}/generated/connector.py: Connector must extend "
+                        "chift.contract.InvoicingConnector")
+    return implementation(client)
 
 
-def for_consumer(consumer_id: UUID) -> Connector:
+def for_consumer(consumer_id: UUID) -> InvoicingConnector:
     if consumer_id not in CONSUMERS:
         raise UnknownConsumer(consumer_id)
     return connector(CONSUMERS[consumer_id])

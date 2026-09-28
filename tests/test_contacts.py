@@ -8,6 +8,7 @@ import pytest
 from conftest import (
     assert_schema,
     assert_sent,
+    company_body,
     created_or_declined,
     find_in_list,
     unique,
@@ -66,3 +67,15 @@ def test_malformed_contact_is_a_chift_422(chift):
 @pytest.mark.parametrize("params", [{"size": 101}, {"size": 0}, {"page": 0}])
 def test_out_of_range_paging_is_a_chift_422(chift, params):
     assert_schema(chift.get("/contacts", **params), "HTTPValidationError", 422)
+
+
+@pytest.mark.parametrize("fields", [
+    {"company_number": "123456789", "vat": "BE0123456789"},
+    {"is_customer": True, "is_supplier": False, "is_prospect": False},
+])
+def test_contact_identity_is_preserved_or_declined(chift, fields):
+    """Distinct legal identifiers and explicit roles must survive a contact round trip."""
+    sent = company_body(**fields)
+    created = created_or_declined(chift.post("/contacts", sent), "ContactItemOut", ", ".join(fields))
+    got = assert_schema(chift.get(f"/contacts/{created['id']}"), "ContactItemOut")
+    assert_sent(sent, got, "contact")

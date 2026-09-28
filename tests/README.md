@@ -11,7 +11,7 @@ CHIFT_PROVIDER=hyperline pytest tests
 
 | File | Checks |
 |---|---|
-| `test_contacts.py` | Company and person round trips (a person is never a company name); created contact is listed, identically; Chift's 404 and 422 |
+| `test_contacts.py` | Company and person round trips (a person is never a company name); distinct company/VAT numbers and explicit contact roles are preserved or declined; created contact is listed, identically; Chift's 404 and 422 |
 | `test_invoices.py` | Two-line EUR round trip to the cent; line discount, JPY, posted and supplier invoices round-trip or are declined with Chift's 400; existing invoices are valid and add up; unknown partner is refused, not crashed; 404 and 422 |
 | `test_code_rules.py` | The connector never fills a missing value with a default (`.get(key, default)`, `x or ""`), read from its source |
 | `test_fields.py` | Every Chift field is returned or declared in the connector's `UNMAPPED` with a reason |
@@ -20,7 +20,7 @@ CHIFT_PROVIDER=hyperline pytest tests
 - **Needs** a sandbox key that allows writes. Records stay in the sandbox: Chift has no DELETE.
 - **Declined capabilities show as skips**, so a coverage gap is visible, never a silent pass.
 - **Cannot prove** a mistake made the same way on write and read, or the mapping of states Chift
-  cannot create (paid, cancelled, credit notes). The generated provider checks and a human
-  review cover those.
+  cannot create (paid, cancelled, credit notes). Review of the mapping decisions covers those;
+  an adversarial, provider-tailored suite would be the next step.
 
 Do not edit these tests to make a connector pass. If a test is wrong, say why.

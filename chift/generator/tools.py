@@ -1,20 +1,41 @@
 """Spec lookup, provider API access, deterministic client generation and fixed test commands."""
 
+import ast
+import hashlib
 import json
 import os
+import re
+import shutil
 import subprocess
 import sys
+import time
+from datetime import datetime, timezone
 from functools import cache
-from typing import Literal
 
 import httpx
 import yaml
+from dotenv import dotenv_values
 from langchain.tools import tool
 
 from chift import providers
 from chift.generator import clientgen
 
 ROOT = providers.ROOT
+
+
+def redactor(provider: str):
+    """Replace every credential from both `.env` files, so no trace can carry one."""
+    secrets = [value for path in (ROOT / ".env", providers.env_file(provider))
+               for key, value in dotenv_values(path).items()
+               if value and len(value) > 8 and re.search("KEY|TOKEN|SECRET|PASSWORD", key)]
+
+    def redact(text: str) -> str:
+        for secret in secrets:
+            text = text.replace(secret, "[redacted]")
+        return text
+
+    return redact
+
 
 
 def inline(node, schemas: dict, depth: int = 3):
@@ -33,16 +54,13 @@ def inline(node, schemas: dict, depth: int = 3):
     out = {k: inline(v, schemas, depth) for k, v in node.items()
            if k not in ("example", "examples", "title", "pattern")}
     if isinstance(out.get("description"), str):
-        out["description"] = " ".join(out["description"].split())[:200]
-    if len(out.get("enum") or []) > 25:  # e.g. 150 currency codes, repeated in every schema
-        out["enum"] = [*out["enum"][:5], f"... {len(out['enum']) - 5} more"]
+        out["description"] = " ".join(out["description"].split())
     return out
 
 
 def compact(value) -> str:
     """JSON without whitespace: specs as YAML are mostly indentation."""
-    text = json.dumps(value, separators=(",", ":"))
-    return text if len(text) < 60000 else text[:60000] + " ... truncated"
+    return json.dumps(value, separators=(",", ":"))
 
 
 def chift_schemas() -> str:
@@ -134,7 +152,11 @@ def provider_tools(provider: str) -> list:
         if (url.scheme, url.host, url.port) != (base.scheme, base.host, base.port):
             raise ValueError("API calls must use the configured provider origin")
         with httpx.Client(timeout=providers.TIMEOUT) as client:
-            response = client.get(url, params=params, headers={header: prefix + credential})
+            for attempt in range(4):  # a 429 asks to slow down; everything else returns at once
+                response = client.get(url, params=params, headers={header: prefix + credential})
+                if response.status_code != 429 or attempt == 3:
+                    break
+                time.sleep(2 ** (attempt + 1))
         try:
             body = response.json()
         except ValueError:
@@ -146,33 +168,48 @@ def provider_tools(provider: str) -> list:
         """Save selected operation IDs and generate client.py from the provider OpenAPI.
 
         Map get_contact, list_contacts, create_contact, get_invoice, list_invoices and
-        create_invoice to operationId strings, e.g. {'get_contact': 'getCustomer', ...}, plus
-        any operations cleanup needs (delete, archive). Returns the generated client path; an
+        create_invoice to operationId strings, e.g. {'get_contact': 'getCustomer', ...}. Returns the path and Python signatures; an
         unknown operationId returns an error to fix.
         """
         spec_path = (inputs / "openapi.yaml").relative_to(ROOT)
         source = clientgen.generate(spec, str(spec_path), list(selected.values()))
         (folder / "operations.yaml").write_text(yaml.safe_dump(selected))
         (folder / "client.py").write_text(source)
-        return f"/providers/{provider}/generated/client.py"
+        methods = [node for node in ast.walk(ast.parse(source))
+                   if isinstance(node, ast.FunctionDef) and node.name != "_request"]
+        signatures = "\n".join(f"{node.name}({ast.unparse(node.args)})" for node in methods)
+        return (f"/providers/{provider}/generated/client.py\n{signatures}\n"
+                "Responses are raw JSON dictionaries; methods raise httpx.HTTPStatusError. "
+                "Use the operation schemas for response fields. No need to read client.py.")
 
     @tool
-    def run_tests(suite: Literal["acceptance", "provider"]) -> dict:
-        """Run Chift's fixed acceptance suite, or this provider's generated checks.
+    def run_tests() -> dict:
+        """Run Chift's acceptance suite on the generated connector; it alone decides success.
 
-        'acceptance' decides success. 'provider' runs your own checks in generated/tests/: they
-        are reported beside it for human review, not independent proof. Returns exit_code and
-        the tail of the pytest output, with failures and skips (declined capabilities) listed.
+        Returns exit_code and the tail of the pytest output, with failures and skips (declined
+        capabilities) listed.
         """
-        target = "tests" if suite == "acceptance" else str(folder.relative_to(ROOT) / "tests")
+        target = "tests"
         env = {k: v for k, v in os.environ.items() if k != "OPENROUTER_API_KEY"}
         env.update(CHIFT_PROVIDER=provider, PYTHONDONTWRITEBYTECODE="1")
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
+        sources = sorted(folder.rglob("*.py"))
+        digest = hashlib.sha256(b"".join(str(p.relative_to(folder)).encode() + p.read_bytes()
+                                         for p in sources)).hexdigest()
         result = subprocess.run(
             [sys.executable, "-m", "pytest", target, "-q", "--tb=short", "-rfEs",
              "-p", "no:cacheprovider"],
             cwd=ROOT, env=env, capture_output=True, text=True, timeout=900, check=False,
         )
-        return {"exit_code": result.returncode, "output": (result.stdout + result.stderr)[-12000:]}
+        output = redactor(provider)(result.stdout + result.stderr)
+        if result.returncode == 0:  # the harness can fall back to the last passing connector
+            shutil.copy(folder / "connector.py", folder / "logs" / "connector.passing.py")
+        log = folder / "logs" / f"tests-{stamp}.json"
+        log.parent.mkdir(exist_ok=True)
+        log.write_text(json.dumps({"timestamp": stamp, "source_sha256": digest,
+                                   "exit_code": result.returncode, "output": output}, indent=2) + "\n")
+        return {"exit_code": result.returncode, "output": output[-12000:],
+                "log": str(log.relative_to(folder))}
 
     # run_tests stays last: the harness reruns it after the agent stops.
     return [list_operations, describe_operation, describe_schema, call_api, generate_client,

@@ -4,10 +4,10 @@ import argparse
 import ast
 import json
 import os
-import re
 import shutil
 import time
 from collections import Counter
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -20,16 +20,27 @@ from deepagents.profiles import (
     register_harness_profile,
 )
 from dotenv import dotenv_values, load_dotenv
-from langchain.agents.middleware import ModelCallLimitMiddleware, wrap_model_call
+from langchain.agents.middleware import (
+    ModelCallLimitMiddleware,
+    ModelRetryMiddleware,
+    wrap_model_call,
+)
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
+from openai import RateLimitError
 
 from chift import providers
 from chift.generator import clientgen, report, trace_html
-from chift.generator.tools import ROOT, chift_schemas, load_spec, provider_tools
+from chift.generator.tools import (
+    ROOT,
+    chift_schemas,
+    load_spec,
+    provider_tools,
+    redactor,
+)
 
 DEFAULT_MODEL = "deepseek/deepseek-v4-pro"
-REPORT_CALLS = 2  # model calls kept past the budget so the agent can always write its report  # tool use that holds up, at cents per run
+REPORT_CALLS = 1  # one tool-free final explanation after the work budget
 
 
 def main() -> None:
@@ -37,10 +48,18 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("provider")
     parser.add_argument("--max-calls", type=int, default=60)
+    parser.add_argument("--report-only", action="store_true",
+                        help="rerun both suites and save a separate verification report; no agent")
     args = parser.parse_args()
     if not (ROOT / "providers" / args.provider / "openapi.yaml").is_file():
         parser.error(f"put the provider's OpenAPI in providers/{args.provider}/openapi.yaml")
     ensure_env(args.provider, load_spec(args.provider))
+    with single_run(args.provider):
+        (rejudge if args.report_only else run)(args)
+
+
+def run(args) -> None:
+    """One generation for `args.provider`, holding its lock."""
     load_dotenv(ROOT / ".env")
     folder = ROOT / "providers" / args.provider / "generated"
     fresh_start(folder)
@@ -50,28 +69,37 @@ def main() -> None:
     model_name = os.environ["LLM_MODEL"]
     register_harness_profile(
         f"openai:{model_name}",
-        HarnessProfile(general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False)),
+        HarnessProfile(general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False),
+                       excluded_tools=frozenset({"execute"})),
     )
     agent = create_deep_agent(
         model=ChatOpenAI(model=model_name, api_key=os.environ["OPENROUTER_API_KEY"],
                          base_url="https://openrouter.ai/api/v1", max_retries=0,
-                         timeout=120, max_tokens=12000),
+                         timeout=120, max_tokens=16000),
         tools=tools,
         system_prompt=system_prompt,
+        # The agent sees the repository with the same paths the tests print. It may read
+        # everything except credentials, and write only its provider's generated/ folder, minus
+        # the harness's report and logs.
         backend=FilesystemBackend(root_dir=ROOT, virtual_mode=True),
         permissions=[
-            # Run evidence is the harness's alone.
-            FilesystemPermission(["read", "write"], [
-                f"/providers/{args.provider}/generated/{name}"
-                for name in ("report.md", "trace.html", "trace.jsonl")], "deny"),
-            FilesystemPermission(["read", "write"], [f"/providers/{args.provider}/generated/**"]),
-            # The specs are read through list_operations / describe_operation, not by grepping.
-            FilesystemPermission(["read"], ["/chift/contract.py", "/tests/**"]),
-            FilesystemPermission(["read", "write"], ["/**"], "deny"),
+            FilesystemPermission(["read", "write"], ["/.env", "/**/.env"], "deny"),
+            # Earlier outputs would be copied rather than regenerated: hide the backup and history.
+            FilesystemPermission(["read", "write"], ["/providers/*/generated.previous/**",
+                                                     "/.git/**"], "deny"),
+            FilesystemPermission(["write"], [f"/providers/{args.provider}/generated/logs/**",
+                                             f"/providers/{args.provider}/generated/report.md",
+                                             f"/providers/{args.provider}/generated/recheck-*.md"],
+                                 "deny"),
+            FilesystemPermission(["write"], [f"/providers/{args.provider}/generated/**"]),
+            FilesystemPermission(["write"], ["/**"], "deny"),
         ],
-        # A countdown on every call; two calls past the budget are kept for the final report, and
-        # the hard stop then ends the run gracefully instead of crashing it.
+        # After the work budget, remove tools for one final explanation; the hard cap is a backstop.
+        # A 429 from OpenRouter asks to slow down (it asked for 10 s): wait and retry that alone,
+        # inside the countdown so a retried call counts once. Any other failure ends the run.
         middleware=[countdown(args.max_calls),
+                    ModelRetryMiddleware(max_retries=3, retry_on=(RateLimitError,),
+                                         on_failure="error", initial_delay=10.0),
                     ModelCallLimitMiddleware(run_limit=args.max_calls + REPORT_CALLS,
                                              exit_behavior="end")],
     )
@@ -80,10 +108,10 @@ def main() -> None:
     redact = redactor(args.provider)
     lines = [redact(json.dumps({"type": "system", "content": system_prompt})),
              redact(json.dumps({"type": "human", "content": task}))]
-    explanation, error = "The agent gave no final account.", None
+    error = None
     started = time.monotonic()
-    usage, tool_calls = Counter(), Counter()
-    with (folder / "trace.jsonl").open("w") as trace:
+    usage = Counter()
+    with (folder / "logs" / "trace.jsonl").open("w") as trace:
         trace.write("\n".join(lines) + "\n")
         try:
             for update in agent.stream({"messages": [{"role": "user", "content": task}]},
@@ -98,10 +126,7 @@ def main() -> None:
                         trace.flush()
                         write_trace(lines, folder, stamp, args.provider, live=True)
                         if message.type == "ai":
-                            explanation = message.text or explanation
                             count_usage(usage, message)
-                            for call in message.tool_calls:
-                                tool_calls[call["name"]] += 1
                         show(message, usage)
         except Exception as exc:  # noqa: BLE001 - any crash is recorded, then both suites still run
             error = f"{type(exc).__name__}: {exc}"
@@ -110,26 +135,50 @@ def main() -> None:
     write_trace(lines, folder, stamp, args.provider, live=False)
     stamp_header(folder / "connector.py", args.provider, model_name, stamp)
     # The harness reruns both suites after the agent stops; only Chift's suite decides success.
-    results = {suite: run_tests.invoke({"suite": suite}) for suite in ("acceptance", "provider")}
-    # Only Chift's suite decides; running out of calls is noted in the report, not a failure.
-    accepted = results["acceptance"]["exit_code"] == 0
+    result = run_tests.invoke({})
     if error is None and usage["calls"] >= args.max_calls + REPORT_CALLS:
         error = f"the call cap ({args.max_calls} + {REPORT_CALLS} for the report)"
+    passing = folder / "logs" / "connector.passing.py"
+    if result["exit_code"] != 0 and passing.is_file():
+        # A late edit broke a connector that had passed: judge the last passing one instead.
+        shutil.copy(passing, folder / "connector.py")
+        stamp_header(folder / "connector.py", args.provider, model_name, stamp)
+        result = run_tests.invoke({})
+        error = (error or "the agent finishing") + "; its last edits broke Chift's suite, so the " \
+            "last connector.py that passed was restored"
+    # Only Chift's suite decides; running out of calls is noted in the report, not a failure.
+    accepted = result["exit_code"] == 0
     (folder / "report.md").write_text(report.render(
-        args.provider, model_name, args.max_calls, usage, tool_calls, error,
-        time.monotonic() - started, results, accepted, explanation, datetime.now(timezone.utc),
-        folder, stamp,
+        args.provider, model_name, usage, error, time.monotonic() - started, result, stamp,
     ))
-    for suite, result in results.items():
-        print(f"{suite}: {report.pytest_lines(result['output'])[0]}")
+    print(f"Chift suite: {report.pytest_lines(result['output'])[0]}")
     print(f"{'ACCEPTED' if accepted else 'NOT ACCEPTED'}, ${usage['cost']:.2f}. "
           f"Report: {(folder / 'report.md').relative_to(ROOT)}")
     raise SystemExit(0 if accepted else 1)
 
 
+def rejudge(args) -> None:
+    """Save a separate verification with full test logs; preserve generation evidence."""
+    load_dotenv(ROOT / ".env")
+    folder = ROOT / "providers" / args.provider / "generated"
+    run_tests = next(t for t in provider_tools(args.provider) if t.name == "run_tests")
+    started = time.monotonic()
+    result = run_tests.invoke({})
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
+    path = folder / f"recheck-{stamp}.md"
+    lines = [f"# Verification {stamp}", "", "Separate from the generation run; report.md is unchanged.", ""]
+    tally = report.pytest_lines(result["output"])[0]
+    lines.append(f"- Chift suite: exit {result['exit_code']}, {tally}; [full output]({result['log']}).")
+    lines.append(f"\nVerification duration: {time.monotonic() - started:.1f}s.\n")
+    path.write_text("\n".join(lines))
+    print(f"Verification: {path.relative_to(ROOT)}")
+    raise SystemExit(0 if result["exit_code"] == 0 else 1)
+
+
 def write_trace(lines: list[str], folder: Path, stamp: str, provider: str, live: bool) -> None:
-    """The run as a page next to the code; it reloads itself while the run is live."""
-    (folder / "trace.html").write_text(trace_html.render(lines, f"{provider} run {stamp}", live=live))
+    """The run as a page in logs/; it reloads itself while the run is live."""
+    page = trace_html.render(lines, f"{provider} run {stamp}", live=live)
+    (folder / "logs" / "trace.html").write_text(page)
 
 
 def countdown(budget: int):
@@ -148,36 +197,29 @@ def countdown(budget: int):
         note = f"[harness] Model call {calls} of {budget}; {max(left, 0)} left."
         if left <= 5:
             note += (" Wrap up: stop editing unless Chift's acceptance suite fails, then finish "
-                     "with your run report. Two extra calls are reserved for it.")
+                     "with your final text report. Do not write a report file.")
+        if calls > budget:
+            note += " Work is finished. Tools are disabled. Give your final Markdown report now."
+            return handler(request.override(messages=[*request.messages, HumanMessage(note)],
+                                            tools=[], tool_choice="none"))
         return handler(request.override(messages=[*request.messages, HumanMessage(note)]))
 
     return remind
 
 
-def redactor(provider: str):
-    """Replace every credential from both `.env` files, so no trace can carry one."""
-    secrets = [value for path in (ROOT / ".env", providers.env_file(provider))
-               for key, value in dotenv_values(path).items()
-               if value and len(value) > 8 and re.search("KEY|TOKEN|SECRET|PASSWORD", key)]
-
-    def redact(text: str) -> str:
-        for secret in secrets:
-            text = text.replace(secret, "[redacted]")
-        return text
-
-    return redact
-
-
 def briefing(provider: str, max_calls: int) -> str:
-    """The first message: everything the agent would otherwise spend calls looking for."""
+    """The first message: where to write, and the contract and target schemas to start from."""
+    here = f"/providers/{provider}/generated"
     suite = "\n".join(
         f"- /tests/{path.name}: {(ast.get_docstring(ast.parse(path.read_text())) or '').splitlines()[0]}"
         for path in sorted((ROOT / "tests").glob("test_*.py"))
     )
     return (
-        f"Generate the {provider} connector in /providers/{provider}/generated/, which starts empty "
-        f"(its report.md and trace files belong to the harness). You have at most {max_calls} model "
-        "calls: do not spend them listing folders or rereading files quoted here.\n\n"
+        f"Generate the {provider} connector: write {here}/connector.py (the folder starts empty; "
+        f"logs/ and report.md are the harness's). You may read the repository except .env files. "
+        f"You have {max_calls} work calls, then one tool-free final report.\nMoney: "
+        "`from iso4217 import Currency`; `Currency(\"EUR\").exponent` is 2, JPY 0; "
+        "`Decimal(str(value)).scaleb(exponent)`.\n\n"
         f"The contract you implement (/chift/contract.py):\n```python\n"
         f"{(ROOT / 'chift' / 'contract.py').read_text()}```\n\n"
         f"Chift's acceptance suite, which decides success:\n{suite}\n\n"
@@ -220,10 +262,32 @@ def fill(path: Path, defaults: dict[str, str]) -> list[str]:
     return [f"{path.relative_to(ROOT)}: {key}" for key in defaults if not values.get(key)]
 
 
+@contextmanager
+def single_run(provider: str):
+    """Refuse to start while another run for this provider is alive: both would write generated/."""
+    lock = ROOT / "providers" / provider / ".generator.lock"
+    if lock.is_file():
+        pid = int(lock.read_text() or 0)
+        try:
+            os.kill(pid, 0)
+        except (OSError, ValueError):
+            pass  # a stale lock from a run that died
+        else:
+            raise SystemExit(f"a run for {provider} is already going (pid {pid}); wait for it")
+    lock.write_text(str(os.getpid()))
+    try:
+        yield
+    finally:
+        lock.unlink(missing_ok=True)
+
+
 def fresh_start(folder: Path) -> None:
-    """Remove the previous run's output so the agent writes from scratch; git keeps history."""
-    shutil.rmtree(folder, ignore_errors=True)
-    folder.mkdir(parents=True)
+    """Start empty, keeping the previous run in generated.previous/ so nothing is lost uncommitted."""
+    previous = folder.with_name("generated.previous")
+    if folder.exists():
+        shutil.rmtree(previous, ignore_errors=True)
+        folder.rename(previous)
+    (folder / "logs").mkdir(parents=True)
 
 
 def stamp_header(connector: Path, provider: str, model: str, stamp: str) -> None:
@@ -259,7 +323,9 @@ def show(message, usage: Counter) -> None:
 
 def count_usage(usage: Counter, message) -> None:
     """Add one model call's tokens and OpenRouter-reported cost."""
-    stats = message.response_metadata.get("token_usage") or {}
+    stats = message.response_metadata.get("token_usage")
+    if stats is None:  # a framework limit message is not a model response
+        return
     usage["calls"] += 1
     usage["input"] += stats.get("prompt_tokens") or 0
     usage["cached"] += (stats.get("prompt_tokens_details") or {}).get("cached_tokens") or 0

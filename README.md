@@ -46,14 +46,13 @@ Hyperline's spec is already in `providers/hyperline/`, so for it start at step 2
    | `client.py` | HTTP client for the chosen operations, generated from the spec without an LLM |
    | `operations.yaml` | Which provider operation serves which Chift method |
    | `connector.py` | The mapping, with a `# Mapping decision:` comment on every judgment call |
-   | `tests/` | The agent's own checks against the raw provider records |
-   | `report.md` | Written by the harness: result, cost, test outcomes, declined capabilities, every mapping decision, every unmapped field with its reason; then the agent's account |
-   | `trace.html` | The whole run, every model and tool call, to open in a browser (live during a run); credentials redacted |
-   | `trace.jsonl` | The same run as raw messages |
+   | `report.md` | Short harness summary: verdict, test outcomes, cost/time and evidence links |
+   | `logs/trace.html` | The whole run, every model and tool call, to open in a browser (live during a run); credentials redacted |
+   | `logs/trace.jsonl` | The same run as raw messages |
 
 5. Read the report. **Chift's suite decides success.** A skip means the connector declined a
-   capability rather than drop data; the agent's own checks are evidence to review, not proof.
-   Then review the mapping decisions and unmapped fields the report lists.
+   capability rather than drop data. Then review the mapping decisions and `UNMAPPED` in
+   `connector.py`.
 
 To rerun Chift's suite alone: `CHIFT_PROVIDER=<name> pytest tests`
 
@@ -61,12 +60,11 @@ Both `.env` files are git-ignored.
 
 ## Limitations
 
-- Round trips cannot catch a mistake made the same way on write and read.
-- States Chift cannot create (paid, cancelled, credit notes) are covered only by the agent's own
-  checks: review them.
-- The same agent writes the connector and those checks. Ideally a separate, adversarial agent
-  would write the checks.
-- A declined capability is listed in the report with the agent's justification: review it.
-- Cleanup is best effort: records the provider cannot delete stay in the sandbox.
+- Round trips cannot catch a mistake made the same way on write and read, nor check states Chift
+  cannot create (paid, cancelled, credit notes): those rest on reviewing the mapping decisions.
+  A separate, adversarial agent writing provider-tailored tests of the middle of the round trip
+  (what the provider actually stored) would close that gap.
+- Declined capabilities and their justifications appear in the linked test output: review them.
+- Test records stay in the sandbox: Chift has no DELETE, and the pipeline does not clean up.
 - List filters and PDFs are not implemented.
 - LLM output varies between runs; a run can hit the call cap and fail.

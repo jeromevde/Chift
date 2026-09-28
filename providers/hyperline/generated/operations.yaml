@@ -1,0 +1,6 @@
+create_contact: createCustomer
+create_invoice: createInvoice
+get_contact: getCustomer
+get_invoice: getInvoice
+list_contacts: listCustomers
+list_invoices: listInvoices

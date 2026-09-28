@@ -7,21 +7,18 @@ what it was sent. So a new provider needs no fixtures, only a sandbox key that a
 
 What round trips cannot prove: a mistake made symmetrically on write and read (an amount
 scaled wrong both ways reads back "right"), and the mapping of states Chift cannot create
-(paid, cancelled, credit notes). Those need the provider-specific checks and human review.
+(paid, cancelled, credit notes). Those need human review of the mapping decisions.
 
 Run it against one provider's generated connector:
 
     CHIFT_PROVIDER=hyperline pytest tests
 
-Chift has no DELETE for contacts or invoices, so at the end of a run the suite hands what it
-created to the provider's test helper `providers/<name>/generated/tests/cleanup.py`, if there is
-one, and reports what remains.
-Records use example.com addresses and draft invoices wherever a scenario allows.
+Chift has no DELETE for contacts or invoices, so the records a run creates stay in the sandbox.
+They use unique names, example.com addresses and draft invoices wherever a scenario allows.
 """
 
 from __future__ import annotations
 
-import importlib
 import os
 import uuid
 from pathlib import Path
@@ -52,54 +49,21 @@ def http() -> Any:
 
 
 class Chift:
-    """Chift's invoicing endpoints for the provider's consumer, remembering what it creates."""
+    """Chift's invoicing endpoints for the provider's consumer."""
 
     def __init__(self, http) -> None:
         self.http = http
-        self.created: list[tuple[str, str]] = []
 
     def get(self, path: str, **params) -> httpx.Response:
         return self.http.get(path, params=params or None)
 
     def post(self, path: str, body: dict) -> httpx.Response:
-        response = self.http.post(path, json=body)
-        if response.status_code == 200 and response.json().get("id"):
-            self.created.append((path.strip("/").rstrip("s"), response.json()["id"]))
-        return response
+        return self.http.post(path, json=body)
 
 
 @pytest.fixture(scope="session")
 def chift(http) -> Chift:
-    client = Chift(http)
-    yield client
-    cleanup(client.created)
-
-
-def cleanup(created: list[tuple[str, str]]) -> None:
-    """Delete this run's records with the provider's test helper, if any; report leftovers."""
-    provider = os.environ["CHIFT_PROVIDER"]
-    try:
-        helper = importlib.import_module(f"providers.{provider}.generated.tests.cleanup").cleanup
-    except (ImportError, AttributeError):
-        CLEANUP.append(f"cleanup: no helper; {len(created)} records left in the sandbox")
-        return
-    left = []
-    for kind, record_id in sorted(created, key=lambda item: item[0] != "invoice"):
-        try:
-            helper(kind, record_id)
-        except Exception as exc:  # noqa: BLE001 - cleanup is best effort, never a test failure
-            left.append(f"{kind} {record_id} ({type(exc).__name__})")
-    CLEANUP.append(f"cleanup: {len(created) - len(left)} of {len(created)} records deleted"
-                   + (f"; left in the sandbox: {', '.join(left)}" if left else ""))
-
-
-CLEANUP: list[str] = []
-
-
-def pytest_terminal_summary(terminalreporter) -> None:
-    """Show the cleanup result: teardown output is otherwise hidden."""
-    for line in CLEANUP:
-        terminalreporter.write_line(line)
+    return Chift(http)
 
 
 # ── checks against Chift's own OpenAPI ──────────────────────────────────────
